@@ -1,0 +1,29 @@
+ext {
+    projectVersion = '0.1.0' + (Boolean.valueOf(System.getProperty('release')) ? '' : '-SNAPSHOT')
+}
+
+buildscript {
+    repositories {
+        mavenCentral()
+
+        maven {
+            url "https://plugins.gradle.org/m2/"
+        }
+    }
+
+    dependencies {
+        classpath "me.champeau.gradle:jmh-gradle-plugin:0.5.0"
+    }
+}
+
+subprojects {
+    buildDir = rootProject.file("build/${it.name}")
+
+    repositories {
+        mavenCentral()
+    }
+}
+
+wrapper {
+    gradleVersion = "6.7.1"
+}

@@ -1,0 +1,29 @@
+os: linux
+dist: bionic
+language: java
+
+stages:
+  - name: build
+
+jobs:
+  include:
+    - stage: build
+      script:
+        - ./gradlew distZip
+
+before_deploy:
+  - export LIB_JAR_FILE=$(ls build/api/libs/*.jar)
+  - export DIST_ZIP_FILE=$(ls build/example/distributions/*.zip)
+
+deploy:
+  provider: releases
+  token: ${ACCESS_TOKEN}
+  file:
+    - ${LIB_JAR_FILE}
+    - ${DIST_ZIP_FILE}
+  cleanup: false
+  overwrite: true
+  on:
+    repo: hhu-bsinfo/ucx-nio
+    branch: master
+    tags: true
