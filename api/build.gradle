@@ -8,8 +8,8 @@ group 'de.hhu.bsinfo'
 version = getProperty('projectVersion')
 
 compileJava {
-    sourceCompatibility = '11'
-    targetCompatibility = '11'
+    sourceCompatibility = '8'
+    targetCompatibility = '8'
     options.encoding = 'UTF-8'
 }
 

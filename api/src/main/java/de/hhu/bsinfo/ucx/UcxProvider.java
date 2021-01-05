@@ -39,7 +39,7 @@ public class UcxProvider extends SelectorProvider {
 
     @Override
     public ServerSocketChannel openServerSocketChannel() throws IOException {
-        throw new UnsupportedOperationException("Operation not supported!");
+        return new UcxServerSocketChannel(this);
     }
 
     @Override
