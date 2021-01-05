@@ -8,7 +8,10 @@ import picocli.CommandLine;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.nio.channels.SelectionKey;
+import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
+import java.nio.channels.SocketChannel;
 
 @CommandLine.Command(
         name = "example",
@@ -39,6 +42,9 @@ public class Application implements Runnable {
             description = "The address to connect to.")
     private InetSocketAddress remoteAddress;
 
+    private Selector selector;
+    private ServerSocketChannel serverSocket;
+
     @Override
     public void run() {
         if (!isServer && remoteAddress == null) {
@@ -50,25 +56,49 @@ public class Application implements Runnable {
             bindAddress = new InetSocketAddress(bindAddress.getAddress(), 0);
         }
 
-        if (isServer) {
-            serve();
-        } else {
-            connect();
-        }
-    }
-
-    private void serve() {
-        ServerSocketChannel serverSocket;
-
         try {
-            serverSocket = ServerSocketChannel.open();
-            serverSocket.bind(bindAddress);
+            if (isServer) {
+                serve();
+            } else {
+                connect();
+            }
         } catch (IOException e) {
-            LOGGER.error("Unable to open server socket channel", e);
+            e.printStackTrace();
+        }
+
+        while(!Thread.interrupted()) {
+            try {
+                selector.selectNow();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+            for (SelectionKey key : selector.selectedKeys()) {
+                Runnable runnable = (Runnable) key.attachment();
+
+                if(runnable != null) {
+                    runnable.run();
+                }
+            }
+
+            selector.selectedKeys().clear();
         }
     }
 
-    private void connect() {
+    private void serve() throws IOException {
+        selector = Selector.open();
+
+        ServerSocketChannel serverSocket = ServerSocketChannel.open();
+        serverSocket.bind(bindAddress);
+        serverSocket.configureBlocking(false);
+
+        SelectionKey key = serverSocket.register(selector, SelectionKey.OP_ACCEPT);
+        key.attach(new Acceptor(serverSocket));
+    }
+
+    private void connect() throws IOException {
+        selector = Selector.open();
+
         UcpParams params = new UcpParams().requestStreamFeature();
         UcpContext context = new UcpContext(params);
         UcpWorker worker = context.newWorker(new UcpWorkerParams());
@@ -86,5 +116,24 @@ public class Application implements Runnable {
         int exitCode = cli.execute(args);
 
         System.exit(exitCode);
+    }
+
+    private static final class Acceptor implements Runnable {
+
+        private final ServerSocketChannel serverSocket;
+
+        private Acceptor(ServerSocketChannel serverSocket) {
+            this.serverSocket = serverSocket;
+        }
+
+        @Override
+        public void run() {
+            try {
+                SocketChannel socket = serverSocket.accept();
+                socket.configureBlocking(false);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
     }
 }

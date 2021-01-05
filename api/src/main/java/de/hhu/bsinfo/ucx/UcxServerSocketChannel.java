@@ -17,12 +17,14 @@ import java.util.Collections;
 import java.util.Set;
 import java.util.Stack;
 
-public class UcxServerSocketChannel extends ServerSocketChannel {
+public class UcxServerSocketChannel extends ServerSocketChannel implements UcxSelectableChannel {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(UcxServerSocketChannel.class);
 
+    private final SelectorProvider provider;
     private final Stack<UcpConnectionRequest> pendingConnections = new Stack<>();
     private final UcpContext context;
+    private final UcpWorker worker;
 
     private ConnectionListenerThread listenerThread;
 
@@ -31,10 +33,13 @@ public class UcxServerSocketChannel extends ServerSocketChannel {
     protected UcxServerSocketChannel(SelectorProvider provider) {
         super(provider);
 
+        this.provider = provider;
+
         LOGGER.info("Initializing ucp context");
 
         UcpParams params = new UcpParams().requestWakeupFeature();
         context = new UcpContext(params);
+        worker = new UcpWorker(context, new UcpWorkerParams().requestThreadSafety());
     }
 
     @Override
@@ -44,7 +49,7 @@ public class UcxServerSocketChannel extends ServerSocketChannel {
         }
 
         localAddress = (InetSocketAddress) socketAddress;
-        listenerThread = new ConnectionListenerThread(context, localAddress, pendingConnections, backlog);
+        listenerThread = new ConnectionListenerThread(worker, localAddress, pendingConnections, backlog);
 
         LOGGER.info("Listening on {}", localAddress);
 
@@ -87,7 +92,12 @@ public class UcxServerSocketChannel extends ServerSocketChannel {
             return null;
         }
 
-        throw new UnsupportedOperationException("Operation not supported!");
+        UcpEndpointParams endpointParams = new UcpEndpointParams().setConnectionRequest(pendingConnections.pop()).setPeerErrorHandlingMode();
+        UcxSocketChannel socket = new UcxSocketChannel(provider, worker.newEndpoint(endpointParams));
+
+        LOGGER.info("Accepted incoming connection!");
+
+        return socket;
     }
 
     @Override
@@ -98,12 +108,33 @@ public class UcxServerSocketChannel extends ServerSocketChannel {
     @Override
     protected void implCloseSelectableChannel() throws IOException {
         listenerThread.close();
+        worker.close();
         context.close();
     }
 
     @Override
     protected void implConfigureBlocking(boolean b) throws IOException {
 
+    }
+
+    @Override
+    public boolean isAcceptable() {
+        return !pendingConnections.empty();
+    }
+
+    @Override
+    public boolean isConnectable() {
+        return false;
+    }
+
+    @Override
+    public boolean isReadable() {
+        return false;
+    }
+
+    @Override
+    public boolean isWriteable() {
+        return false;
     }
 
     private static final class ConnectionListenerThread extends Thread implements AutoCloseable {
@@ -115,7 +146,9 @@ public class UcxServerSocketChannel extends ServerSocketChannel {
 
         private boolean isRunning = false;
 
-        private ConnectionListenerThread(UcpContext context, InetSocketAddress localAddress, Stack<UcpConnectionRequest> pendingConnections, int backlog) {
+        private ConnectionListenerThread(UcpWorker worker, InetSocketAddress localAddress, Stack<UcpConnectionRequest> pendingConnections, int backlog) {
+            this.worker = worker;
+
             UcpListenerParams listenerParams = new UcpListenerParams().setSockAddr(localAddress)
                     .setConnectionHandler(request -> {
                         LOGGER.info("Received connection request!");
@@ -127,7 +160,6 @@ public class UcxServerSocketChannel extends ServerSocketChannel {
                         }
                     });
 
-            worker = new UcpWorker(context, new UcpWorkerParams().requestThreadSafety());
             listener = worker.newListener(listenerParams);
         }
 
@@ -142,7 +174,6 @@ public class UcxServerSocketChannel extends ServerSocketChannel {
             }
 
             listener.close();
-            worker.close();
         }
 
         @Override

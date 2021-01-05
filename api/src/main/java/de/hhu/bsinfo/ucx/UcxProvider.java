@@ -34,7 +34,7 @@ public class UcxProvider extends SelectorProvider {
 
     @Override
     public AbstractSelector openSelector() throws IOException {
-        throw new UnsupportedOperationException("Operation not supported!");
+        return new UcxSelector(this);
     }
 
     @Override
@@ -44,7 +44,7 @@ public class UcxProvider extends SelectorProvider {
 
     @Override
     public SocketChannel openSocketChannel() throws IOException {
-        throw new UnsupportedOperationException("Operation not supported!");
+        return new UcxSocketChannel(this);
     }
 
     public static void printBanner() {
