@@ -1,13 +1,13 @@
 package de.hhu.bsinfo.ucx;
 
 import de.hhu.bsinfo.ucx.util.InetSocketAddressConverter;
-import org.openucx.jucx.ucp.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import picocli.CommandLine;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.net.Socket;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
@@ -99,12 +99,8 @@ public class Application implements Runnable {
     private void connect() throws IOException {
         selector = Selector.open();
 
-        UcpParams params = new UcpParams().requestStreamFeature();
-        UcpContext context = new UcpContext(params);
-        UcpWorker worker = context.newWorker(new UcpWorkerParams());
-
-        UcpEndpointParams epParams = new UcpEndpointParams().setSocketAddress(remoteAddress).setPeerErrorHandlingMode();
-        UcpEndpoint clientToServer = worker.newEndpoint(epParams);
+        SocketChannel socket = SocketChannel.open(remoteAddress);
+        socket.configureBlocking(false);
     }
 
     public static void main(String... args) {
@@ -122,6 +118,8 @@ public class Application implements Runnable {
 
         private final ServerSocketChannel serverSocket;
 
+        private SocketChannel socket;
+
         private Acceptor(ServerSocketChannel serverSocket) {
             this.serverSocket = serverSocket;
         }
@@ -129,7 +127,7 @@ public class Application implements Runnable {
         @Override
         public void run() {
             try {
-                SocketChannel socket = serverSocket.accept();
+                socket = serverSocket.accept();
                 socket.configureBlocking(false);
             } catch (IOException e) {
                 e.printStackTrace();

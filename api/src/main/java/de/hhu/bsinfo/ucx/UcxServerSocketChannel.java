@@ -1,5 +1,6 @@
 package de.hhu.bsinfo.ucx;
 
+import org.openucx.jucx.UcxCallback;
 import org.openucx.jucx.ucp.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -9,6 +10,7 @@ import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.SocketAddress;
 import java.net.SocketOption;
+import java.nio.ByteBuffer;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.nio.channels.UnsupportedAddressTypeException;
@@ -37,18 +39,21 @@ public class UcxServerSocketChannel extends ServerSocketChannel implements UcxSe
 
         LOGGER.info("Initializing ucp context");
 
-        UcpParams params = new UcpParams().requestWakeupFeature();
+        UcpParams params = new UcpParams().requestWakeupFeature().requestTagFeature();
         context = new UcpContext(params);
         worker = new UcpWorker(context, new UcpWorkerParams().requestThreadSafety());
     }
 
     @Override
     public ServerSocketChannel bind(SocketAddress socketAddress, int backlog) throws IOException {
-        if (!(socketAddress instanceof InetSocketAddress)) {
+        if (socketAddress == null) {
+            localAddress = new InetSocketAddress(UcxProvider.DEFAULT_SERVER_PORT);
+        } else if (!(socketAddress instanceof InetSocketAddress)) {
             throw new UnsupportedAddressTypeException();
+        } else {
+            localAddress = (InetSocketAddress) socketAddress;
         }
 
-        localAddress = (InetSocketAddress) socketAddress;
         listenerThread = new ConnectionListenerThread(worker, localAddress, pendingConnections, backlog);
 
         LOGGER.info("Listening on {}", localAddress);
@@ -93,7 +98,19 @@ public class UcxServerSocketChannel extends ServerSocketChannel implements UcxSe
         }
 
         UcpEndpointParams endpointParams = new UcpEndpointParams().setConnectionRequest(pendingConnections.pop()).setPeerErrorHandlingMode();
-        UcxSocketChannel socket = new UcxSocketChannel(provider, worker.newEndpoint(endpointParams));
+        UcpEndpoint endpoint = worker.newEndpoint(endpointParams);
+
+        LOGGER.info("Endpoint created: {}", endpoint);
+
+        /* try {
+            ByteBuffer buffer = ByteBuffer.allocateDirect(8);
+            worker.progressRequest(worker.recvTaggedNonBlocking(buffer, null));
+            worker.progressRequest(endpoint.sendTaggedNonBlocking(buffer, null));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }*/
+
+        UcxSocketChannel socket = new UcxSocketChannel(provider, context, endpoint);
 
         LOGGER.info("Accepted incoming connection!");
 
@@ -168,8 +185,12 @@ public class UcxServerSocketChannel extends ServerSocketChannel implements UcxSe
             isRunning = true;
 
             while (isRunning) {
-                if (worker.progress() == 0) {
-                    worker.waitForEvents();
+                try {
+                    if (worker.progress() == 0) {
+                        worker.waitForEvents();
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
                 }
             }
 

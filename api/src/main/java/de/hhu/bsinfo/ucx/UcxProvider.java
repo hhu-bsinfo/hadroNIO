@@ -17,6 +17,8 @@ import java.util.stream.Collectors;
 
 public class UcxProvider extends SelectorProvider {
 
+    protected static final int DEFAULT_SERVER_PORT = 2998;
+
     @Override
     public DatagramChannel openDatagramChannel() throws IOException {
         throw new UnsupportedOperationException("Operation not supported!");
