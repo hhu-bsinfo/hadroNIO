@@ -57,19 +57,20 @@ public class UcxSelectionKey extends SelectionKey {
         return readyOps;
     }
 
-    protected SelectionKey readyOps(int readyOps) {
+    @Override
+    public String toString() {
+        return "UcxSelectionKey(interestOps=" + interestOps + ", readyOps=" + readyOps + ", isValid=" + isValid() + ")";
+    }
+
+    protected void readyOps(int readyOps) {
         synchronized(this) {
             this.readyOps = readyOps;
         }
-
-        return this;
     }
 
-    protected int readyOpsOr(int readyOps) {
+    protected void readyOpsOr(int readyOps) {
         synchronized(this) {
-            int oldVal = this.readyOps;
-            this.readyOps(oldVal | readyOps);
-            return oldVal;
+            this.readyOps(this.readyOps | readyOps);
         }
     }
 }

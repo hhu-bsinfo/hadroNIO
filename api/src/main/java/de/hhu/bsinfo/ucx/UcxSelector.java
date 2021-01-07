@@ -1,5 +1,8 @@
 package de.hhu.bsinfo.ucx;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
@@ -10,6 +13,8 @@ import java.util.*;
 
 public class UcxSelector extends AbstractSelector {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(UcxSelector.class);
+
     private final Set<UcxSelectionKey> keys = new HashSet<>();
     private final UngrowableSelectionKeySet selectedKeys = new UngrowableSelectionKeySet();
 
@@ -19,7 +24,7 @@ public class UcxSelector extends AbstractSelector {
 
     @Override
     protected void implCloseSelector() throws IOException {
-
+        LOGGER.info("Closing selector");
     }
 
     @Override
@@ -28,6 +33,8 @@ public class UcxSelector extends AbstractSelector {
 
         key.interestOps(interestOps);
         key.attach(attachment);
+
+        LOGGER.info("Registering new channel with selection key [{}]", key);
 
         keys.add(key);
 
@@ -76,7 +83,7 @@ public class UcxSelector extends AbstractSelector {
 
     @Override
     public int select(long timeout) throws IOException {
-        return 0;
+        throw new UnsupportedOperationException("Operation not implemented yet");
     }
 
     @Override

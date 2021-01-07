@@ -1,6 +1,8 @@
 package de.hhu.bsinfo.ucx;
 
 import de.hhu.bsinfo.ucx.generated.BuildConfig;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -17,7 +19,16 @@ import java.util.stream.Collectors;
 
 public class UcxProvider extends SelectorProvider {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(UcxProvider.class);
     protected static final int DEFAULT_SERVER_PORT = 2998;
+
+    static {
+        if (System.getProperty("java.nio.channels.spi.SelectorProvider").equals("de.hhu.bsinfo.ucx.UcxProvider")) {
+            LOGGER.info("UcxProvider is set as default SelectorProvider");
+        } else {
+            LOGGER.warn("UcxProvider is not set as default SelectorProvider -> UCX acceleration will probably not work");
+        }
+    }
 
     @Override
     public DatagramChannel openDatagramChannel() throws IOException {
@@ -36,16 +47,22 @@ public class UcxProvider extends SelectorProvider {
 
     @Override
     public AbstractSelector openSelector() throws IOException {
+        LOGGER.info("Creating new UcxSelector");
+
         return new UcxSelector(this);
     }
 
     @Override
     public ServerSocketChannel openServerSocketChannel() throws IOException {
+        LOGGER.info("Creating new UcxServerSocketChannel");
+
         return new UcxServerSocketChannel(this);
     }
 
     @Override
     public SocketChannel openSocketChannel() throws IOException {
+        LOGGER.info("Creating new UcxSocketChannel");
+
         return new UcxSocketChannel(this);
     }
 

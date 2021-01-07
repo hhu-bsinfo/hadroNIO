@@ -1,6 +1,5 @@
 package de.hhu.bsinfo.ucx;
 
-import org.openucx.jucx.UcxCallback;
 import org.openucx.jucx.ucp.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,7 +9,6 @@ import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.SocketAddress;
 import java.net.SocketOption;
-import java.nio.ByteBuffer;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.nio.channels.UnsupportedAddressTypeException;
@@ -56,7 +54,7 @@ public class UcxServerSocketChannel extends ServerSocketChannel implements UcxSe
 
         listenerThread = new ConnectionListenerThread(worker, localAddress, pendingConnections, backlog);
 
-        LOGGER.info("Listening on {}", localAddress);
+        LOGGER.info("Listening on [{}]", localAddress);
 
         listenerThread.start();
 
@@ -65,12 +63,16 @@ public class UcxServerSocketChannel extends ServerSocketChannel implements UcxSe
 
     @Override
     public <T> ServerSocketChannel setOption(SocketOption<T> socketOption, T t) throws IOException {
-        throw new UnsupportedOperationException("Operation not supported!");
+        LOGGER.warn("Trying to set option [{}], which is not supported", socketOption.name());
+
+        return this;
     }
 
     @Override
     public <T> T getOption(SocketOption<T> socketOption) throws IOException {
-        throw new UnsupportedOperationException("Operation not supported!");
+        LOGGER.warn("Trying to get option [{}], which is not supported", socketOption.name());
+
+        return null;
     }
 
     @Override
@@ -80,6 +82,8 @@ public class UcxServerSocketChannel extends ServerSocketChannel implements UcxSe
 
     @Override
     public ServerSocket socket() {
+        LOGGER.error("Direct socket access is not supported");
+
         throw new UnsupportedOperationException("Operation not supported!");
     }
 
@@ -91,6 +95,7 @@ public class UcxServerSocketChannel extends ServerSocketChannel implements UcxSe
                     Thread.sleep(10);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
+                    return null;
                 }
             }
         } else if (pendingConnections.empty()) {
@@ -100,15 +105,7 @@ public class UcxServerSocketChannel extends ServerSocketChannel implements UcxSe
         UcpEndpointParams endpointParams = new UcpEndpointParams().setConnectionRequest(pendingConnections.pop()).setPeerErrorHandlingMode();
         UcpEndpoint endpoint = worker.newEndpoint(endpointParams);
 
-        LOGGER.info("Endpoint created: {}", endpoint);
-
-        /* try {
-            ByteBuffer buffer = ByteBuffer.allocateDirect(8);
-            worker.progressRequest(worker.recvTaggedNonBlocking(buffer, null));
-            worker.progressRequest(endpoint.sendTaggedNonBlocking(buffer, null));
-        } catch (Exception e) {
-            e.printStackTrace();
-        }*/
+        LOGGER.info("Endpoint created [{}]", endpoint);
 
         UcxSocketChannel socket = new UcxSocketChannel(provider, context, endpoint);
 
@@ -124,6 +121,8 @@ public class UcxServerSocketChannel extends ServerSocketChannel implements UcxSe
 
     @Override
     protected void implCloseSelectableChannel() throws IOException {
+        LOGGER.info("Closing server socket channel bound to [{}]", localAddress);
+
         listenerThread.close();
         worker.close();
         context.close();
@@ -164,6 +163,8 @@ public class UcxServerSocketChannel extends ServerSocketChannel implements UcxSe
         private boolean isRunning = false;
 
         private ConnectionListenerThread(UcpWorker worker, InetSocketAddress localAddress, Stack<UcpConnectionRequest> pendingConnections, int backlog) {
+            super("listener");
+
             this.worker = worker;
 
             UcpListenerParams listenerParams = new UcpListenerParams().setSockAddr(localAddress)
@@ -184,6 +185,8 @@ public class UcxServerSocketChannel extends ServerSocketChannel implements UcxSe
         public void run() {
             isRunning = true;
 
+            LOGGER.info("Starting connection listener thread");
+
             while (isRunning) {
                 try {
                     if (worker.progress() == 0) {
@@ -195,10 +198,14 @@ public class UcxServerSocketChannel extends ServerSocketChannel implements UcxSe
             }
 
             listener.close();
+
+            LOGGER.info("Connection listener thread stopped");
         }
 
         @Override
         public void close() {
+            LOGGER.info("Stopping connection listener thread");
+
             this.isRunning = false;
             worker.signal();
         }

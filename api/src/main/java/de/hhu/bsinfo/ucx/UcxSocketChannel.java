@@ -17,7 +17,7 @@ import java.util.Set;
 
 public class UcxSocketChannel extends SocketChannel implements UcxSelectableChannel {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(UcxServerSocketChannel.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(UcxSocketChannel.class);
 
     private final UcpContext context;
 
@@ -31,6 +31,8 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
     protected UcxSocketChannel(SelectorProvider provider) {
         super(provider);
 
+        LOGGER.info("Creating ucp context");
+
         UcpParams params = new UcpParams().requestWakeupFeature().requestTagFeature();
         context = new UcpContext(params);
         worker = new UcpWorker(context, new UcpWorkerParams().requestThreadSafety());
@@ -39,35 +41,31 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
     protected UcxSocketChannel(SelectorProvider provider, UcpContext context, UcpEndpoint endpoint) {
         super(provider);
 
+        LOGGER.info("Creating socket channel from existing ucp context");
+
         this.context = context;
         this.endpoint = endpoint;
     }
 
     @Override
     public SocketChannel bind(SocketAddress socketAddress) throws IOException {
-        /*if (socketAddress == null) {
-            localAddress = new InetSocketAddress(UcxProvider.DEFAULT_SERVER_PORT);
-        } else if (!(socketAddress instanceof InetSocketAddress)) {
-            throw new UnsupportedAddressTypeException();
-        } else {
-            localAddress = (InetSocketAddress) socketAddress;
-        }
+        LOGGER.warn("Trying to bind socket channel to [{}], but binding is not supported", socketAddress);
 
-        LOGGER.info("Binding socket to {}", localAddress);
-
-        return this;*/
-
-        throw new UnsupportedOperationException();
+        return this;
     }
 
     @Override
     public <T> SocketChannel setOption(SocketOption<T> socketOption, T t) throws IOException {
-        throw new UnsupportedOperationException("Operation not supported!");
+        LOGGER.warn("Trying to set option [{}], which is not supported", socketOption.name());
+
+        return this;
     }
 
     @Override
     public <T> T getOption(SocketOption<T> socketOption) throws IOException {
-        throw new UnsupportedOperationException("Operation not supported!");
+        LOGGER.warn("Trying to get option [{}], which is not supported", socketOption.name());
+
+        return null;
     }
 
     @Override
@@ -77,6 +75,8 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
 
     @Override
     public SocketChannel shutdownInput() throws IOException {
+        LOGGER.info("Closing connection for input -> This socket channel will no longer be readable");
+
         readable = false;
 
         return this;
@@ -84,6 +84,8 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
 
     @Override
     public SocketChannel shutdownOutput() throws IOException {
+        LOGGER.info("Closing connection for input -> This socket channel will no longer be writeable");
+
         writeable = false;
 
         return this;
@@ -91,6 +93,8 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
 
     @Override
     public Socket socket() {
+        LOGGER.error("Direct socket access is not supported");
+
         throw new UnsupportedOperationException("Operation not supported!");
     }
 
@@ -106,32 +110,50 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
 
     @Override
     public boolean connect(SocketAddress socketAddress) throws IOException {
-        LOGGER.info("Connecting to {}", socketAddress);
+        LOGGER.info("Connecting to [{}]", socketAddress);
 
-        UcpEndpointParams endpointParams = new UcpEndpointParams().setSocketAddress((InetSocketAddress) socketAddress).setPeerErrorHandlingMode();
-        endpoint = worker.newEndpoint(endpointParams);
+        if (isBlocking()) {
+            UcpEndpointParams endpointParams = new UcpEndpointParams().setSocketAddress((InetSocketAddress) socketAddress).setPeerErrorHandlingMode();
+            endpoint = worker.newEndpoint(endpointParams);
+            LOGGER.info("Endpoint created: [{}]", endpoint);
 
-        LOGGER.info("Endpoint created: {}", endpoint);
+            return (connected = true);
+        } else {
+            new Thread(() -> {
+                UcpEndpointParams endpointParams = new UcpEndpointParams().setSocketAddress((InetSocketAddress) socketAddress).setPeerErrorHandlingMode();
+                endpoint = worker.newEndpoint(endpointParams);
+                LOGGER.info("Endpoint created: [{}]", endpoint);
 
-        /*try {
-            ByteBuffer buffer = ByteBuffer.allocateDirect(8);
-            worker.progressRequest(endpoint.sendTaggedNonBlocking(buffer, null));
-            worker.progressRequest(worker.recvTaggedNonBlocking(buffer, null));
-        } catch (Exception e) {
-            e.printStackTrace();
-        }*/
+                connected = true;
+            }).start();
 
-        return (connected = true);
+            return false;
+        }
     }
 
     @Override
     public boolean finishConnect() throws IOException {
+        if (isBlocking()) {
+            LOGGER.info("Waiting for connection to be established");
+
+            while (!connected) {
+                try {
+                    Thread.sleep(10);
+                } catch (InterruptedException e) {
+                    close();
+                    break;
+                }
+            }
+        }
+
         return connected;
     }
 
     @Override
     public SocketAddress getRemoteAddress() throws IOException {
-        throw new UnsupportedOperationException("Operation not supported!");
+        LOGGER.warn("Trying to get remote address, which is not supported");
+
+        return new InetSocketAddress(0);
     }
 
     @Override
@@ -172,11 +194,15 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
 
     @Override
     public SocketAddress getLocalAddress() throws IOException {
-        throw new UnsupportedOperationException("Operation not supported!");
+        LOGGER.warn("Trying to get local address, which is not supported");
+
+        return new InetSocketAddress(0);
     }
 
     @Override
     protected void implCloseSelectableChannel() throws IOException {
+        LOGGER.info("Closing socket channel");
+
         worker.close();
         endpoint.close();
         context.close();
