@@ -45,6 +45,8 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
 
         this.context = context;
         this.endpoint = endpoint;
+
+        connected = true;
     }
 
     @Override
@@ -109,30 +111,34 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
     }
 
     @Override
-    public boolean connect(SocketAddress socketAddress) throws IOException {
-        LOGGER.info("Connecting to [{}]", socketAddress);
+    public boolean connect(SocketAddress remoteAddress) throws IOException {
+        LOGGER.info("Connecting to [{}]", remoteAddress);
 
         if (isBlocking()) {
-            UcpEndpointParams endpointParams = new UcpEndpointParams().setSocketAddress((InetSocketAddress) socketAddress).setPeerErrorHandlingMode();
-            endpoint = worker.newEndpoint(endpointParams);
-            LOGGER.info("Endpoint created: [{}]", endpoint);
-
-            return (connected = true);
+            connected = connectTo(remoteAddress);
         } else {
             new Thread(() -> {
-                UcpEndpointParams endpointParams = new UcpEndpointParams().setSocketAddress((InetSocketAddress) socketAddress).setPeerErrorHandlingMode();
-                endpoint = worker.newEndpoint(endpointParams);
-                LOGGER.info("Endpoint created: [{}]", endpoint);
-
-                connected = true;
-            }).start();
-
-            return false;
+                connected = connectTo(remoteAddress);
+            }, "connector").start();
         }
+
+        return connected;
+    }
+
+    private boolean connectTo(SocketAddress remoteAddress) {
+        UcpEndpointParams endpointParams = new UcpEndpointParams().setSocketAddress((InetSocketAddress) remoteAddress).setPeerErrorHandlingMode();
+        endpoint = worker.newEndpoint(endpointParams);
+        LOGGER.info("Endpoint created: [{}]", endpoint);
+
+        return true;
     }
 
     @Override
     public boolean finishConnect() throws IOException {
+        if (connected) {
+            return true;
+        }
+
         if (isBlocking()) {
             LOGGER.info("Waiting for connection to be established");
 
@@ -220,7 +226,7 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
 
     @Override
     public boolean isConnectable() {
-        return false;
+        return connected;
     }
 
     @Override

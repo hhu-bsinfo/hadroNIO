@@ -89,18 +89,22 @@ public class Application implements Runnable {
         selector = Selector.open();
 
         ServerSocketChannel serverSocket = ServerSocketChannel.open();
-        serverSocket.bind(bindAddress);
         serverSocket.configureBlocking(false);
+        serverSocket.bind(bindAddress);
 
         SelectionKey key = serverSocket.register(selector, SelectionKey.OP_ACCEPT);
-        key.attach(new Acceptor(serverSocket));
+        key.attach(new Acceptor(selector, serverSocket));
     }
 
     private void connect() throws IOException {
         selector = Selector.open();
 
-        SocketChannel socket = SocketChannel.open(remoteAddress);
+        SocketChannel socket = SocketChannel.open();
         socket.configureBlocking(false);
+        socket.connect(remoteAddress);
+
+        SelectionKey key = socket.register(selector, SelectionKey.OP_CONNECT);
+        key.attach(new Handler(key, socket));
     }
 
     public static void main(String... args) {
@@ -110,26 +114,5 @@ public class Application implements Runnable {
         int exitCode = cli.execute(args);
 
         System.exit(exitCode);
-    }
-
-    private static final class Acceptor implements Runnable {
-
-        private final ServerSocketChannel serverSocket;
-
-        private SocketChannel socket;
-
-        private Acceptor(ServerSocketChannel serverSocket) {
-            this.serverSocket = serverSocket;
-        }
-
-        @Override
-        public void run() {
-            try {
-                socket = serverSocket.accept();
-                socket.configureBlocking(false);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
     }
 }
