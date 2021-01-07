@@ -1,4 +1,4 @@
-package de.hhu.bsinfo.ucx.util;
+package de.hhu.bsinfo.hadronio.util;
 
 import java.net.InetSocketAddress;
 import picocli.CommandLine;

@@ -1,4 +1,4 @@
-package de.hhu.bsinfo.ucx;
+package de.hhu.bsinfo.hadronio;
 
 import static java.nio.channels.SelectionKey.*;
 

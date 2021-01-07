@@ -1,6 +1,6 @@
-package de.hhu.bsinfo.ucx;
+package de.hhu.bsinfo.hadronio;
 
-import de.hhu.bsinfo.ucx.generated.BuildConfig;
+import de.hhu.bsinfo.hadronio.generated.BuildConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,10 +23,10 @@ public class UcxProvider extends SelectorProvider {
     protected static final int DEFAULT_SERVER_PORT = 2998;
 
     static {
-        if (System.getProperty("java.nio.channels.spi.SelectorProvider").equals("de.hhu.bsinfo.ucx.UcxProvider")) {
-            LOGGER.info("UcxProvider is set as default SelectorProvider");
+        if (System.getProperty("java.nio.channels.spi.SelectorProvider").equals("de.hhu.bsinfo.hadronio.UcxProvider")) {
+            LOGGER.info("UcxProvider is set as default SelectorProvider -> hadronIO is active");
         } else {
-            LOGGER.warn("UcxProvider is not set as default SelectorProvider -> UCX acceleration will probably not work");
+            LOGGER.warn("UcxProvider is not set as default SelectorProvider -> hadronIO is not active");
         }
     }
 

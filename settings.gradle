@@ -1,4 +1,4 @@
-rootProject.name = 'ucx-nio'
+rootProject.name = 'hadronio'
 
 include 'example'
 include 'api'

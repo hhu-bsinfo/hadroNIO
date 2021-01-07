@@ -13,7 +13,7 @@ compileJava {
 }
 
 application {
-    mainClass = 'de.hhu.bsinfo.ucx.Application'
+    mainClass = 'de.hhu.bsinfo.hadronio.Application'
 }
 
 repositories {

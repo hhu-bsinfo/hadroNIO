@@ -1,6 +1,6 @@
-package de.hhu.bsinfo.ucx;
+package de.hhu.bsinfo.hadronio;
 
-import de.hhu.bsinfo.ucx.util.InetSocketAddressConverter;
+import de.hhu.bsinfo.hadronio.util.InetSocketAddressConverter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import picocli.CommandLine;
@@ -20,7 +20,8 @@ import java.nio.channels.SocketChannel;
 public class Application implements Runnable {
 
     static {
-        System.setProperty("java.nio.channels.spi.SelectorProvider", "de.hhu.bsinfo.ucx.UcxProvider");
+        System.setProperty("java.nio.channels.spi.SelectorProvider", "de.hhu.bsinfo.hadronio.UcxProvider");
+        UcxProvider.printBanner();
     }
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Application.class);
@@ -103,8 +104,6 @@ public class Application implements Runnable {
     }
 
     public static void main(String... args) {
-        UcxProvider.printBanner();
-
         CommandLine cli = new CommandLine(new Application());
         cli.registerConverter(InetSocketAddress.class, new InetSocketAddressConverter(DEFAULT_SERVER_PORT));
         cli.setCaseInsensitiveEnumValuesAllowed(true);

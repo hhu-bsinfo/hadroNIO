@@ -1,4 +1,4 @@
-package de.hhu.bsinfo.ucx;
+package de.hhu.bsinfo.hadronio;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
