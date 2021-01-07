@@ -1,5 +1,6 @@
 package de.hhu.bsinfo.hadronio;
 
+import de.hhu.bsinfo.hadronio.util.ResourceHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,6 +26,13 @@ public class UcxSelector extends AbstractSelector {
     @Override
     protected void implCloseSelector() throws IOException {
         LOGGER.info("Closing selector");
+
+        for (SelectionKey key : keys) {
+            key.cancel();
+        }
+
+        selectedKeys.clear();
+        keys.clear();
     }
 
     @Override

@@ -1,6 +1,7 @@
 package de.hhu.bsinfo.hadronio;
 
 import de.hhu.bsinfo.hadronio.util.InetSocketAddressConverter;
+import de.hhu.bsinfo.hadronio.util.ResourceHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import picocli.CommandLine;
@@ -44,6 +45,7 @@ public class Application implements Runnable {
 
     private Selector selector;
     private ServerSocketChannel serverSocket;
+    private boolean isRunning = true;
 
     @Override
     public void run() {
@@ -56,6 +58,11 @@ public class Application implements Runnable {
             bindAddress = new InetSocketAddress(bindAddress.getAddress(), 0);
         }
 
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            LOGGER.info("Received shutdown signal");
+            isRunning = false;
+        }));
+
         try {
             if (isServer) {
                 serve();
@@ -66,7 +73,7 @@ public class Application implements Runnable {
             e.printStackTrace();
         }
 
-        while(!Thread.interrupted()) {
+        while(isRunning) {
             try {
                 selector.selectNow();
             } catch (IOException e) {
@@ -83,17 +90,36 @@ public class Application implements Runnable {
 
             selector.selectedKeys().clear();
         }
+
+        try {
+            for (SelectionKey key : selector.keys()) {
+                key.cancel();
+
+                if (!(key.channel() instanceof ServerSocketChannel)) {
+                    key.channel().close();
+                }
+            }
+
+            if (isServer) {
+                serverSocket.close();
+            }
+
+            selector.close();
+        } catch (IOException e) {
+            LOGGER.warn("Unable to close resources", e);
+        }
     }
 
     private void serve() throws IOException {
         selector = Selector.open();
 
-        ServerSocketChannel serverSocket = ServerSocketChannel.open();
+        serverSocket = ServerSocketChannel.open();
         serverSocket.configureBlocking(false);
         serverSocket.bind(bindAddress);
 
         SelectionKey key = serverSocket.register(selector, SelectionKey.OP_ACCEPT);
-        key.attach(new Acceptor(selector, serverSocket));
+        Acceptor acceptor = new Acceptor(selector, serverSocket);
+        key.attach(acceptor);
     }
 
     private void connect() throws IOException {

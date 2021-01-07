@@ -14,8 +14,6 @@ public class Acceptor implements Runnable {
     private final Selector selector;
     private final ServerSocketChannel serverSocket;
 
-    private SocketChannel socket;
-
     public Acceptor(Selector selector, ServerSocketChannel serverSocket) {
         this.selector = selector;
         this.serverSocket = serverSocket;
@@ -24,7 +22,7 @@ public class Acceptor implements Runnable {
     @Override
     public void run() {
         try {
-            socket = serverSocket.accept();
+            SocketChannel socket = serverSocket.accept();
             socket.configureBlocking(false);
 
             SelectionKey key = socket.register(selector, SelectionKey.OP_CONNECT);

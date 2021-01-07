@@ -1,9 +1,11 @@
 package de.hhu.bsinfo.hadronio;
 
+import de.hhu.bsinfo.hadronio.util.ResourceHandler;
 import org.openucx.jucx.ucp.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
@@ -21,8 +23,9 @@ public class UcxServerSocketChannel extends ServerSocketChannel implements UcxSe
 
     private static final Logger LOGGER = LoggerFactory.getLogger(UcxServerSocketChannel.class);
 
-    private final SelectorProvider provider;
+    private final ResourceHandler resourceHandler = new ResourceHandler();
     private final Stack<UcpConnectionRequest> pendingConnections = new Stack<>();
+    private final SelectorProvider provider;
     private final UcpContext context;
     private final UcpWorker worker;
 
@@ -30,16 +33,14 @@ public class UcxServerSocketChannel extends ServerSocketChannel implements UcxSe
 
     private InetSocketAddress localAddress;
 
-    protected UcxServerSocketChannel(SelectorProvider provider) {
+    protected UcxServerSocketChannel(SelectorProvider provider, UcpContext context) {
         super(provider);
 
         this.provider = provider;
+        this.context = context;
 
-        LOGGER.info("Initializing ucp context");
-
-        UcpParams params = new UcpParams().requestWakeupFeature().requestTagFeature();
-        context = new UcpContext(params);
-        worker = new UcpWorker(context, new UcpWorkerParams().requestThreadSafety());
+        worker = context.newWorker(new UcpWorkerParams().requestThreadSafety());
+        resourceHandler.addResource(worker);
     }
 
     @Override
@@ -53,6 +54,7 @@ public class UcxServerSocketChannel extends ServerSocketChannel implements UcxSe
         }
 
         listenerThread = new ConnectionListenerThread(worker, localAddress, pendingConnections, backlog);
+        resourceHandler.addResource(listenerThread);
 
         LOGGER.info("Listening on [{}]", localAddress);
 
@@ -94,22 +96,18 @@ public class UcxServerSocketChannel extends ServerSocketChannel implements UcxSe
                 try {
                     Thread.sleep(10);
                 } catch (InterruptedException e) {
-                    e.printStackTrace();
-                    return null;
+                    throw new IOException("Thread has been interrupted while waiting for an incoming connection");
                 }
             }
         } else if (pendingConnections.empty()) {
             return null;
         }
 
-        UcpEndpointParams endpointParams = new UcpEndpointParams().setConnectionRequest(pendingConnections.pop()).setPeerErrorHandlingMode();
-        UcpEndpoint endpoint = worker.newEndpoint(endpointParams);
+        LOGGER.info("Creating new UcxSocketChannel");
 
-        LOGGER.info("Endpoint created [{}]", endpoint);
+        UcxSocketChannel socket = new UcxSocketChannel(provider, context, pendingConnections.pop());
 
-        UcxSocketChannel socket = new UcxSocketChannel(provider, context, endpoint);
-
-        LOGGER.info("Accepted incoming connection!");
+        LOGGER.info("Accepted incoming connection");
 
         return socket;
     }
@@ -123,14 +121,12 @@ public class UcxServerSocketChannel extends ServerSocketChannel implements UcxSe
     protected void implCloseSelectableChannel() throws IOException {
         LOGGER.info("Closing server socket channel bound to [{}]", localAddress);
 
-        listenerThread.close();
-        worker.close();
-        context.close();
+        resourceHandler.close();
     }
 
     @Override
-    protected void implConfigureBlocking(boolean b) throws IOException {
-
+    protected void implConfigureBlocking(boolean blocking) throws IOException {
+        LOGGER.info("Server socket channel is now configured to be [{}]", blocking ? "BLOCKING" : "NON-BLOCKING");
     }
 
     @Override
@@ -153,12 +149,12 @@ public class UcxServerSocketChannel extends ServerSocketChannel implements UcxSe
         return false;
     }
 
-    private static final class ConnectionListenerThread extends Thread implements AutoCloseable {
+    private static final class ConnectionListenerThread extends Thread implements Closeable {
 
         private static final Logger LOGGER = LoggerFactory.getLogger(ConnectionListenerThread.class);
 
+        private final ResourceHandler resourceHandler = new ResourceHandler();
         private final UcpWorker worker;
-        private final UcpListener listener;
 
         private boolean isRunning = false;
 
@@ -169,16 +165,17 @@ public class UcxServerSocketChannel extends ServerSocketChannel implements UcxSe
 
             UcpListenerParams listenerParams = new UcpListenerParams().setSockAddr(localAddress)
                     .setConnectionHandler(request -> {
-                        LOGGER.info("Received connection request!");
+                        LOGGER.info("Received connection request");
 
                         if (backlog <= 0 || pendingConnections.size() < backlog) {
                             pendingConnections.push(request);
                         } else {
-                            LOGGER.error("Discarding connection request, because the maximum number of pending connections ({}) has been reached!", backlog);
+                            LOGGER.error("Discarding connection request, because the maximum number of pending connections ({}) has been reached", backlog);
                         }
                     });
 
-            listener = worker.newListener(listenerParams);
+            UcpListener listener = worker.newListener(listenerParams);
+            resourceHandler.addResource(listener);
         }
 
         @Override
@@ -196,18 +193,18 @@ public class UcxServerSocketChannel extends ServerSocketChannel implements UcxSe
                     e.printStackTrace();
                 }
             }
-
-            listener.close();
-
-            LOGGER.info("Connection listener thread stopped");
         }
 
         @Override
-        public void close() {
+        public void close() throws IOException {
             LOGGER.info("Stopping connection listener thread");
 
             this.isRunning = false;
-            worker.signal();
+            while(isAlive()) {
+                worker.signal();
+            }
+
+            resourceHandler.close();
         }
     }
 }

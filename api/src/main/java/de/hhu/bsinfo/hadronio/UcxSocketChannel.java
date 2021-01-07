@@ -1,5 +1,6 @@
 package de.hhu.bsinfo.hadronio;
 
+import de.hhu.bsinfo.hadronio.util.ResourceHandler;
 import org.openucx.jucx.ucp.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,34 +20,34 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
 
     private static final Logger LOGGER = LoggerFactory.getLogger(UcxSocketChannel.class);
 
-    private final UcpContext context;
+    private final ResourceHandler resourceHandler = new ResourceHandler();
+    private final UcpWorker worker;
 
     private UcpEndpoint endpoint;
-    private UcpWorker worker;
 
     private boolean connected = false;
     private boolean readable = false;
     private boolean writeable = false;
 
-    protected UcxSocketChannel(SelectorProvider provider) {
+    protected UcxSocketChannel(SelectorProvider provider, UcpContext context) {
         super(provider);
 
-        LOGGER.info("Creating ucp context");
-
-        UcpParams params = new UcpParams().requestWakeupFeature().requestTagFeature();
-        context = new UcpContext(params);
-        worker = new UcpWorker(context, new UcpWorkerParams().requestThreadSafety());
+        worker = context.newWorker(new UcpWorkerParams().requestThreadSafety());
+        resourceHandler.addResource(worker);
     }
 
-    protected UcxSocketChannel(SelectorProvider provider, UcpContext context, UcpEndpoint endpoint) {
+    protected UcxSocketChannel(SelectorProvider provider, UcpContext context, UcpConnectionRequest connectionRequest) throws IOException {
         super(provider);
 
-        LOGGER.info("Creating socket channel from existing ucp context");
+        worker = context.newWorker(new UcpWorkerParams().requestThreadSafety());
+        endpoint = worker.newEndpoint(new UcpEndpointParams().setConnectionRequest(connectionRequest).setPeerErrorHandlingMode());
 
-        this.context = context;
-        this.endpoint = endpoint;
+        resourceHandler.addResource(worker);
+        resourceHandler.addResource(endpoint);
 
-        connected = true;
+        LOGGER.info("Endpoint created: [{}]", endpoint);
+
+        connected = establishConnection();
     }
 
     @Override
@@ -128,7 +129,32 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
     private boolean connectTo(SocketAddress remoteAddress) {
         UcpEndpointParams endpointParams = new UcpEndpointParams().setSocketAddress((InetSocketAddress) remoteAddress).setPeerErrorHandlingMode();
         endpoint = worker.newEndpoint(endpointParams);
+        resourceHandler.addResource(endpoint);
+
         LOGGER.info("Endpoint created: [{}]", endpoint);
+
+        return establishConnection();
+    }
+
+    private boolean establishConnection() {
+        ByteBuffer buffer = ByteBuffer.allocateDirect(8);
+
+        LOGGER.info("Exchanging small message to establish connection");
+
+        try {
+            UcpRequest sendRequest = endpoint.sendTaggedNonBlocking(buffer, null);
+            UcpRequest recvRequest = worker.recvTaggedNonBlocking(buffer, null);
+
+            while (!sendRequest.isCompleted() && ! recvRequest.isCompleted()) {
+                worker.progress();
+            }
+
+            sendRequest.close();
+            recvRequest.close();
+        } catch (Exception e) {
+            LOGGER.error("Failed to establish the connection", e);
+            return false;
+        }
 
         return true;
     }
@@ -208,15 +234,12 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
     @Override
     protected void implCloseSelectableChannel() throws IOException {
         LOGGER.info("Closing socket channel");
-
-        worker.close();
-        endpoint.close();
-        context.close();
+        resourceHandler.close();
     }
 
     @Override
-    protected void implConfigureBlocking(boolean b) throws IOException {
-
+    protected void implConfigureBlocking(boolean blocking) throws IOException {
+        LOGGER.info("Socket channel is now configured to be [{}]", blocking ? "BLOCKING" : "NON-BLOCKING");
     }
 
     @Override

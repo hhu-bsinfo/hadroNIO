@@ -1,6 +1,8 @@
 package de.hhu.bsinfo.hadronio;
 
 import de.hhu.bsinfo.hadronio.generated.BuildConfig;
+import org.openucx.jucx.ucp.UcpContext;
+import org.openucx.jucx.ucp.UcpParams;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,11 +26,13 @@ public class UcxProvider extends SelectorProvider {
 
     static {
         if (System.getProperty("java.nio.channels.spi.SelectorProvider").equals("de.hhu.bsinfo.hadronio.UcxProvider")) {
-            LOGGER.info("UcxProvider is set as default SelectorProvider -> hadronIO is active");
+            LOGGER.info("UcxProvider is set as default SelectorProvider -> hadroNIO is active");
         } else {
-            LOGGER.warn("UcxProvider is not set as default SelectorProvider -> hadronIO is not active");
+            LOGGER.warn("UcxProvider is not set as default SelectorProvider -> hadroNIO is not active");
         }
     }
+
+    private final UcpContext context = new UcpContext(new UcpParams().requestWakeupFeature().requestTagFeature());
 
     @Override
     public DatagramChannel openDatagramChannel() throws IOException {
@@ -56,14 +60,14 @@ public class UcxProvider extends SelectorProvider {
     public ServerSocketChannel openServerSocketChannel() throws IOException {
         LOGGER.info("Creating new UcxServerSocketChannel");
 
-        return new UcxServerSocketChannel(this);
+        return new UcxServerSocketChannel(this, context);
     }
 
     @Override
     public SocketChannel openSocketChannel() throws IOException {
         LOGGER.info("Creating new UcxSocketChannel");
 
-        return new UcxSocketChannel(this);
+        return new UcxSocketChannel(this, context);
     }
 
     public static void printBanner() {
