@@ -20,7 +20,7 @@ public class InetSocketAddressConverter implements CommandLine.ITypeConverter<In
             throw new CommandLine.TypeConversionException("Invalid connection string specified");
         }
 
-        String hostname = splittedAddress[0];
+        String hostname = splittedAddress[0].length() == 0 ? "0.0.0.0" : splittedAddress[0];
 
         int port = m_defaultPort;
         if (splittedAddress.length > 1) {

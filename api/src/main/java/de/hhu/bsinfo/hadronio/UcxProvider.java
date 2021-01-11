@@ -3,6 +3,8 @@ package de.hhu.bsinfo.hadronio;
 import de.hhu.bsinfo.hadronio.generated.BuildConfig;
 import org.openucx.jucx.ucp.UcpContext;
 import org.openucx.jucx.ucp.UcpParams;
+import org.openucx.jucx.ucp.UcpWorker;
+import org.openucx.jucx.ucp.UcpWorkerParams;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

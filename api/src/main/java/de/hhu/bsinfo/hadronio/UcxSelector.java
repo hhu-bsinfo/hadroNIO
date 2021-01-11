@@ -1,10 +1,12 @@
 package de.hhu.bsinfo.hadronio;
 
 import de.hhu.bsinfo.hadronio.util.ResourceHandler;
+import org.openucx.jucx.ucp.UcpWorker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.nio.channels.SelectableChannel;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.spi.AbstractSelectableChannel;
@@ -69,20 +71,14 @@ public class UcxSelector extends AbstractSelector {
                 selectedKeys.remove(key);
             }
 
-            int oldReadyOps = key.readyOps();
-            int readyOps = ((UcxSelectableChannel) key.channel()).readyOps();
+            try {
+                ((UcxSelectableChannel) key.channel()).select();
+            } catch (Exception e) {
+                LOGGER.error("Failed to progress worker for key [{}]", key, e);
+            }
 
-            if ((readyOps & key.interestOps()) != 0) {
-                if (selectedKeys.contains(key)) {
-                    key.readyOpsOr(readyOps);
-                } else {
-                    selectedKeys.addKey(key);
-                    key.readyOps(readyOps);
-                }
-
-                if (oldReadyOps != key.readyOps()) {
-                    ret++;
-                }
+            if (selectKey(key)) {
+                ret++;
             }
         }
 
@@ -97,6 +93,22 @@ public class UcxSelector extends AbstractSelector {
     @Override
     public int select() throws IOException {
         return select(0);
+    }
+
+    private boolean selectKey(UcxSelectionKey key) {
+        int oldReadyOps = key.readyOps();
+        int readyOps = ((UcxSelectableChannel) key.channel()).readyOps();
+
+        if ((readyOps & key.interestOps()) != 0) {
+            if (selectedKeys.contains(key)) {
+                key.readyOpsOr(readyOps);
+            } else {
+                selectedKeys.addKey(key);
+                key.readyOps(readyOps);
+            }
+        }
+
+        return oldReadyOps != key.readyOps();
     }
 
     @Override

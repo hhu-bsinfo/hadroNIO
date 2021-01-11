@@ -1,6 +1,7 @@
 package de.hhu.bsinfo.hadronio;
 
 import de.hhu.bsinfo.hadronio.util.ResourceHandler;
+import org.openucx.jucx.UcxCallback;
 import org.openucx.jucx.ucp.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -11,23 +12,27 @@ import java.net.Socket;
 import java.net.SocketAddress;
 import java.net.SocketOption;
 import java.nio.ByteBuffer;
+import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
 import java.nio.channels.spi.SelectorProvider;
 import java.util.Collections;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class UcxSocketChannel extends SocketChannel implements UcxSelectableChannel {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(UcxSocketChannel.class);
 
     private final ResourceHandler resourceHandler = new ResourceHandler();
+    private final ConnectionCallback connectionCallback = new ConnectionCallback(this);
     private final UcpWorker worker;
 
     private UcpEndpoint endpoint;
 
     private boolean connected = false;
-    private boolean readable = false;
-    private boolean writeable = false;
+    private boolean inputClosed = false;
+    private boolean outputClosed = false;
+    private int readyOps = 0;
 
     protected UcxSocketChannel(SelectorProvider provider, UcpContext context) {
         super(provider);
@@ -80,7 +85,7 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
     public SocketChannel shutdownInput() throws IOException {
         LOGGER.info("Closing connection for input -> This socket channel will no longer be readable");
 
-        readable = false;
+        inputClosed = true;
 
         return this;
     }
@@ -89,7 +94,7 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
     public SocketChannel shutdownOutput() throws IOException {
         LOGGER.info("Closing connection for input -> This socket channel will no longer be writeable");
 
-        writeable = false;
+        outputClosed = true;
 
         return this;
     }
@@ -115,15 +120,7 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
     public boolean connect(SocketAddress remoteAddress) throws IOException {
         LOGGER.info("Connecting to [{}]", remoteAddress);
 
-        if (isBlocking()) {
-            connected = connectTo(remoteAddress);
-        } else {
-            new Thread(() -> {
-                connected = connectTo(remoteAddress);
-            }, "connector").start();
-        }
-
-        return connected;
+        return (connected = connectTo(remoteAddress));
     }
 
     private boolean connectTo(SocketAddress remoteAddress) {
@@ -141,27 +138,16 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
 
         LOGGER.info("Exchanging small message to establish connection");
 
-        try {
-            UcpRequest sendRequest = endpoint.sendTaggedNonBlocking(buffer, null);
-            UcpRequest recvRequest = worker.recvTaggedNonBlocking(buffer, null);
+        endpoint.sendTaggedNonBlocking(buffer, connectionCallback);
+        worker.recvTaggedNonBlocking(buffer, connectionCallback);
 
-            while (!sendRequest.isCompleted() && ! recvRequest.isCompleted()) {
-                worker.progress();
-            }
-
-            sendRequest.close();
-            recvRequest.close();
-        } catch (Exception e) {
-            LOGGER.error("Failed to establish the connection", e);
-            return false;
-        }
-
-        return true;
+        return connected;
     }
 
     @Override
     public boolean finishConnect() throws IOException {
         if (connected) {
+            readyOps &= ~SelectionKey.OP_CONNECT;
             return true;
         }
 
@@ -170,13 +156,16 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
 
             while (!connected) {
                 try {
-                    Thread.sleep(10);
-                } catch (InterruptedException e) {
-                    close();
-                    break;
+                    while (worker.progress() == 0) {
+                        worker.waitForEvents();
+                    }
+                } catch (Exception e) {
+                    LOGGER.error("Failed to progress worker while waiting for connection to be established", e);
                 }
             }
         }
+
+        readyOps &= ~SelectionKey.OP_CONNECT;
 
         return connected;
     }
@@ -190,7 +179,7 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
 
     @Override
     public int read(ByteBuffer byteBuffer) throws IOException {
-        if (!readable) {
+        if (inputClosed) {
             return -1;
         }
 
@@ -199,7 +188,7 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
 
     @Override
     public long read(ByteBuffer[] byteBuffers, int i, int i1) throws IOException {
-        if (!readable) {
+        if (inputClosed) {
             return -1;
         }
 
@@ -208,7 +197,7 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
 
     @Override
     public int write(ByteBuffer byteBuffer) throws IOException {
-        if (!writeable) {
+        if (outputClosed) {
             return -1;
         }
 
@@ -217,7 +206,7 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
 
     @Override
     public long write(ByteBuffer[] byteBuffers, int i, int i1) throws IOException {
-        if (!writeable) {
+        if (outputClosed) {
             return -1;
         }
 
@@ -243,22 +232,44 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
     }
 
     @Override
-    public boolean isAcceptable() {
-        return false;
+    public int readyOps() {
+        return readyOps;
     }
 
     @Override
-    public boolean isConnectable() {
-        return connected;
+    public void select() throws IOException {
+        try {
+            worker.progress();
+        } catch (Exception e) {
+            throw new IOException(e.getMessage());
+        }
     }
 
-    @Override
-    public boolean isReadable() {
-        return false;
-    }
+    private static final class ConnectionCallback extends UcxCallback {
 
-    @Override
-    public boolean isWriteable() {
-        return false;
+        private static final Logger LOGGER = LoggerFactory.getLogger(ConnectionCallback.class);
+
+        private final UcxSocketChannel socket;
+        private final AtomicInteger successCounter = new AtomicInteger(0);
+
+        private ConnectionCallback(UcxSocketChannel socket) {
+            this.socket = socket;
+        }
+
+        @Override
+        public void onSuccess(UcpRequest request) {
+            if (request.isCompleted()) {
+                int count = successCounter.incrementAndGet();
+
+                LOGGER.info("Connection callback has been called with a successfully completed request ([{}/2])", successCounter.get());
+
+                if (count == 2) {
+                    socket.connected = true;
+                    socket.readyOps |= SelectionKey.OP_CONNECT;
+
+                    successCounter.set(0);
+                }
+            }
+        }
     }
 }

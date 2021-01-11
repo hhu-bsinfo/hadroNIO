@@ -11,6 +11,7 @@ import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.SocketAddress;
 import java.net.SocketOption;
+import java.nio.channels.SelectionKey;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.nio.channels.UnsupportedAddressTypeException;
@@ -28,8 +29,6 @@ public class UcxServerSocketChannel extends ServerSocketChannel implements UcxSe
     private final SelectorProvider provider;
     private final UcpContext context;
     private final UcpWorker worker;
-
-    private ConnectionListenerThread listenerThread;
 
     private InetSocketAddress localAddress;
 
@@ -53,12 +52,21 @@ public class UcxServerSocketChannel extends ServerSocketChannel implements UcxSe
             localAddress = (InetSocketAddress) socketAddress;
         }
 
-        listenerThread = new ConnectionListenerThread(worker, localAddress, pendingConnections, backlog);
-        resourceHandler.addResource(listenerThread);
+        UcpListenerParams listenerParams = new UcpListenerParams().setSockAddr(localAddress)
+                .setConnectionHandler(request -> {
+                    LOGGER.info("Received connection request");
+
+                    if (backlog <= 0 || pendingConnections.size() < backlog) {
+                        pendingConnections.push(request);
+                    } else {
+                        LOGGER.error("Discarding connection request, because the maximum number of pending connections ({}) has been reached", backlog);
+                    }
+                });
+
+        UcpListener listener = worker.newListener(listenerParams);
+        resourceHandler.addResource(listener);
 
         LOGGER.info("Listening on [{}]", localAddress);
-
-        listenerThread.start();
 
         return this;
     }
@@ -91,16 +99,18 @@ public class UcxServerSocketChannel extends ServerSocketChannel implements UcxSe
 
     @Override
     public SocketChannel accept() throws IOException {
-        if (isBlocking()) {
-            while (pendingConnections.empty()) {
+        if (pendingConnections.empty()) {
+            if (isBlocking()) {
                 try {
-                    Thread.sleep(10);
-                } catch (InterruptedException e) {
-                    throw new IOException("Thread has been interrupted while waiting for an incoming connection");
+                    while (pendingConnections.empty() && worker.progress() == 0) {
+                        worker.waitForEvents();
+                    }
+                } catch (Exception e) {
+                    LOGGER.error("Failed to progress worker, while waiting for an incoming connection", e);
                 }
+            } else {
+                return null;
             }
-        } else if (pendingConnections.empty()) {
-            return null;
         }
 
         LOGGER.info("Creating new UcxSocketChannel");
@@ -130,81 +140,16 @@ public class UcxServerSocketChannel extends ServerSocketChannel implements UcxSe
     }
 
     @Override
-    public boolean isAcceptable() {
-        return !pendingConnections.empty();
+    public int readyOps() {
+        return pendingConnections.empty() ? 0 : SelectionKey.OP_ACCEPT;
     }
 
     @Override
-    public boolean isConnectable() {
-        return false;
-    }
-
-    @Override
-    public boolean isReadable() {
-        return false;
-    }
-
-    @Override
-    public boolean isWriteable() {
-        return false;
-    }
-
-    private static final class ConnectionListenerThread extends Thread implements Closeable {
-
-        private static final Logger LOGGER = LoggerFactory.getLogger(ConnectionListenerThread.class);
-
-        private final ResourceHandler resourceHandler = new ResourceHandler();
-        private final UcpWorker worker;
-
-        private boolean isRunning = false;
-
-        private ConnectionListenerThread(UcpWorker worker, InetSocketAddress localAddress, Stack<UcpConnectionRequest> pendingConnections, int backlog) {
-            super("listener");
-
-            this.worker = worker;
-
-            UcpListenerParams listenerParams = new UcpListenerParams().setSockAddr(localAddress)
-                    .setConnectionHandler(request -> {
-                        LOGGER.info("Received connection request");
-
-                        if (backlog <= 0 || pendingConnections.size() < backlog) {
-                            pendingConnections.push(request);
-                        } else {
-                            LOGGER.error("Discarding connection request, because the maximum number of pending connections ({}) has been reached", backlog);
-                        }
-                    });
-
-            UcpListener listener = worker.newListener(listenerParams);
-            resourceHandler.addResource(listener);
-        }
-
-        @Override
-        public void run() {
-            isRunning = true;
-
-            LOGGER.info("Starting connection listener thread");
-
-            while (isRunning) {
-                try {
-                    if (worker.progress() == 0) {
-                        worker.waitForEvents();
-                    }
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
-        }
-
-        @Override
-        public void close() throws IOException {
-            LOGGER.info("Stopping connection listener thread");
-
-            this.isRunning = false;
-            while(isAlive()) {
-                worker.signal();
-            }
-
-            resourceHandler.close();
+    public void select() throws IOException {
+        try {
+            worker.progress();
+        } catch (Exception e) {
+            throw new IOException(e.getMessage());
         }
     }
 }
