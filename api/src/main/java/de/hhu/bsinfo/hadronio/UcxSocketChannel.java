@@ -22,9 +22,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class UcxSocketChannel extends SocketChannel implements UcxSelectableChannel {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(UcxSocketChannel.class);
+    private static final long CONNECTION_MAGIC_NUMBER = 0xC0FFEE00ADD1C7EDL;
 
     private final ResourceHandler resourceHandler = new ResourceHandler();
-    private final ConnectionCallback connectionCallback = new ConnectionCallback(this);
     private final UcpWorker worker;
 
     private UcpEndpoint endpoint;
@@ -134,12 +134,18 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
     }
 
     private boolean establishConnection() {
-        ByteBuffer buffer = ByteBuffer.allocateDirect(8);
+        ByteBuffer sendBuffer = ByteBuffer.allocateDirect(8);
+        ByteBuffer receiveBuffer = ByteBuffer.allocateDirect(8);
+
+        sendBuffer.putLong(CONNECTION_MAGIC_NUMBER);
+        sendBuffer.rewind();
+
+        ConnectionCallback connectionCallback = new ConnectionCallback(this, receiveBuffer);
 
         LOGGER.info("Exchanging small message to establish connection");
 
-        endpoint.sendTaggedNonBlocking(buffer, connectionCallback);
-        worker.recvTaggedNonBlocking(buffer, connectionCallback);
+        endpoint.sendTaggedNonBlocking(sendBuffer, connectionCallback);
+        worker.recvTaggedNonBlocking(receiveBuffer, connectionCallback);
 
         return connected;
     }
@@ -250,10 +256,12 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
         private static final Logger LOGGER = LoggerFactory.getLogger(ConnectionCallback.class);
 
         private final UcxSocketChannel socket;
+        private final ByteBuffer receiveBuffer;
         private final AtomicInteger successCounter = new AtomicInteger(0);
 
-        private ConnectionCallback(UcxSocketChannel socket) {
+        private ConnectionCallback(UcxSocketChannel socket, ByteBuffer receiveBuffer) {
             this.socket = socket;
+            this.receiveBuffer = receiveBuffer;
         }
 
         @Override
@@ -264,6 +272,13 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
                 LOGGER.info("Connection callback has been called with a successfully completed request ([{}/2])", successCounter.get());
 
                 if (count == 2) {
+                    long magic = receiveBuffer.getLong();
+
+                    if (magic != CONNECTION_MAGIC_NUMBER) {
+                        LOGGER.error("Connection callback has been called, but magic number is wrong! Expected: [{}], Received: [{}] -> Discarding connection", Long.toHexString(CONNECTION_MAGIC_NUMBER), Long.toHexString(magic));
+                        return;
+                    }
+
                     socket.connected = true;
                     socket.readyOps |= SelectionKey.OP_CONNECT;
 
