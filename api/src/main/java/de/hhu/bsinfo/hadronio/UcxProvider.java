@@ -34,7 +34,7 @@ public class UcxProvider extends SelectorProvider {
         }
     }
 
-    private final UcpContext context = new UcpContext(new UcpParams().requestWakeupFeature().requestTagFeature());
+    private final UcpContext context = new UcpContext(new UcpParams().requestWakeupFeature().requestTagFeature().requestStreamFeature());
 
     @Override
     public DatagramChannel openDatagramChannel() throws IOException {

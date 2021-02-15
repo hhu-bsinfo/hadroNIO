@@ -26,12 +26,17 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
 
     private final ResourceHandler resourceHandler = new ResourceHandler();
     private final UcpWorker worker;
+    private final ByteBuffer sendBuffer = ByteBuffer.allocateDirect(1048576);
+    private final ByteBuffer receiveBuffer = ByteBuffer.allocateDirect(1048576);
 
     private UcpEndpoint endpoint;
+    private UcxCallback sendCallback;
+    private UcxCallback receiveCallback;
 
     private boolean connected = false;
     private boolean inputClosed = false;
     private boolean outputClosed = false;
+    private int receivePosition = 0;
     private int readyOps = 0;
 
     protected UcxSocketChannel(SelectorProvider provider, UcpContext context) {
@@ -189,7 +194,23 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
             return -1;
         }
 
-        throw new UnsupportedOperationException("Operation not supported!");
+        synchronized (receiveBuffer) {
+            int numBytes = Math.min(Math.abs(receiveBuffer.position() - receivePosition), byteBuffer.remaining());
+
+            LOGGER.debug("Reading [{}] bytes (receiveBuffer.position: [{}], receivePosition: [{}])", numBytes, receiveBuffer.position(), receivePosition);
+
+            if (numBytes == 0) {
+                return 0;
+            }
+
+            for (int i = 0; i < numBytes; i++) {
+                byteBuffer.put(receiveBuffer.get((receivePosition + i) % receiveBuffer.capacity()));
+            }
+
+            receivePosition = (receivePosition + numBytes) % receiveBuffer.capacity();
+
+            return numBytes;
+        }
     }
 
     @Override
@@ -207,7 +228,31 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
             return -1;
         }
 
-        throw new UnsupportedOperationException("Operation not supported!");
+        synchronized (sendBuffer) {
+            int numBytes = Math.min(sendBuffer.remaining(), byteBuffer.remaining());
+
+            LOGGER.debug("Writing [{}] bytes (sendBuffer.position: [{}])", numBytes, sendBuffer.position());
+
+            if (numBytes == 0) {
+                return 0;
+            }
+
+            int oldPosition = sendBuffer.position();
+
+            for (int i = 0; i < numBytes; i++) {
+                sendBuffer.put(byteBuffer.get(i));
+            }
+
+            sendBuffer.position(oldPosition);
+            sendBuffer.limit(sendBuffer.position() + numBytes);
+
+            endpoint.sendStreamNonBlocking(sendBuffer, sendCallback);
+
+            sendBuffer.position(sendBuffer.limit() % sendBuffer.capacity());
+            sendBuffer.limit(sendBuffer.capacity());
+
+            return numBytes;
+        }
     }
 
     @Override
@@ -239,6 +284,18 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
 
     @Override
     public int readyOps() {
+        if (connected && !outputClosed) {
+            readyOps |= SelectionKey.OP_WRITE;
+        } else {
+            readyOps &= ~SelectionKey.OP_WRITE;
+        }
+
+        if (receivePosition != receiveBuffer.position() && !inputClosed) {
+            readyOps |= SelectionKey.OP_READ;
+        } else {
+            readyOps &= ~SelectionKey.OP_READ;
+        }
+
         return readyOps;
     }
 
@@ -247,7 +304,7 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
         try {
             worker.progress();
         } catch (Exception e) {
-            throw new IOException(e.getMessage());
+            throw new IOException(e);
         }
     }
 
@@ -279,12 +336,59 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
                         return;
                     }
 
+                    socket.sendCallback = new SendCallback(socket, socket.sendBuffer);
+                    socket.receiveCallback = new ReceiveCallback(socket, socket.receiveBuffer);
+
+                    socket.endpoint.recvStreamNonBlocking(socket.receiveBuffer, 0, socket.receiveCallback);
+
                     socket.connected = true;
                     socket.readyOps |= SelectionKey.OP_CONNECT;
 
                     successCounter.set(0);
                 }
             }
+        }
+    }
+
+    private static final class SendCallback extends UcxCallback {
+
+        private static final Logger LOGGER = LoggerFactory.getLogger(SendCallback.class);
+
+        private final UcxSocketChannel socket;
+        private final ByteBuffer sendBuffer;
+
+        private SendCallback(UcxSocketChannel socket, ByteBuffer sendBuffer) {
+            this.socket = socket;
+            this.sendBuffer = sendBuffer;
+        }
+
+        @Override
+        public void onSuccess(UcpRequest request) {
+            LOGGER.debug("SendCallback called (Completed: [{}])", request.isCompleted());
+        }
+    }
+
+    private static final class ReceiveCallback extends UcxCallback {
+
+        private static final Logger LOGGER = LoggerFactory.getLogger(ReceiveCallback.class);
+
+        private final UcxSocketChannel socket;
+        private final ByteBuffer receiveBuffer;
+
+        private ReceiveCallback(UcxSocketChannel socket, ByteBuffer receiveBuffer) {
+            this.socket = socket;
+            this.receiveBuffer = receiveBuffer;
+        }
+
+        @Override
+        public void onSuccess(UcpRequest request) {
+            LOGGER.debug("ReceiveCallback called (Completed: [{}], Size: [{}])", request.isCompleted(), request.getRecvSize());
+
+            synchronized (socket.receiveBuffer) {
+                receiveBuffer.position((int) ((receiveBuffer.position() + request.getRecvSize()) % receiveBuffer.capacity()));
+            }
+
+            socket.endpoint.recvStreamNonBlocking(receiveBuffer, 0, this);
         }
     }
 }

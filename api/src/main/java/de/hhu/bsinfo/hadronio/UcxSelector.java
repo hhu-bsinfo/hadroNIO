@@ -18,7 +18,7 @@ public class UcxSelector extends AbstractSelector {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(UcxSelector.class);
 
-    private final Set<UcxSelectionKey> keys = new HashSet<>();
+    private final Set<SelectionKey> keys = new HashSet<>();
     private final UngrowableSelectionKeySet selectedKeys = new UngrowableSelectionKeySet();
 
     protected UcxSelector(SelectorProvider provider) {
@@ -29,12 +29,20 @@ public class UcxSelector extends AbstractSelector {
     protected void implCloseSelector() throws IOException {
         LOGGER.info("Closing selector");
 
-        for (SelectionKey key : keys) {
-            key.cancel();
-        }
+        synchronized (this) {
+            synchronized (keys) {
+                synchronized (selectedKeys) {
+                    synchronized (cancelledKeys()) {
+                        for (SelectionKey key : keys) {
+                            key.cancel();
+                        }
 
-        selectedKeys.clear();
-        keys.clear();
+                        selectedKeys.clear();
+                        keys.clear();
+                    }
+                }
+            }
+        }
     }
 
     @Override
@@ -63,26 +71,42 @@ public class UcxSelector extends AbstractSelector {
 
     @Override
     public int selectNow() throws IOException {
-        int ret = 0;
+        synchronized (this) {
+            synchronized (keys) {
+                synchronized (selectedKeys) {
+                    int ret = 0;
 
-        for (UcxSelectionKey key : keys) {
-            if (!key.isValid()) {
-                keys.remove(key);
-                selectedKeys.remove(key);
-            }
+                    synchronized (cancelledKeys()) {
+                        if (!cancelledKeys().isEmpty()) {
+                            keys.removeAll(cancelledKeys());
+                            selectedKeys.removeAll(cancelledKeys());
+                        }
+                    }
 
-            try {
-                ((UcxSelectableChannel) key.channel()).select();
-            } catch (Exception e) {
-                LOGGER.error("Failed to progress worker for key [{}]", key, e);
-            }
+                    for (SelectionKey key : Collections.unmodifiableSet(keys)) {
 
-            if (selectKey(key)) {
-                ret++;
+                        try {
+                            ((UcxSelectableChannel) key.channel()).select();
+                        } catch (Exception e) {
+                            LOGGER.error("Failed to progress worker for key [{}]", key, e);
+                        }
+
+                        if (selectKey((UcxSelectionKey) key)) {
+                            ret++;
+                        }
+                    }
+
+                    synchronized (cancelledKeys()) {
+                        if (!cancelledKeys().isEmpty()) {
+                            keys.removeAll(cancelledKeys());
+                            selectedKeys.removeAll(cancelledKeys());
+                        }
+                    }
+
+                    return ret;
+                }
             }
         }
-
-        return ret;
     }
 
     @Override

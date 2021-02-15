@@ -26,7 +26,7 @@ public class Acceptor implements Runnable {
             socket.configureBlocking(false);
 
             SelectionKey key = socket.register(selector, SelectionKey.OP_CONNECT);
-            key.attach(new Handler(key, socket));
+            key.attach(new Handler(key, socket, 1000));
         } catch (IOException e) {
             e.printStackTrace();
         }

@@ -149,7 +149,7 @@ public class UcxServerSocketChannel extends ServerSocketChannel implements UcxSe
         try {
             worker.progress();
         } catch (Exception e) {
-            throw new IOException(e.getMessage());
+            throw new IOException(e);
         }
     }
 }

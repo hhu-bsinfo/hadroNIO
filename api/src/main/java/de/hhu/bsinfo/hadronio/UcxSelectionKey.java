@@ -3,8 +3,9 @@ package de.hhu.bsinfo.hadronio;
 import java.nio.channels.SelectableChannel;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
+import java.nio.channels.spi.AbstractSelectionKey;
 
-public class UcxSelectionKey extends SelectionKey {
+public class UcxSelectionKey extends AbstractSelectionKey {
 
     private final SelectableChannel channel;
     private final Selector selector;
@@ -26,16 +27,6 @@ public class UcxSelectionKey extends SelectionKey {
     @Override
     public Selector selector() {
         return selector;
-    }
-
-    @Override
-    public boolean isValid() {
-        return open && channel.isOpen() && selector.isOpen();
-    }
-
-    @Override
-    public void cancel() {
-        open = false;
     }
 
     @Override

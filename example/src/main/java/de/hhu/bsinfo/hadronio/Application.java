@@ -73,7 +73,7 @@ public class Application implements Runnable {
             e.printStackTrace();
         }
 
-        while(isRunning) {
+        while(isRunning && !selector.keys().isEmpty()) {
             try {
                 selector.selectNow();
             } catch (IOException e) {
@@ -130,7 +130,7 @@ public class Application implements Runnable {
         socket.connect(remoteAddress);
 
         SelectionKey key = socket.register(selector, SelectionKey.OP_CONNECT);
-        key.attach(new Handler(key, socket));
+        key.attach(new Handler(key, socket, 1000));
     }
 
     public static void main(String... args) {
