@@ -43,9 +43,9 @@ public class Handler implements Runnable {
         }
 
         if (key.isWritable() && sendCounter < counterLimit) {
-            LOGGER.info("Sending [{}]", sendCounter);
+            LOGGER.info("Sending [{}]", ++sendCounter);
 
-            sendBuffer.putInt(++sendCounter);
+            sendBuffer.putInt(sendCounter);
             sendBuffer.rewind();
 
             try {

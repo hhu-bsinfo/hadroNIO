@@ -1,7 +1,6 @@
 package de.hhu.bsinfo.hadronio;
 
 import de.hhu.bsinfo.hadronio.util.InetSocketAddressConverter;
-import de.hhu.bsinfo.hadronio.util.ResourceHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import picocli.CommandLine;

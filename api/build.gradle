@@ -19,6 +19,7 @@ repositories {
 
 dependencies {
     implementation 'org.openucx:jucx:1.9.0'
+    implementation 'org.agrona:agrona:1.9.0'
     implementation 'org.slf4j:slf4j-api:1.7.30'
 
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.6.0'

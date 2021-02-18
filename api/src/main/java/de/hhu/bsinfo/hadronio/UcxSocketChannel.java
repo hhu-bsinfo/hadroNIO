@@ -1,6 +1,7 @@
 package de.hhu.bsinfo.hadronio;
 
 import de.hhu.bsinfo.hadronio.util.ResourceHandler;
+import de.hhu.bsinfo.hadronio.util.RingBuffer;
 import org.openucx.jucx.UcxCallback;
 import org.openucx.jucx.ucp.*;
 import org.slf4j.Logger;
@@ -12,22 +13,34 @@ import java.net.Socket;
 import java.net.SocketAddress;
 import java.net.SocketOption;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
 import java.nio.channels.spi.SelectorProvider;
 import java.util.Collections;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import static org.agrona.concurrent.ringbuffer.RingBuffer.INSUFFICIENT_CAPACITY;
 
 public class UcxSocketChannel extends SocketChannel implements UcxSelectableChannel {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(UcxSocketChannel.class);
     private static final long CONNECTION_MAGIC_NUMBER = 0xC0FFEE00ADD1C7EDL;
+    private static final int SEND_BUFFER_MIN_REMAINING = 16;
+    private static final int HEADER_LENGTH = Integer.BYTES * 2;
+
+    protected static final int DEFAULT_SEND_BUFFER_LENGTH = 8192;
+    protected static final int DEFAULT_RECEIVE_BUFFER_LENGTH = 8192;
+    protected static final int DEFAULT_RECEIVE_SLICE_LENGTH = 1024;
 
     private final ResourceHandler resourceHandler = new ResourceHandler();
     private final UcpWorker worker;
-    private final ByteBuffer sendBuffer = ByteBuffer.allocateDirect(1048576);
-    private final ByteBuffer receiveBuffer = ByteBuffer.allocateDirect(1048576);
+    private final RingBuffer sendBuffer;
+    private final RingBuffer receiveBuffer;
+    private final int receiveSliceLength;
+    private final AtomicInteger readableMessages = new AtomicInteger();
 
     private UcpEndpoint endpoint;
     private UcxCallback sendCallback;
@@ -36,21 +49,34 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
     private boolean connected = false;
     private boolean inputClosed = false;
     private boolean outputClosed = false;
-    private int receivePosition = 0;
     private int readyOps = 0;
 
-    protected UcxSocketChannel(SelectorProvider provider, UcpContext context) {
+    protected UcxSocketChannel(SelectorProvider provider, UcpContext context, int sendBufferLength, int receiveBufferLength, int receiveSliceLength) {
         super(provider);
+
+        if (receiveBufferLength % receiveSliceLength != 0) {
+            throw new IllegalArgumentException("Receive slice length must be a restless divisor of receiveBufferLength!");
+        }
 
         worker = context.newWorker(new UcpWorkerParams().requestThreadSafety());
         resourceHandler.addResource(worker);
+        sendBuffer = new RingBuffer(sendBufferLength);
+        receiveBuffer = new RingBuffer(receiveBufferLength);
+        this.receiveSliceLength = receiveSliceLength;
     }
 
-    protected UcxSocketChannel(SelectorProvider provider, UcpContext context, UcpConnectionRequest connectionRequest) throws IOException {
+    protected UcxSocketChannel(SelectorProvider provider, UcpContext context, UcpConnectionRequest connectionRequest, int sendBufferLength, int receiveBufferLength, int receiveSliceLength) throws IOException {
         super(provider);
+
+        if (receiveBufferLength % receiveSliceLength != 0) {
+            throw new IllegalArgumentException("Receive slice length must be a restless divisor of receiveBufferLength!");
+        }
 
         worker = context.newWorker(new UcpWorkerParams().requestThreadSafety());
         endpoint = worker.newEndpoint(new UcpEndpointParams().setConnectionRequest(connectionRequest).setPeerErrorHandlingMode());
+        sendBuffer = new RingBuffer(sendBufferLength);
+        receiveBuffer = new RingBuffer(receiveBufferLength);
+        this.receiveSliceLength = receiveSliceLength;
 
         resourceHandler.addResource(worker);
         resourceHandler.addResource(endpoint);
@@ -91,7 +117,6 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
         LOGGER.info("Closing connection for input -> This socket channel will no longer be readable");
 
         inputClosed = true;
-
         return this;
     }
 
@@ -100,7 +125,6 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
         LOGGER.info("Closing connection for input -> This socket channel will no longer be writeable");
 
         outputClosed = true;
-
         return this;
     }
 
@@ -189,32 +213,41 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
     }
 
     @Override
-    public int read(ByteBuffer byteBuffer) throws IOException {
+    public int read(ByteBuffer buffer) throws IOException {
         if (inputClosed) {
             return -1;
         }
 
-        synchronized (receiveBuffer) {
-            int numBytes = Math.min(Math.abs(receiveBuffer.position() - receivePosition), byteBuffer.remaining());
+        AtomicBoolean messageCompleted = new AtomicBoolean(false);
+        AtomicInteger readBytes = new AtomicInteger();
 
-            LOGGER.debug("Reading [{}] bytes (receiveBuffer.position: [{}], receivePosition: [{}])", numBytes, receiveBuffer.position(), receivePosition);
+        int read = receiveBuffer.read((msgTypeId, directBuffer, index, bufferLength) -> {
+            int readable = readableMessages.decrementAndGet();
+            int messageLength = directBuffer.getInt(index);
+            int offset = directBuffer.getInt(index + Integer.BYTES);
+            LOGGER.debug("Message type id: [{}], Index: [{}], Offset: [{}], Buffer Length: [{}], Message Length: [{}], Readable messages: [{}]", msgTypeId, index, offset, bufferLength, messageLength, readable);
 
-            if (numBytes == 0) {
-                return 0;
+            int length = Math.min(buffer.remaining(), messageLength - offset);
+            directBuffer.getBytes(index + HEADER_LENGTH + offset, buffer, length);
+
+            if (length == messageLength) {
+                messageCompleted.set(true);
+            } else {
+                directBuffer.putInt(index + Integer.BYTES, offset + length);
             }
 
-            for (int i = 0; i < numBytes; i++) {
-                byteBuffer.put(receiveBuffer.get((receivePosition + i) % receiveBuffer.capacity()));
-            }
+            readBytes.set(length);
+        }, 1);
 
-            receivePosition = (receivePosition + numBytes) % receiveBuffer.capacity();
-
-            return numBytes;
+        if (messageCompleted.get()) {
+            receiveBuffer.commitRead(read);
         }
+
+        return readBytes.get();
     }
 
     @Override
-    public long read(ByteBuffer[] byteBuffers, int i, int i1) throws IOException {
+    public long read(ByteBuffer[] buffers, int i, int i1) throws IOException {
         if (inputClosed) {
             return -1;
         }
@@ -223,40 +256,43 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
     }
 
     @Override
-    public int write(ByteBuffer byteBuffer) throws IOException {
+    public int write(ByteBuffer buffer) throws IOException {
         if (outputClosed) {
             return -1;
         }
 
-        synchronized (sendBuffer) {
-            int numBytes = Math.min(sendBuffer.remaining(), byteBuffer.remaining());
-
-            LOGGER.debug("Writing [{}] bytes (sendBuffer.position: [{}])", numBytes, sendBuffer.position());
-
-            if (numBytes == 0) {
-                return 0;
-            }
-
-            int oldPosition = sendBuffer.position();
-
-            for (int i = 0; i < numBytes; i++) {
-                sendBuffer.put(byteBuffer.get(i));
-            }
-
-            sendBuffer.position(oldPosition);
-            sendBuffer.limit(sendBuffer.position() + numBytes);
-
-            endpoint.sendStreamNonBlocking(sendBuffer, sendCallback);
-
-            sendBuffer.position(sendBuffer.limit() % sendBuffer.capacity());
-            sendBuffer.limit(sendBuffer.capacity());
-
-            return numBytes;
+        int length = Math.min(buffer.remaining() + HEADER_LENGTH, sendBuffer.capacity() - sendBuffer.size());
+        if (length <= HEADER_LENGTH) {
+            LOGGER.error("Unable to claim space in the send buffer (Error: [{}])", INSUFFICIENT_CAPACITY);
+            return 0;
         }
+
+        int index = sendBuffer.tryClaim(length);
+
+        if (index <= 0) {
+            LOGGER.error("Unable to claim space in the send buffer (Error: [{}])", index);
+            return 0;
+        }
+
+        // Put message length
+        sendBuffer.buffer().putInt(index, length - HEADER_LENGTH);
+        // Put number of read bytes (initially 0)
+        sendBuffer.buffer().putInt(index + Integer.BYTES, 0);
+        // Put message
+        sendBuffer.buffer().putBytes(index + HEADER_LENGTH, buffer, buffer.position(), length - HEADER_LENGTH);
+
+        ByteBuffer directBuffer = sendBuffer.buffer().byteBuffer().duplicate();
+        directBuffer.limit(index + length);
+        directBuffer.position(index);
+
+        sendBuffer.commitWrite(index);
+        endpoint.sendTaggedNonBlocking(directBuffer, sendCallback);
+
+        return length;
     }
 
     @Override
-    public long write(ByteBuffer[] byteBuffers, int i, int i1) throws IOException {
+    public long write(ByteBuffer[] buffers, int i, int i1) throws IOException {
         if (outputClosed) {
             return -1;
         }
@@ -284,13 +320,13 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
 
     @Override
     public int readyOps() {
-        if (connected && !outputClosed) {
+        if (connected && !outputClosed && sendBuffer.capacity() - sendBuffer.size() > SEND_BUFFER_MIN_REMAINING) {
             readyOps |= SelectionKey.OP_WRITE;
         } else {
             readyOps &= ~SelectionKey.OP_WRITE;
         }
 
-        if (receivePosition != receiveBuffer.position() && !inputClosed) {
+        if (readableMessages.get() > 0 && !inputClosed) {
             readyOps |= SelectionKey.OP_READ;
         } else {
             readyOps &= ~SelectionKey.OP_READ;
@@ -301,10 +337,31 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
 
     @Override
     public void select() throws IOException {
+        if (connected) {
+            fillReceiveBuffer();
+        }
+
         try {
             worker.progress();
         } catch (Exception e) {
             throw new IOException(e);
+        }
+    }
+
+    private void fillReceiveBuffer() {
+        int index = receiveBuffer.tryClaim(receiveSliceLength);
+
+        while (index > 0) {
+            LOGGER.debug("Claimed part of the receive buffer (Index: [{}], Length: [{}])", index, receiveSliceLength);
+
+            ByteBuffer directBuffer = receiveBuffer.buffer().byteBuffer().duplicate();
+            directBuffer.limit(index + receiveSliceLength);
+            directBuffer.position(index);
+
+            receiveBuffer.commitWrite(index);
+            worker.recvTaggedNonBlocking(directBuffer, receiveCallback);
+
+            index = receiveBuffer.tryClaim(receiveSliceLength);
         }
     }
 
@@ -336,10 +393,10 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
                         return;
                     }
 
-                    socket.sendCallback = new SendCallback(socket, socket.sendBuffer);
-                    socket.receiveCallback = new ReceiveCallback(socket, socket.receiveBuffer);
+                    socket.sendCallback = new SendCallback(socket.sendBuffer);
+                    socket.receiveCallback = new ReceiveCallback(socket.readableMessages);
 
-                    socket.endpoint.recvStreamNonBlocking(socket.receiveBuffer, 0, socket.receiveCallback);
+                    socket.fillReceiveBuffer();
 
                     socket.connected = true;
                     socket.readyOps |= SelectionKey.OP_CONNECT;
@@ -354,17 +411,21 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
 
         private static final Logger LOGGER = LoggerFactory.getLogger(SendCallback.class);
 
-        private final UcxSocketChannel socket;
-        private final ByteBuffer sendBuffer;
+        private final RingBuffer sendBuffer;
 
-        private SendCallback(UcxSocketChannel socket, ByteBuffer sendBuffer) {
-            this.socket = socket;
+        private SendCallback(RingBuffer sendBuffer) {
             this.sendBuffer = sendBuffer;
         }
 
         @Override
         public void onSuccess(UcpRequest request) {
             LOGGER.debug("SendCallback called (Completed: [{}])", request.isCompleted());
+
+            int read = sendBuffer.read((msgTypeId, buffer, index, length) -> {
+                LOGGER.debug("Message type id: [{}], Index: [{}], Length: [{}]", msgTypeId, index, length);
+            }, 1);
+
+            sendBuffer.commitRead(read);
         }
     }
 
@@ -372,23 +433,16 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
 
         private static final Logger LOGGER = LoggerFactory.getLogger(ReceiveCallback.class);
 
-        private final UcxSocketChannel socket;
-        private final ByteBuffer receiveBuffer;
+        private final AtomicInteger readableMessages;
 
-        private ReceiveCallback(UcxSocketChannel socket, ByteBuffer receiveBuffer) {
-            this.socket = socket;
-            this.receiveBuffer = receiveBuffer;
+        private ReceiveCallback(AtomicInteger readableMessages) {
+            this.readableMessages = readableMessages;
         }
 
         @Override
         public void onSuccess(UcpRequest request) {
-            LOGGER.debug("ReceiveCallback called (Completed: [{}], Size: [{}])", request.isCompleted(), request.getRecvSize());
-
-            synchronized (socket.receiveBuffer) {
-                receiveBuffer.position((int) ((receiveBuffer.position() + request.getRecvSize()) % receiveBuffer.capacity()));
-            }
-
-            socket.endpoint.recvStreamNonBlocking(receiveBuffer, 0, this);
+            int readable = readableMessages.incrementAndGet();
+            LOGGER.debug("ReceiveCallback called (Completed: [{}], Size: [{}], Readable messages: [{}])", request.isCompleted(), request.getRecvSize(), readable);
         }
     }
 }

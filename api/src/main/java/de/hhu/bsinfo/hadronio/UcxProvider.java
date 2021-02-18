@@ -69,7 +69,8 @@ public class UcxProvider extends SelectorProvider {
     public SocketChannel openSocketChannel() throws IOException {
         LOGGER.info("Creating new UcxSocketChannel");
 
-        return new UcxSocketChannel(this, context);
+        return new UcxSocketChannel(this, context, UcxSocketChannel.DEFAULT_SEND_BUFFER_LENGTH,
+                UcxSocketChannel.DEFAULT_RECEIVE_BUFFER_LENGTH, UcxSocketChannel.DEFAULT_RECEIVE_SLICE_LENGTH);
     }
 
     public static void printBanner() {

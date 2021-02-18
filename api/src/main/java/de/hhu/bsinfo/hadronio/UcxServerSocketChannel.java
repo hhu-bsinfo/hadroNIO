@@ -5,7 +5,6 @@ import org.openucx.jucx.ucp.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.Closeable;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
@@ -115,7 +114,8 @@ public class UcxServerSocketChannel extends ServerSocketChannel implements UcxSe
 
         LOGGER.info("Creating new UcxSocketChannel");
 
-        UcxSocketChannel socket = new UcxSocketChannel(provider, context, pendingConnections.pop());
+        UcxSocketChannel socket = new UcxSocketChannel(provider, context, pendingConnections.pop(), UcxSocketChannel.DEFAULT_SEND_BUFFER_LENGTH,
+                UcxSocketChannel.DEFAULT_RECEIVE_BUFFER_LENGTH, UcxSocketChannel.DEFAULT_RECEIVE_SLICE_LENGTH);
 
         LOGGER.info("Accepted incoming connection");
 
