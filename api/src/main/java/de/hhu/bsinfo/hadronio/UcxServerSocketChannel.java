@@ -22,6 +22,7 @@ import java.util.Stack;
 public class UcxServerSocketChannel extends ServerSocketChannel implements UcxSelectableChannel {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(UcxServerSocketChannel.class);
+    private static final int DEFAULT_SERVER_PORT = 2998;
 
     private final ResourceHandler resourceHandler = new ResourceHandler();
     private final Stack<UcpConnectionRequest> pendingConnections = new Stack<>();
@@ -29,13 +30,20 @@ public class UcxServerSocketChannel extends ServerSocketChannel implements UcxSe
     private final UcpContext context;
     private final UcpWorker worker;
 
+    private final int sendBufferLength;
+    private final int receiveBufferLength;
+    private final int receiveSliceLength;
+
     private InetSocketAddress localAddress;
 
-    protected UcxServerSocketChannel(SelectorProvider provider, UcpContext context) {
+    protected UcxServerSocketChannel(SelectorProvider provider, UcpContext context, int sendBufferLength, int receiveBufferLength, int receiveSliceLength) {
         super(provider);
 
         this.provider = provider;
         this.context = context;
+        this.sendBufferLength = sendBufferLength;
+        this.receiveBufferLength = receiveBufferLength;
+        this.receiveSliceLength = receiveSliceLength;
 
         worker = context.newWorker(new UcpWorkerParams().requestThreadSafety());
         resourceHandler.addResource(worker);
@@ -44,7 +52,7 @@ public class UcxServerSocketChannel extends ServerSocketChannel implements UcxSe
     @Override
     public ServerSocketChannel bind(SocketAddress socketAddress, int backlog) throws IOException {
         if (socketAddress == null) {
-            localAddress = new InetSocketAddress(UcxProvider.DEFAULT_SERVER_PORT);
+            localAddress = new InetSocketAddress(DEFAULT_SERVER_PORT);
         } else if (!(socketAddress instanceof InetSocketAddress)) {
             throw new UnsupportedAddressTypeException();
         } else {
@@ -114,8 +122,7 @@ public class UcxServerSocketChannel extends ServerSocketChannel implements UcxSe
 
         LOGGER.info("Creating new UcxSocketChannel");
 
-        UcxSocketChannel socket = new UcxSocketChannel(provider, context, pendingConnections.pop(), UcxSocketChannel.DEFAULT_SEND_BUFFER_LENGTH,
-                UcxSocketChannel.DEFAULT_RECEIVE_BUFFER_LENGTH, UcxSocketChannel.DEFAULT_RECEIVE_SLICE_LENGTH);
+        UcxSocketChannel socket = new UcxSocketChannel(provider, context, pendingConnections.pop(), sendBufferLength, receiveBufferLength, receiveSliceLength);
 
         LOGGER.info("Accepted incoming connection");
 

@@ -13,7 +13,6 @@ import java.net.Socket;
 import java.net.SocketAddress;
 import java.net.SocketOption;
 import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
 import java.nio.channels.spi.SelectorProvider;
@@ -30,10 +29,6 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
     private static final long CONNECTION_MAGIC_NUMBER = 0xC0FFEE00ADD1C7EDL;
     private static final int SEND_BUFFER_MIN_REMAINING = 16;
     private static final int HEADER_LENGTH = Integer.BYTES * 2;
-
-    protected static final int DEFAULT_SEND_BUFFER_LENGTH = 8192;
-    protected static final int DEFAULT_RECEIVE_BUFFER_LENGTH = 8192;
-    protected static final int DEFAULT_RECEIVE_SLICE_LENGTH = 1024;
 
     private final ResourceHandler resourceHandler = new ResourceHandler();
     private final UcpWorker worker;
@@ -54,10 +49,6 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
     protected UcxSocketChannel(SelectorProvider provider, UcpContext context, int sendBufferLength, int receiveBufferLength, int receiveSliceLength) {
         super(provider);
 
-        if (receiveBufferLength % receiveSliceLength != 0) {
-            throw new IllegalArgumentException("Receive slice length must be a restless divisor of receiveBufferLength!");
-        }
-
         worker = context.newWorker(new UcpWorkerParams().requestThreadSafety());
         resourceHandler.addResource(worker);
         sendBuffer = new RingBuffer(sendBufferLength);
@@ -67,10 +58,6 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
 
     protected UcxSocketChannel(SelectorProvider provider, UcpContext context, UcpConnectionRequest connectionRequest, int sendBufferLength, int receiveBufferLength, int receiveSliceLength) throws IOException {
         super(provider);
-
-        if (receiveBufferLength % receiveSliceLength != 0) {
-            throw new IllegalArgumentException("Receive slice length must be a restless divisor of receiveBufferLength!");
-        }
 
         worker = context.newWorker(new UcpWorkerParams().requestThreadSafety());
         endpoint = worker.newEndpoint(new UcpEndpointParams().setConnectionRequest(connectionRequest).setPeerErrorHandlingMode());

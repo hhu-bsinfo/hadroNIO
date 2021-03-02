@@ -24,13 +24,40 @@ import java.util.stream.Collectors;
 public class UcxProvider extends SelectorProvider {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(UcxProvider.class);
-    protected static final int DEFAULT_SERVER_PORT = 2998;
+
+    private static final int MIN_SEND_BUFFER_LENGTH = 128;
+    private static final int MIN_RECEIVE_BUFFER_LENGTH = 128;
+    private static final int MIN_RECEIVE_SLICE_LENGTH = 32;
+
+    private static final int DEFAULT_SEND_BUFFER_LENGTH = 1048576 * 4;
+    private static final int DEFAULT_RECEIVE_BUFFER_LENGTH = 1048576 * 4;
+    private static final int DEFAULT_RECEIVE_SLICE_LENGTH = 1024 * 32;
+
+    private static final int SEND_BUFFER_LENGTH = Integer.parseInt(System.getProperty("de.hhu.bsinfo.hadronio.SEND_BUFFER_LENGTH", String.valueOf(DEFAULT_SEND_BUFFER_LENGTH)));
+    private static final int RECEIVE_BUFFER_LENGTH = Integer.parseInt(System.getProperty("de.hhu.bsinfo.hadronio.RECEIVE_BUFFER_LENGTH", String.valueOf(DEFAULT_RECEIVE_BUFFER_LENGTH)));
+    private static final int RECEIVE_SLICE_LENGTH = Integer.parseInt(System.getProperty("de.hhu.bsinfo.hadronio.RECEIVE_SLICE_LENGTH", String.valueOf(DEFAULT_RECEIVE_SLICE_LENGTH)));
 
     static {
         if (System.getProperty("java.nio.channels.spi.SelectorProvider").equals("de.hhu.bsinfo.hadronio.UcxProvider")) {
             LOGGER.info("UcxProvider is set as default SelectorProvider -> hadroNIO is active");
         } else {
             LOGGER.warn("UcxProvider is not set as default SelectorProvider -> hadroNIO is not active");
+        }
+
+        if (SEND_BUFFER_LENGTH < MIN_SEND_BUFFER_LENGTH) {
+            throw new IllegalArgumentException("SEND_BUFFER_LENGTH must be a at least " + MIN_SEND_BUFFER_LENGTH + " byte!");
+        }
+
+        if (RECEIVE_BUFFER_LENGTH < MIN_RECEIVE_BUFFER_LENGTH) {
+            throw new IllegalArgumentException("RECEIVE_BUFFER_LENGTH must be a at least " + MIN_RECEIVE_BUFFER_LENGTH + " byte!");
+        }
+
+        if (RECEIVE_SLICE_LENGTH < MIN_RECEIVE_SLICE_LENGTH) {
+            throw new IllegalArgumentException("RECEIVE_SLICE_LENGTH must be a at least " + MIN_RECEIVE_SLICE_LENGTH + " byte!");
+        }
+
+        if (RECEIVE_BUFFER_LENGTH % RECEIVE_SLICE_LENGTH != 0) {
+            throw new IllegalArgumentException("RECEIVE_SLICE_LENGTH must be a restless divisor of RECEIVE_BUFFER_LENGTH!");
         }
     }
 
@@ -62,15 +89,14 @@ public class UcxProvider extends SelectorProvider {
     public ServerSocketChannel openServerSocketChannel() throws IOException {
         LOGGER.info("Creating new UcxServerSocketChannel");
 
-        return new UcxServerSocketChannel(this, context);
+        return new UcxServerSocketChannel(this, context, SEND_BUFFER_LENGTH, RECEIVE_BUFFER_LENGTH, RECEIVE_SLICE_LENGTH);
     }
 
     @Override
     public SocketChannel openSocketChannel() throws IOException {
         LOGGER.info("Creating new UcxSocketChannel");
 
-        return new UcxSocketChannel(this, context, UcxSocketChannel.DEFAULT_SEND_BUFFER_LENGTH,
-                UcxSocketChannel.DEFAULT_RECEIVE_BUFFER_LENGTH, UcxSocketChannel.DEFAULT_RECEIVE_SLICE_LENGTH);
+        return new UcxSocketChannel(this, context, SEND_BUFFER_LENGTH, RECEIVE_BUFFER_LENGTH, RECEIVE_SLICE_LENGTH);
     }
 
     public static void printBanner() {
