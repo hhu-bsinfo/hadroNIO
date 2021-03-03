@@ -5,16 +5,15 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.spi.AbstractSelectionKey;
 
-public class UcxSelectionKey extends AbstractSelectionKey {
+class UcxSelectionKey extends AbstractSelectionKey {
 
     private final SelectableChannel channel;
     private final Selector selector;
 
     private int interestOps = 0;
     private int readyOps = 0;
-    private boolean open = true;
 
-    public UcxSelectionKey(SelectableChannel channel, Selector selector) {
+    public UcxSelectionKey(final SelectableChannel channel, final Selector selector) {
         this.channel = channel;
         this.selector = selector;
     }
@@ -35,7 +34,7 @@ public class UcxSelectionKey extends AbstractSelectionKey {
     }
 
     @Override
-    public SelectionKey interestOps(int interestOps) {
+    public SelectionKey interestOps(final int interestOps) {
         synchronized (this) {
             this.interestOps = interestOps;
         }
@@ -53,13 +52,13 @@ public class UcxSelectionKey extends AbstractSelectionKey {
         return "UcxSelectionKey(interestOps=" + interestOps + ", readyOps=" + readyOps + ", isValid=" + isValid() + ")";
     }
 
-    protected void readyOps(int readyOps) {
+    void readyOps(final int readyOps) {
         synchronized(this) {
             this.readyOps = readyOps;
         }
     }
 
-    protected void readyOpsOr(int readyOps) {
+    void readyOpsOr(final int readyOps) {
         synchronized(this) {
             this.readyOps(this.readyOps | readyOps);
         }

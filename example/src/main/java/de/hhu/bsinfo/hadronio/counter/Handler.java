@@ -1,4 +1,4 @@
-package de.hhu.bsinfo.hadronio;
+package de.hhu.bsinfo.hadronio.counter;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,7 +50,7 @@ public class Handler implements Runnable {
             }
 
             receiveBuffer.flip();
-            int counter = receiveBuffer.getInt();
+            final int counter = receiveBuffer.getInt();
 
             if (counter != receiveCounter + 1) {
                 LOGGER.warn("Counter jump from [{}] to [{}] detected!", receiveCounter, counter);
@@ -101,7 +101,7 @@ public class Handler implements Runnable {
             }
 
             receiveBuffer.flip();
-            int counter = receiveBuffer.getInt();
+            final int counter = receiveBuffer.getInt();
 
             if (counter != receiveCounter + 1) {
                 LOGGER.warn("Counter jump from [{}] to [{}] detected!", receiveCounter, counter);

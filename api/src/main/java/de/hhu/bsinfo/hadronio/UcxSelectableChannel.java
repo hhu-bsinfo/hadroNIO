@@ -4,12 +4,12 @@ import org.openucx.jucx.ucp.UcpWorker;
 
 import java.io.IOException;
 
-public interface UcxSelectableChannel {
+interface UcxSelectableChannel {
 
     int readyOps();
     void select() throws IOException;
 
-    static void pollWorkerNonBlocking(UcpWorker worker) throws IOException {
+    static void pollWorkerNonBlocking(final UcpWorker worker) throws IOException {
         try {
             worker.progress();
         } catch (Exception e) {
@@ -17,7 +17,7 @@ public interface UcxSelectableChannel {
         }
     }
 
-    static void pollWorkerBlocking(UcpWorker worker) throws IOException {
+    static void pollWorkerBlocking(final UcpWorker worker) throws IOException {
         try {
             if (worker.progress() == 0) {
                 worker.waitForEvents();

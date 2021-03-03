@@ -36,7 +36,7 @@ public class UcxServerSocketChannel extends ServerSocketChannel implements UcxSe
 
     private boolean channelClosed = false;
 
-    protected UcxServerSocketChannel(SelectorProvider provider, UcpContext context, int sendBufferLength, int receiveBufferLength, int receiveSliceLength) {
+    protected UcxServerSocketChannel(final SelectorProvider provider, final UcpContext context, final int sendBufferLength, final int receiveBufferLength, final int receiveSliceLength) {
         super(provider);
 
         this.provider = provider;
@@ -50,7 +50,7 @@ public class UcxServerSocketChannel extends ServerSocketChannel implements UcxSe
     }
 
     @Override
-    public ServerSocketChannel bind(SocketAddress socketAddress, int backlog) throws IOException {
+    public ServerSocketChannel bind(final SocketAddress socketAddress, final int backlog) throws IOException {
         if (channelClosed) {
             throw new ClosedChannelException();
         }
@@ -67,7 +67,7 @@ public class UcxServerSocketChannel extends ServerSocketChannel implements UcxSe
             localAddress = (InetSocketAddress) socketAddress;
         }
 
-        UcpListenerParams listenerParams = new UcpListenerParams().setSockAddr(localAddress)
+        final UcpListenerParams listenerParams = new UcpListenerParams().setSockAddr(localAddress)
                 .setConnectionHandler(request -> {
                     LOGGER.info("Received connection request");
 
@@ -79,19 +79,18 @@ public class UcxServerSocketChannel extends ServerSocketChannel implements UcxSe
                 });
 
         try {
-            UcpListener listener = worker.newListener(listenerParams);
+            final UcpListener listener = worker.newListener(listenerParams);
             resourceHandler.addResource(listener);
         } catch (UcxException e) {
             throw new IOException("Failed to bind server socket channel to " + localAddress + "!", e);
         }
 
         LOGGER.info("Listening on [{}]", localAddress);
-
         return this;
     }
 
     @Override
-    public <T> ServerSocketChannel setOption(SocketOption<T> socketOption, T t) throws IOException {
+    public <T> ServerSocketChannel setOption(final SocketOption<T> socketOption, T t) throws IOException {
         if (channelClosed) {
             throw new ClosedChannelException();
         }
@@ -100,7 +99,7 @@ public class UcxServerSocketChannel extends ServerSocketChannel implements UcxSe
     }
 
     @Override
-    public <T> T getOption(SocketOption<T> socketOption) throws IOException {
+    public <T> T getOption(final SocketOption<T> socketOption) throws IOException {
         if (channelClosed) {
             throw new ClosedChannelException();
         }
@@ -139,9 +138,7 @@ public class UcxServerSocketChannel extends ServerSocketChannel implements UcxSe
         }
 
         LOGGER.info("Creating new UcxSocketChannel");
-
-        UcxSocketChannel socket = new UcxSocketChannel(provider, context, pendingConnections.pop(), sendBufferLength, receiveBufferLength, receiveSliceLength);
-
+        final UcxSocketChannel socket = new UcxSocketChannel(provider, context, pendingConnections.pop(), sendBufferLength, receiveBufferLength, receiveSliceLength);
         LOGGER.info("Accepted incoming connection");
 
         return socket;

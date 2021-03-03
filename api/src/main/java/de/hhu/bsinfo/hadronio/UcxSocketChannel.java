@@ -31,15 +31,15 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
 
     private static final Logger LOGGER = LoggerFactory.getLogger(UcxSocketChannel.class);
 
-    private static final long CONNECTION_MAGIC_NUMBER = 0xC0FFEE00ADD1C7EDL;
-    private static final long CONNECTION_TAG = 0;
-    private static final long MESSAGE_TAG = 1;
-    private static final long TAG_MASK = 0xffffffffffffffffL;
+    static final long CONNECTION_MAGIC_NUMBER = 0xC0FFEE00ADD1C7EDL;
+    static final long CONNECTION_TAG = 0;
+    static final long MESSAGE_TAG = 1;
+    static final long TAG_MASK = 0xffffffffffffffffL;
 
-    private static final int HEADER_LENGTH = Integer.BYTES * 2;
-    private static final int HEADER_OFFSET_MESSAGE_LENGTH = 0;
-    private static final int HEADER_OFFSET_READ_BYTES = Integer.BYTES;
-    private static final int HEADER_OFFSET_MESSAGE_DATA = Integer.BYTES * 2;
+    static final int HEADER_LENGTH = Integer.BYTES * 2;
+    static final int HEADER_OFFSET_MESSAGE_LENGTH = 0;
+    static final int HEADER_OFFSET_READ_BYTES = Integer.BYTES;
+    static final int HEADER_OFFSET_MESSAGE_DATA = Integer.BYTES * 2;
 
     private final ResourceHandler resourceHandler = new ResourceHandler();
     private final UcpWorker worker;
@@ -64,7 +64,7 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
     private boolean outputClosed = false;
     private boolean channelClosed = false;
 
-    protected UcxSocketChannel(SelectorProvider provider, UcpContext context, int sendBufferLength, int receiveBufferLength, int receiveSliceLength) {
+    protected UcxSocketChannel(final SelectorProvider provider, final UcpContext context, final int sendBufferLength, final int receiveBufferLength, final int receiveSliceLength) {
         super(provider);
 
         worker = context.newWorker(new UcpWorkerParams().requestThreadSafety());
@@ -75,7 +75,7 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
         this.receiveSliceLength = receiveSliceLength;
     }
 
-    protected UcxSocketChannel(SelectorProvider provider, UcpContext context, UcpConnectionRequest connectionRequest, int sendBufferLength, int receiveBufferLength, int receiveSliceLength) throws IOException {
+    protected UcxSocketChannel(final SelectorProvider provider, final UcpContext context, final UcpConnectionRequest connectionRequest, final int sendBufferLength, final int receiveBufferLength, final int receiveSliceLength) throws IOException {
         super(provider);
 
         worker = context.newWorker(new UcpWorkerParams().requestThreadSafety());
@@ -94,13 +94,9 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
         establishConnection();
 
         if (isBlocking()) {
-            do {
-                UcxSelectableChannel.pollWorkerBlocking(worker);
-
-                if (connectionFailed) {
-                    throw new IOException("Failed to connect!");
-                }
-            } while (!connected);
+            if (!finishConnect()) {
+                throw new IOException("Failed to connect socket channel!");
+            }
         }
 
         if (connected) {
@@ -110,7 +106,7 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
     }
 
     @Override
-    public SocketChannel bind(SocketAddress local) throws IOException {
+    public SocketChannel bind(final SocketAddress local) throws IOException {
         if (channelClosed) {
             throw new ClosedChannelException();
         }
@@ -123,7 +119,7 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
     }
 
     @Override
-    public <T> SocketChannel setOption(SocketOption<T> socketOption, T t) throws IOException {
+    public <T> SocketChannel setOption(final SocketOption<T> socketOption, T t) throws IOException {
         if (channelClosed) {
             throw new ClosedChannelException();
         }
@@ -132,7 +128,7 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
     }
 
     @Override
-    public <T> T getOption(SocketOption<T> socketOption) throws IOException {
+    public <T> T getOption(final SocketOption<T> socketOption) throws IOException {
         if (channelClosed) {
             throw new ClosedChannelException();
         }
@@ -193,7 +189,7 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
     }
 
     @Override
-    public boolean connect(SocketAddress remoteAddress) throws IOException {
+    public boolean connect(final SocketAddress remoteAddress) throws IOException {
         if (channelClosed) {
             throw new ClosedChannelException();
         }
@@ -212,13 +208,9 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
         connectTo(remoteAddress);
 
         if (isBlocking()) {
-            do {
-                UcxSelectableChannel.pollWorkerBlocking(worker);
-
-                if (connectionFailed) {
-                    throw new IOException("Failed to connect!");
-                }
-            } while (!connected);
+            if (!finishConnect()) {
+                throw new IOException("Failed to connect socket channel!");
+            }
         }
 
         if (connected) {
@@ -230,19 +222,18 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
         return false;
     }
 
-    private void connectTo(SocketAddress remoteAddress) {
-        UcpEndpointParams endpointParams = new UcpEndpointParams().setSocketAddress((InetSocketAddress) remoteAddress).setPeerErrorHandlingMode();
+    private void connectTo(final SocketAddress remoteAddress) {
+        final UcpEndpointParams endpointParams = new UcpEndpointParams().setSocketAddress((InetSocketAddress) remoteAddress).setPeerErrorHandlingMode();
         endpoint = worker.newEndpoint(endpointParams);
         resourceHandler.addResource(endpoint);
 
         LOGGER.info("Endpoint created: [{}]", endpoint);
-
         establishConnection();
     }
 
     private void establishConnection() {
-        ByteBuffer sendBuffer = ByteBuffer.allocateDirect(8);
-        ByteBuffer receiveBuffer = ByteBuffer.allocateDirect(8);
+        final ByteBuffer sendBuffer = ByteBuffer.allocateDirect(8);
+        final ByteBuffer receiveBuffer = ByteBuffer.allocateDirect(8);
 
         sendBuffer.putLong(CONNECTION_MAGIC_NUMBER);
         sendBuffer.rewind();
@@ -250,7 +241,6 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
         ConnectionCallback connectionCallback = new ConnectionCallback(this, receiveBuffer);
 
         LOGGER.info("Exchanging small message to establish connection");
-
         endpoint.sendTaggedNonBlocking(sendBuffer, CONNECTION_TAG, connectionCallback);
         worker.recvTaggedNonBlocking(receiveBuffer, CONNECTION_TAG, TAG_MASK, connectionCallback);
     }
@@ -266,8 +256,7 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
         }
 
         if (connectionFailed) {
-            close();
-            throw new IOException("Failed to connect!");
+            throw new IOException("Failed to connect socket channel!");
         }
 
         if (connected) {
@@ -278,12 +267,11 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
         } else {
             LOGGER.info("Waiting for connection to be established");
 
-
             do {
                 UcxSelectableChannel.pollWorkerBlocking(worker);
 
                 if (connectionFailed) {
-                    throw new IOException("Failed to connect!");
+                    throw new IOException("Failed to connect socket channel!");
                 }
             } while (!connected);
 
@@ -304,7 +292,7 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
     }
 
     @Override
-    public int read(ByteBuffer buffer) throws IOException {
+    public int read(final ByteBuffer buffer) throws IOException {
         if (channelClosed) {
             throw new ClosedChannelException();
         }
@@ -331,20 +319,20 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
             return 0;
         }
 
-        AtomicBoolean padding = new AtomicBoolean(true);
-        AtomicBoolean messageCompleted = new AtomicBoolean(false);
-        AtomicInteger readBytes = new AtomicInteger();
+        final AtomicBoolean padding = new AtomicBoolean(true);
+        final AtomicBoolean messageCompleted = new AtomicBoolean(false);
+        final AtomicInteger readBytes = new AtomicInteger();
         int readFromBuffer = 0;
 
         do {
             readFromBuffer = receiveBuffer.read((msgTypeId, directBuffer, index, bufferLength) -> {
                 // Get message length
-                int messageLength = directBuffer.getInt(index + HEADER_OFFSET_MESSAGE_LENGTH);
+                final int messageLength = directBuffer.getInt(index + HEADER_OFFSET_MESSAGE_LENGTH);
                 // Get message offset
-                int offset = directBuffer.getInt(index + HEADER_OFFSET_READ_BYTES);
+                final int offset = directBuffer.getInt(index + HEADER_OFFSET_READ_BYTES);
                 LOGGER.debug("Message type id: [{}], Index: [{}], Buffer Length: [{}], Message Length: [{}], Offset: [{}]", msgTypeId, index, bufferLength, messageLength, offset);
 
-                int length = Math.min(buffer.remaining(), messageLength - offset);
+                final int length = Math.min(buffer.remaining(), messageLength - offset);
                 // Get message data
                 directBuffer.getBytes(index + HEADER_OFFSET_MESSAGE_DATA + offset, buffer, length);
                 // Put updated message offset
@@ -365,7 +353,7 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
         } while (padding.get());
 
         if (messageCompleted.get()) {
-            int readable = readableMessages.decrementAndGet();
+            final int readable = readableMessages.decrementAndGet();
             LOGGER.debug("Readable messages left: [{}]", readable);
             receiveBuffer.commitRead(readFromBuffer);
         }
@@ -375,7 +363,7 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
     }
 
     @Override
-    public long read(ByteBuffer[] buffers, int offset, int length) throws IOException {
+    public long read(final ByteBuffer[] buffers, final int offset, final int length) throws IOException {
         if (channelClosed) {
             throw new ClosedChannelException();
         }
@@ -389,14 +377,11 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
         }
 
         readLock.lock();
-
         int readTotal = 0;
 
         for (int i = 0; i < length; i++) {
-            int read;
-
             try {
-                read = read(buffers[offset + i]);
+                readTotal += read(buffers[offset + i]);
             } catch (ClosedChannelException e) {
                 throw new AsynchronousCloseException();
             }
@@ -404,17 +389,14 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
             if(buffers[offset + i].remaining() > 0) {
                 break;
             }
-
-            readTotal += read;
         }
 
         readLock.unlock();
-
         return readTotal;
     }
 
     @Override
-    public int write(ByteBuffer buffer) throws IOException {
+    public int write(final ByteBuffer buffer) throws IOException {
         if (channelClosed) {
             throw new ClosedChannelException();
         }
@@ -428,12 +410,11 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
         }
 
         writeLock.lock();
-
         int written = 0;
 
         do {
-            int length = Math.min(buffer.remaining(), sendBuffer.maxMessageLength());
-            int index;
+            final int length = Math.min(buffer.remaining(), sendBuffer.maxMessageLength());
+            final int index;
 
             if (length > 0) {
                 index = sendBuffer.tryClaim(length);
@@ -443,19 +424,19 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
 
             if (index < 0) {
                 LOGGER.warn("Unable to claim space in the send buffer (Error: [{}])", index);
-
                 if (isBlocking()) {
                     UcxSelectableChannel.pollWorkerBlocking(worker);
                     continue;
                 }
             }
 
+            // Write bytes from application buffer into send buffer
             sendBuffer.buffer().putBytes(index, buffer, buffer.position(), length);
             // Advance position manually, since AtomicBuffer.putBytes() does not do it
             buffer.position(buffer.position() + length);
 
             sendBuffer.commitWrite(index);
-            UcpRequest request = endpoint.sendTaggedNonBlocking(sendBuffer.memoryAddress() + index, length, MESSAGE_TAG, sendCallback);
+            final UcpRequest request = endpoint.sendTaggedNonBlocking(sendBuffer.memoryAddress() + index, length, MESSAGE_TAG, sendCallback);
 
             if (isBlocking()) {
                 try {
@@ -469,12 +450,11 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
         } while (isBlocking() && buffer.hasRemaining());
 
         writeLock.unlock();
-
         return written;
     }
 
     @Override
-    public long write(ByteBuffer[] buffers, int offset, int length) throws IOException {
+    public long write(final ByteBuffer[] buffers, final int offset, final int length) throws IOException {
         if (channelClosed) {
             throw new ClosedChannelException();
         }
@@ -488,14 +468,11 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
         }
 
         writeLock.lock();
-
         int writtenTotal = 0;
 
         for (int i = 0; i < length; i++) {
-            int written;
-
             try {
-                written = write(buffers[offset + i]);
+                writtenTotal += write(buffers[offset + i]);
             } catch (ClosedChannelException e) {
                 throw new AsynchronousCloseException();
             }
@@ -503,12 +480,9 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
             if(buffers[offset + i].remaining() > 0) {
                 break;
             }
-
-            writtenTotal += written;
         }
 
         writeLock.unlock();
-
         return writtenTotal;
     }
 
@@ -530,7 +504,7 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
     }
 
     @Override
-    protected void implConfigureBlocking(boolean blocking) throws IOException {
+    protected void implConfigureBlocking(final boolean blocking) throws IOException {
         LOGGER.info("Socket channel is now configured to be [{}]", blocking ? "BLOCKING" : "NON-BLOCKING");
     }
 
@@ -592,139 +566,17 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
         }
     }
 
-    private static final class ConnectionCallback extends UcxCallback {
-
-        private static final Logger LOGGER = LoggerFactory.getLogger(ConnectionCallback.class);
-
-        private final UcxSocketChannel socket;
-        private final ByteBuffer receiveBuffer;
-        private final AtomicInteger successCounter = new AtomicInteger(0);
-
-        private ConnectionCallback(UcxSocketChannel socket, ByteBuffer receiveBuffer) {
-            this.socket = socket;
-            this.receiveBuffer = receiveBuffer;
+    public void onConnection(boolean success) {
+        if (success) {
+            sendCallback = new SendCallback(this, sendBuffer);
+            receiveCallback = new ReceiveCallback(this, receiveBuffer, receiveIndexQueue, readableMessages);
+            fillReceiveBuffer();
+            connected = true;
+        } else {
+            connected = false;
+            connectionFailed = true;
         }
 
-        @Override
-        public void onSuccess(UcpRequest request) {
-            if (request.isCompleted()) {
-                int count = successCounter.incrementAndGet();
-
-                LOGGER.info("Connection callback has been called with a successfully completed request ([{}/2])", count);
-
-                if (count == 2) {
-                    long magic = receiveBuffer.getLong();
-
-                    if (magic != CONNECTION_MAGIC_NUMBER) {
-                        LOGGER.error("Connection callback has been called, but magic number is wrong! Expected: [{}], Received: [{}] -> Discarding connection", Long.toHexString(CONNECTION_MAGIC_NUMBER), Long.toHexString(magic));
-
-                        socket.connected = false;
-                        socket.connectionFailed = true;
-                        socket.connectable = true;
-                        return;
-                    }
-
-                    socket.sendCallback = new SendCallback(socket, socket.sendBuffer);
-                    socket.receiveCallback = new ReceiveCallback(socket, socket.receiveBuffer, socket.receiveIndexQueue, socket.readableMessages);
-
-                    socket.fillReceiveBuffer();
-
-                    socket.connected = true;
-                    socket.connectable = true;
-
-                    successCounter.set(0);
-                }
-            }
-        }
-
-        @Override
-        public void onError(int ucsStatus, String errorMessage) {
-            LOGGER.error("Failed to establish connection! Status: [{}], Error: [{}]", ucsStatus, errorMessage);
-
-            socket.connected = false;
-            socket.connectionFailed = true;
-            socket.connectable = true;
-        }
-    }
-
-    private static final class SendCallback extends UcxCallback {
-
-        private static final Logger LOGGER = LoggerFactory.getLogger(SendCallback.class);
-
-        private final SocketChannel socket;
-        private final RingBuffer sendBuffer;
-
-        private SendCallback(SocketChannel socket, RingBuffer sendBuffer) {
-            this.socket = socket;
-            this.sendBuffer = sendBuffer;
-        }
-
-        @Override
-        public void onSuccess(UcpRequest request) {
-            LOGGER.debug("SendCallback called (Completed: [{}])", request.isCompleted());
-
-            int read = sendBuffer.read((msgTypeId, buffer, index, length) -> {
-                LOGGER.debug("Message type id: [{}], Index: [{}], Length: [{}]", msgTypeId, index, length);
-            }, 1);
-
-            sendBuffer.commitRead(read);
-        }
-
-        @Override
-        public void onError(int ucsStatus, String errorMessage) {
-            LOGGER.error("Failed to send a message! Status: [{}], Error: [{}]", ucsStatus, errorMessage);
-
-            try {
-                socket.close();
-            } catch (IOException e) {
-                LOGGER.error("Failed to close socket channel", e);
-            }
-        }
-    }
-
-    private static final class ReceiveCallback extends UcxCallback {
-
-        private static final Logger LOGGER = LoggerFactory.getLogger(ReceiveCallback.class);
-
-        private final SocketChannel socket;
-        private final RingBuffer receiveBuffer;
-        private final QueuedPipe<Integer> receiveIndexQueue;
-        private final AtomicInteger readableMessages;
-
-        private ReceiveCallback(SocketChannel socket, RingBuffer receiverBuffer, QueuedPipe<Integer> receiveIndexQueue, AtomicInteger readableMessages) {
-            this.socket = socket;
-            this.receiveBuffer = receiverBuffer;
-            this.receiveIndexQueue = receiveIndexQueue;
-            this.readableMessages = readableMessages;
-        }
-
-        @Override
-        public void onSuccess(UcpRequest request) {
-            Integer index = receiveIndexQueue.poll();
-            if (index == null) {
-                throw new IllegalStateException("Receive index queue is empty!");
-            }
-
-            LOGGER.debug("ReceiveCallback called (Completed: [{}], Size: [{}], Index: [{}])", request.isCompleted(), request.getRecvSize(), index);
-
-            // Put message length
-            receiveBuffer.buffer().putInt(index + HEADER_OFFSET_MESSAGE_LENGTH, (int) request.getRecvSize());
-            // Put number of read bytes (initially 0)
-            receiveBuffer.buffer().putInt(index + HEADER_OFFSET_READ_BYTES, 0);
-
-            int readable = readableMessages.incrementAndGet();
-            LOGGER.debug("Readable messages left: [{}]", readable);
-        }
-
-        @Override
-        public void onError(int ucsStatus, String errorMessage) {
-            LOGGER.error("Failed to receive a message! Status: [{}], Error: [{}]", ucsStatus, errorMessage);
-
-            try {
-                socket.close();
-            } catch (IOException e) {
-                LOGGER.error("Failed to close socket channel", e);
-            }
-        }
+        connectable = true;
     }
 }

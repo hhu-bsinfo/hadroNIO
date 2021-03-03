@@ -12,10 +12,6 @@ public class ResourceHandler implements Closeable {
         resources.push(resource);
     }
 
-    public void closeResource() throws IOException {
-        resources.pop().close();
-    }
-
     @Override
     public void close() throws IOException {
         while (!resources.isEmpty()) {

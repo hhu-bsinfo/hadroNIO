@@ -1,4 +1,4 @@
-package de.hhu.bsinfo.hadronio;
+package de.hhu.bsinfo.hadronio.counter;
 
 import java.io.IOException;
 import java.nio.channels.SelectionKey;
@@ -19,10 +19,10 @@ public class Acceptor implements Runnable {
     @Override
     public void run() {
         try {
-            SocketChannel socket = serverSocket.accept();
+            final SocketChannel socket = serverSocket.accept();
             socket.configureBlocking(false);
 
-            SelectionKey key = socket.register(selector, SelectionKey.OP_READ | SelectionKey.OP_WRITE);
+            final SelectionKey key = socket.register(selector, SelectionKey.OP_READ | SelectionKey.OP_WRITE);
             key.attach(new Handler(key, socket, 1000));
         } catch (IOException e) {
             e.printStackTrace();

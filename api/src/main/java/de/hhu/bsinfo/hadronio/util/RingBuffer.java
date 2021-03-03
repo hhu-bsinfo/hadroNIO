@@ -49,8 +49,7 @@ public class RingBuffer {
      */
     private final int indexMask;
 
-    public RingBuffer(int size) {
-
+    public RingBuffer(final int size) {
         // Allocate a new page-aligned buffer
         buffer = MemoryUtil.allocateAligned(size + TRAILER_LENGTH, MemoryUtil.Alignment.PAGE);
 
@@ -108,7 +107,7 @@ public class RingBuffer {
         return bytesRead;
     }
 
-    public void commitRead(int bytes) {
+    public void commitRead(final int bytes) {
         final AtomicBuffer buffer = this.buffer;
         final int headPositionIndex = this.headPositionIndex;
         final long head = buffer.getLong(headPositionIndex);
@@ -255,9 +254,9 @@ public class RingBuffer {
     }
 
     public int maxMessageLength() {
-        int remaining = capacity - size();
-        int alignmentAddend = remaining - BitUtil.align(remaining, ALIGNMENT);
-        int length = remaining - alignmentAddend - HEADER_LENGTH;
+        final int remaining = capacity - size();
+        final int alignmentAddend = remaining - BitUtil.align(remaining, ALIGNMENT);
+        final int length = remaining - alignmentAddend - HEADER_LENGTH;
 
         return Math.max(length, 0);
     }

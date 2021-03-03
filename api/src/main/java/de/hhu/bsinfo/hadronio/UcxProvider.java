@@ -3,8 +3,6 @@ package de.hhu.bsinfo.hadronio;
 import de.hhu.bsinfo.hadronio.generated.BuildConfig;
 import org.openucx.jucx.ucp.UcpContext;
 import org.openucx.jucx.ucp.UcpParams;
-import org.openucx.jucx.ucp.UcpWorker;
-import org.openucx.jucx.ucp.UcpWorkerParams;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,7 +55,7 @@ public class UcxProvider extends SelectorProvider {
         }
     }
 
-    private final UcpContext context = new UcpContext(new UcpParams().requestWakeupFeature().requestTagFeature().requestStreamFeature());
+    private final UcpContext context = new UcpContext(new UcpParams().requestWakeupFeature().requestTagFeature());
 
     @Override
     public DatagramChannel openDatagramChannel() throws IOException {
@@ -96,14 +94,14 @@ public class UcxProvider extends SelectorProvider {
     }
 
     public static void printBanner() {
-        InputStream inputStream = UcxProvider.class.getClassLoader().getResourceAsStream("banner.txt");
+        final InputStream inputStream = UcxProvider.class.getClassLoader().getResourceAsStream("banner.txt");
 
         if (inputStream == null) {
             return;
         }
 
-        BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
-        String banner = reader.lines().collect(Collectors.joining(System.lineSeparator()));
+        final BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
+        final String banner = reader.lines().collect(Collectors.joining(System.lineSeparator()));
 
         System.out.print("\n");
         System.out.printf(banner, BuildConfig.VERSION, BuildConfig.BUILD_DATE, BuildConfig.GIT_BRANCH, BuildConfig.GIT_COMMIT);

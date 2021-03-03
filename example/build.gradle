@@ -13,6 +13,7 @@ compileJava {
 }
 
 application {
+    applicationName = 'hadronio'
     mainClass = 'de.hhu.bsinfo.hadronio.Application'
 }
 

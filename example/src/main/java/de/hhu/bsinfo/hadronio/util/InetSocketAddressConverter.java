@@ -5,24 +5,24 @@ import picocli.CommandLine;
 
 public class InetSocketAddressConverter implements CommandLine.ITypeConverter<InetSocketAddress> {
 
-    private final int m_defaultPort;
+    private final int defaultPort;
 
-    public InetSocketAddressConverter(int p_defaultPort) {
-        m_defaultPort = p_defaultPort;
+    public InetSocketAddressConverter(final int defaultPort) {
+        this.defaultPort = defaultPort;
     }
 
     @Override
-    public InetSocketAddress convert(final String p_address) throws Exception {
+    public InetSocketAddress convert(final String address) throws Exception {
 
-        final String[] splittedAddress = p_address.split(":");
+        final String[] splittedAddress = address.split(":");
 
         if (splittedAddress.length == 0 || splittedAddress.length > 2) {
             throw new CommandLine.TypeConversionException("Invalid connection string specified");
         }
 
-        String hostname = splittedAddress[0].length() == 0 ? "0.0.0.0" : splittedAddress[0];
+        final String hostname = splittedAddress[0].length() == 0 ? "0.0.0.0" : splittedAddress[0];
 
-        int port = m_defaultPort;
+        int port = defaultPort;
         if (splittedAddress.length > 1) {
             try {
                 port = Integer.parseInt(splittedAddress[1]);

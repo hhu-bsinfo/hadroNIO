@@ -22,7 +22,7 @@ public class UcxSelector extends AbstractSelector {
     private boolean selectorClosed = false;
     private boolean wakeup = false;
 
-    protected UcxSelector(SelectorProvider provider) {
+    protected UcxSelector(final SelectorProvider provider) {
         super(provider);
     }
 
@@ -49,12 +49,12 @@ public class UcxSelector extends AbstractSelector {
     }
 
     @Override
-    protected SelectionKey register(AbstractSelectableChannel channel, int interestOps, Object attachment) {
+    protected SelectionKey register(final AbstractSelectableChannel channel, final int interestOps, final Object attachment) {
         if (selectorClosed) {
             throw new ClosedSelectorException();
         }
 
-        UcxSelectionKey key = new UcxSelectionKey(channel, this);
+        final UcxSelectionKey key = new UcxSelectionKey(channel, this);
 
         key.interestOps(interestOps);
         key.attach(attachment);
@@ -122,9 +122,8 @@ public class UcxSelector extends AbstractSelector {
     }
 
     @Override
-    public int select(long timeout) throws IOException {
-        long endTime = System.nanoTime() + timeout;
-
+    public int select(final long timeout) throws IOException {
+        final long endTime = System.nanoTime() + timeout;
         int ret = 0;
 
         while (selectedKeys.isEmpty() && (System.nanoTime() < endTime || timeout == 0) && !Thread.interrupted() && !wakeup) {
@@ -140,9 +139,9 @@ public class UcxSelector extends AbstractSelector {
         return select(0);
     }
 
-    private boolean selectKey(UcxSelectionKey key) {
-        int oldReadyOps = key.readyOps();
-        int readyOps = ((UcxSelectableChannel) key.channel()).readyOps();
+    private boolean selectKey(final UcxSelectionKey key) {
+        final int oldReadyOps = key.readyOps();
+        final int readyOps = ((UcxSelectableChannel) key.channel()).readyOps();
 
         if ((readyOps & key.interestOps()) != 0) {
             if (selectedKeys.contains(key)) {
@@ -169,16 +168,16 @@ public class UcxSelector extends AbstractSelector {
         }
 
         @Override
-        public boolean add(SelectionKey key) {
-            throw new UnsupportedOperationException();
+        public boolean add(final SelectionKey key) {
+            throw new UnsupportedOperationException("Trying to add a key to an ungrowable set!");
         }
 
         @Override
-        public boolean addAll(Collection<? extends SelectionKey> keys) {
-            throw new UnsupportedOperationException();
+        public boolean addAll(final Collection<? extends SelectionKey> keys) {
+            throw new UnsupportedOperationException("Trying to add a key to an ungrowable set!");
         }
 
-        private void addKey(SelectionKey key) {
+        private void addKey(final SelectionKey key) {
             super.add(key);
         }
     }
