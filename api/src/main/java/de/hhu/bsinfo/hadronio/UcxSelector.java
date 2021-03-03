@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.nio.channels.ClosedSelectorException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.spi.AbstractSelectableChannel;
@@ -18,6 +19,9 @@ public class UcxSelector extends AbstractSelector {
     private final Set<SelectionKey> keys = new HashSet<>();
     private final UngrowableSelectionKeySet selectedKeys = new UngrowableSelectionKeySet();
 
+    private boolean selectorClosed = false;
+    private boolean wakeup = false;
+
     protected UcxSelector(SelectorProvider provider) {
         super(provider);
     }
@@ -25,11 +29,13 @@ public class UcxSelector extends AbstractSelector {
     @Override
     protected void implCloseSelector() throws IOException {
         LOGGER.info("Closing selector");
+        selectorClosed = true;
 
         synchronized (this) {
             synchronized (keys) {
                 synchronized (selectedKeys) {
                     synchronized (cancelledKeys()) {
+
                         for (SelectionKey key : keys) {
                             key.cancel();
                         }
@@ -44,30 +50,44 @@ public class UcxSelector extends AbstractSelector {
 
     @Override
     protected SelectionKey register(AbstractSelectableChannel channel, int interestOps, Object attachment) {
+        if (selectorClosed) {
+            throw new ClosedSelectorException();
+        }
+
         UcxSelectionKey key = new UcxSelectionKey(channel, this);
 
         key.interestOps(interestOps);
         key.attach(attachment);
 
         LOGGER.info("Registering new channel with selection key [{}]", key);
-
         keys.add(key);
-
         return key;
     }
 
     @Override
     public Set<SelectionKey> keys() {
+        if (selectorClosed) {
+            throw new ClosedSelectorException();
+        }
+
         return Collections.unmodifiableSet(keys);
     }
 
     @Override
     public Set<SelectionKey> selectedKeys() {
+        if (selectorClosed) {
+            throw new ClosedSelectorException();
+        }
+
         return selectedKeys;
     }
 
     @Override
     public int selectNow() throws IOException {
+        if (selectorClosed) {
+            throw new ClosedSelectorException();
+        }
+
         synchronized (this) {
             synchronized (keys) {
                 synchronized (selectedKeys) {
@@ -81,12 +101,7 @@ public class UcxSelector extends AbstractSelector {
                     }
 
                     for (SelectionKey key : Collections.unmodifiableSet(keys)) {
-
-                        try {
-                            ((UcxSelectableChannel) key.channel()).select();
-                        } catch (Exception e) {
-                            LOGGER.error("Failed to progress worker for key [{}]", key, e);
-                        }
+                        ((UcxSelectableChannel) key.channel()).select();
 
                         if (selectKey((UcxSelectionKey) key)) {
                             ret++;
@@ -108,7 +123,16 @@ public class UcxSelector extends AbstractSelector {
 
     @Override
     public int select(long timeout) throws IOException {
-        throw new UnsupportedOperationException("Operation not implemented yet");
+        long endTime = System.nanoTime() + timeout;
+
+        int ret = 0;
+
+        while (selectedKeys.isEmpty() && (System.nanoTime() < endTime || timeout == 0) && !Thread.interrupted() && !wakeup) {
+            ret += selectNow();
+        }
+
+        wakeup = false;
+        return ret;
     }
 
     @Override
@@ -134,6 +158,7 @@ public class UcxSelector extends AbstractSelector {
 
     @Override
     public Selector wakeup() {
+        wakeup = true;
         return this;
     }
 

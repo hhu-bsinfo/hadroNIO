@@ -29,9 +29,9 @@ public class UcxProvider extends SelectorProvider {
     private static final int MIN_RECEIVE_BUFFER_LENGTH = 128;
     private static final int MIN_RECEIVE_SLICE_LENGTH = 32;
 
-    private static final int DEFAULT_SEND_BUFFER_LENGTH = 1048576 * 4;
-    private static final int DEFAULT_RECEIVE_BUFFER_LENGTH = 1048576 * 4;
-    private static final int DEFAULT_RECEIVE_SLICE_LENGTH = 1024 * 32;
+    private static final int DEFAULT_SEND_BUFFER_LENGTH = 4 * 1024 * 1024;
+    private static final int DEFAULT_RECEIVE_BUFFER_LENGTH = 4 * 1024 * 1024;
+    private static final int DEFAULT_RECEIVE_SLICE_LENGTH = 32 * 1024;
 
     private static final int SEND_BUFFER_LENGTH = Integer.parseInt(System.getProperty("de.hhu.bsinfo.hadronio.SEND_BUFFER_LENGTH", String.valueOf(DEFAULT_SEND_BUFFER_LENGTH)));
     private static final int RECEIVE_BUFFER_LENGTH = Integer.parseInt(System.getProperty("de.hhu.bsinfo.hadronio.RECEIVE_BUFFER_LENGTH", String.valueOf(DEFAULT_RECEIVE_BUFFER_LENGTH)));
@@ -54,10 +54,6 @@ public class UcxProvider extends SelectorProvider {
 
         if (RECEIVE_SLICE_LENGTH < MIN_RECEIVE_SLICE_LENGTH) {
             throw new IllegalArgumentException("RECEIVE_SLICE_LENGTH must be a at least " + MIN_RECEIVE_SLICE_LENGTH + " byte!");
-        }
-
-        if (RECEIVE_BUFFER_LENGTH % RECEIVE_SLICE_LENGTH != 0) {
-            throw new IllegalArgumentException("RECEIVE_SLICE_LENGTH must be a restless divisor of RECEIVE_BUFFER_LENGTH!");
         }
     }
 

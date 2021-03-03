@@ -1,6 +1,7 @@
 package de.hhu.bsinfo.hadronio;
 
 import de.hhu.bsinfo.hadronio.util.ResourceHandler;
+import org.openucx.jucx.UcxException;
 import org.openucx.jucx.ucp.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,10 +11,7 @@ import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.SocketAddress;
 import java.net.SocketOption;
-import java.nio.channels.SelectionKey;
-import java.nio.channels.ServerSocketChannel;
-import java.nio.channels.SocketChannel;
-import java.nio.channels.UnsupportedAddressTypeException;
+import java.nio.channels.*;
 import java.nio.channels.spi.SelectorProvider;
 import java.util.Collections;
 import java.util.Set;
@@ -36,6 +34,8 @@ public class UcxServerSocketChannel extends ServerSocketChannel implements UcxSe
 
     private InetSocketAddress localAddress;
 
+    private boolean channelClosed = false;
+
     protected UcxServerSocketChannel(SelectorProvider provider, UcpContext context, int sendBufferLength, int receiveBufferLength, int receiveSliceLength) {
         super(provider);
 
@@ -51,6 +51,14 @@ public class UcxServerSocketChannel extends ServerSocketChannel implements UcxSe
 
     @Override
     public ServerSocketChannel bind(SocketAddress socketAddress, int backlog) throws IOException {
+        if (channelClosed) {
+            throw new ClosedChannelException();
+        }
+
+        if (localAddress != null) {
+            throw new AlreadyBoundException();
+        }
+
         if (socketAddress == null) {
             localAddress = new InetSocketAddress(DEFAULT_SERVER_PORT);
         } else if (!(socketAddress instanceof InetSocketAddress)) {
@@ -70,8 +78,12 @@ public class UcxServerSocketChannel extends ServerSocketChannel implements UcxSe
                     }
                 });
 
-        UcpListener listener = worker.newListener(listenerParams);
-        resourceHandler.addResource(listener);
+        try {
+            UcpListener listener = worker.newListener(listenerParams);
+            resourceHandler.addResource(listener);
+        } catch (UcxException e) {
+            throw new IOException("Failed to bind server socket channel to " + localAddress + "!", e);
+        }
 
         LOGGER.info("Listening on [{}]", localAddress);
 
@@ -80,16 +92,20 @@ public class UcxServerSocketChannel extends ServerSocketChannel implements UcxSe
 
     @Override
     public <T> ServerSocketChannel setOption(SocketOption<T> socketOption, T t) throws IOException {
-        LOGGER.warn("Trying to set option [{}], which is not supported", socketOption.name());
+        if (channelClosed) {
+            throw new ClosedChannelException();
+        }
 
-        return this;
+        throw new UnsupportedOperationException("Trying to set unsupported option " + socketOption.name() + "!");
     }
 
     @Override
     public <T> T getOption(SocketOption<T> socketOption) throws IOException {
-        LOGGER.warn("Trying to get option [{}], which is not supported", socketOption.name());
+        if (channelClosed) {
+            throw new ClosedChannelException();
+        }
 
-        return null;
+        throw new UnsupportedOperationException("Trying to set unsupported option " + socketOption.name() + "!");
     }
 
     @Override
@@ -99,21 +115,23 @@ public class UcxServerSocketChannel extends ServerSocketChannel implements UcxSe
 
     @Override
     public ServerSocket socket() {
-        LOGGER.error("Direct socket access is not supported");
-
-        throw new UnsupportedOperationException("Operation not supported!");
+        throw new UnsupportedOperationException("Direct socket access is not supported!");
     }
 
     @Override
     public SocketChannel accept() throws IOException {
+        if (channelClosed) {
+            throw new ClosedChannelException();
+        }
+
+        if (localAddress == null) {
+            throw new NotYetBoundException();
+        }
+
         if (pendingConnections.empty()) {
             if (isBlocking()) {
-                try {
-                    while (pendingConnections.empty() && worker.progress() == 0) {
-                        worker.waitForEvents();
-                    }
-                } catch (Exception e) {
-                    LOGGER.error("Failed to progress worker, while waiting for an incoming connection", e);
+                while (pendingConnections.empty()) {
+                    UcxSelectableChannel.pollWorkerBlocking(worker);
                 }
             } else {
                 return null;
@@ -137,7 +155,7 @@ public class UcxServerSocketChannel extends ServerSocketChannel implements UcxSe
     @Override
     protected void implCloseSelectableChannel() throws IOException {
         LOGGER.info("Closing server socket channel bound to [{}]", localAddress);
-
+        channelClosed = true;
         resourceHandler.close();
     }
 

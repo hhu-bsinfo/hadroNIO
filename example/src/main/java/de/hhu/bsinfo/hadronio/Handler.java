@@ -28,6 +28,42 @@ public class Handler implements Runnable {
         this.counterLimit = counterLimit;
     }
 
+    public void runBlocking() {
+        while (sendCounter < counterLimit && receiveCounter < counterLimit) {
+            LOGGER.info("Sending [{}]", ++sendCounter);
+
+            sendBuffer.putInt(sendCounter);
+            sendBuffer.rewind();
+
+            try {
+                socket.write(sendBuffer);
+            } catch (IOException e) {
+                LOGGER.error("Unable to write to SocketChannel", e);
+            }
+
+            sendBuffer.clear();
+
+            try {
+                socket.read(receiveBuffer);
+            } catch (IOException e) {
+                LOGGER.error("Unable to read from SocketChannel", e);
+            }
+
+            receiveBuffer.flip();
+            int counter = receiveBuffer.getInt();
+
+            if (counter != receiveCounter + 1) {
+                LOGGER.warn("Counter jump from [{}] to [{}] detected!", receiveCounter, counter);
+                System.exit(1);
+            }
+
+            receiveCounter = counter;
+            LOGGER.info("Received [{}]", receiveCounter);
+
+            receiveBuffer.clear();
+        }
+    }
+
     @Override
     public void run() {
         if (key.isConnectable()) {
@@ -39,7 +75,7 @@ public class Handler implements Runnable {
                 LOGGER.error("Failed to establish connection for [{}]", key);
             }
 
-            key.interestOps(SelectionKey.OP_READ |  SelectionKey.OP_WRITE);
+            key.interestOps(SelectionKey.OP_READ | SelectionKey.OP_WRITE);
         }
 
         if (key.isWritable() && sendCounter < counterLimit) {

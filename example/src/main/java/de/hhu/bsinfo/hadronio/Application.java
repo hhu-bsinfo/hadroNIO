@@ -29,7 +29,7 @@ public class Application implements Runnable {
 
     @CommandLine.Option(
             names = {"-s", "--server"},
-            description = "Runs this instance in server mode.")
+            description = "Run this instance in server mode.")
     private boolean isServer = false;
 
     @CommandLine.Option(
@@ -41,6 +41,11 @@ public class Application implements Runnable {
             names = {"-r", "--remote"},
             description = "The address to connect to.")
     private InetSocketAddress remoteAddress;
+
+    @CommandLine.Option(
+            names = {"-b", "--blocking"},
+            description = "Use blocking channels.")
+    private boolean blocking = false;
 
     private Selector selector;
     private ServerSocketChannel serverSocket;
@@ -57,24 +62,74 @@ public class Application implements Runnable {
             bindAddress = new InetSocketAddress(bindAddress.getAddress(), 0);
         }
 
+        try {
+            if (blocking) {
+                runBlocking();
+            } else {
+                runNonBlocking();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void runBlocking() throws IOException {
+        SocketChannel socket;
+
+        if (isServer) {
+            serverSocket = ServerSocketChannel.open();
+            serverSocket.configureBlocking(true);
+            serverSocket.bind(bindAddress);
+
+            socket = serverSocket.accept();
+        } else {
+            socket = SocketChannel.open();
+            socket.configureBlocking(true);
+            socket.connect(remoteAddress);
+        }
+
+        Handler handler = new Handler(null, socket, 1000);
+        handler.runBlocking();
+
+        socket.close();
+
+        if (isServer) {
+            serverSocket.close();
+        }
+    }
+
+    private void runNonBlocking() throws IOException {
+        selector = Selector.open();
+
+        if (isServer) {
+            serverSocket = ServerSocketChannel.open();
+            serverSocket.configureBlocking(false);
+            serverSocket.bind(bindAddress);
+
+            SelectionKey key = serverSocket.register(selector, SelectionKey.OP_ACCEPT);
+            Acceptor acceptor = new Acceptor(selector, serverSocket);
+            key.attach(acceptor);
+        } else {
+            SocketChannel socket = SocketChannel.open();
+            socket.configureBlocking(false);
+            socket.connect(remoteAddress);
+
+            SelectionKey key = socket.register(selector, SelectionKey.OP_CONNECT);
+            key.attach(new Handler(key, socket, 1000));
+        }
+
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             LOGGER.info("Received shutdown signal");
             isRunning = false;
         }));
 
-        try {
-            if (isServer) {
-                serve();
-            } else {
-                connect();
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
         while(isRunning && !selector.keys().isEmpty()) {
             try {
-                selector.selectNow();
+                if (blocking) {
+                    selector.select();
+                } else {
+                    selector.selectNow();
+                }
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -107,29 +162,6 @@ public class Application implements Runnable {
         } catch (IOException e) {
             LOGGER.warn("Unable to close resources", e);
         }
-    }
-
-    private void serve() throws IOException {
-        selector = Selector.open();
-
-        serverSocket = ServerSocketChannel.open();
-        serverSocket.configureBlocking(false);
-        serverSocket.bind(bindAddress);
-
-        SelectionKey key = serverSocket.register(selector, SelectionKey.OP_ACCEPT);
-        Acceptor acceptor = new Acceptor(selector, serverSocket);
-        key.attach(acceptor);
-    }
-
-    private void connect() throws IOException {
-        selector = Selector.open();
-
-        SocketChannel socket = SocketChannel.open();
-        socket.configureBlocking(false);
-        socket.connect(remoteAddress);
-
-        SelectionKey key = socket.register(selector, SelectionKey.OP_CONNECT);
-        key.attach(new Handler(key, socket, 1000));
     }
 
     public static void main(String... args) {

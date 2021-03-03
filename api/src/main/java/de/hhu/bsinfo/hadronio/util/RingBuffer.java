@@ -50,6 +50,7 @@ public class RingBuffer {
     private final int indexMask;
 
     public RingBuffer(int size) {
+
         // Allocate a new page-aligned buffer
         buffer = MemoryUtil.allocateAligned(size + TRAILER_LENGTH, MemoryUtil.Alignment.PAGE);
 
@@ -67,6 +68,7 @@ public class RingBuffer {
     }
 
     public int read(final MessageHandler handler, final int limit) {
+
         // Keep track of the messages we already read
         int messagesRead = 0;
 
@@ -84,7 +86,7 @@ public class RingBuffer {
             final int recordIndex = headIndex + bytesRead;
             final int recordLength = buffer.getIntVolatile(lengthOffset(recordIndex));
 
-            // If this record wasn't committed yet, we have to abort
+            // If this record wasn't commited yet, we have to abort
             if (recordLength <= 0) {
                 break;
             }
@@ -119,8 +121,11 @@ public class RingBuffer {
     public int tryClaim(final int length) {
         final AtomicBuffer buffer = this.buffer;
 
+        // Calculate the required size in bytes
+        final int recordLength = length + HEADER_LENGTH;
+
         // Claim the required space
-        final int recordIndex = claim(buffer, length);
+        final int recordIndex = claim(buffer, recordLength);
 
         // Check if space was claimed successfully
         if (recordIndex == INSUFFICIENT_CAPACITY) {
@@ -128,7 +133,7 @@ public class RingBuffer {
         }
 
         // Block claimed space
-        buffer.putIntOrdered(lengthOffset(recordIndex), -length);
+        buffer.putIntOrdered(lengthOffset(recordIndex), -recordLength);
         UnsafeAccess.UNSAFE.storeFence();
         buffer.putInt(typeOffset(recordIndex), REQUEST_MESSAGE_ID);
 
@@ -137,7 +142,6 @@ public class RingBuffer {
     }
 
     public void commitWrite(final int index) {
-
         final AtomicBuffer buffer = this.buffer;
 
         // Calculate the request index and length
@@ -171,14 +175,15 @@ public class RingBuffer {
         int padding;
 
         do {
+
             // Calculate available space using the cached head position
             tail = buffer.getLongVolatile(tailPosition);
             final int available = total - (int) (tail - head);
 
             if (required > available) { // If the required size is less than the cached available space left
-
                 // Calculate available space using the head position
                 head = buffer.getLongVolatile(headPositionIndex);
+
                 if (required > (total - (int) (tail - head))) { // If the required size is less than the current available space left
                     return INSUFFICIENT_CAPACITY;
                 }
@@ -196,11 +201,10 @@ public class RingBuffer {
             final int remaining = total - tailIndex;
 
             if (required > remaining) { // If the space between the tail and the upper bound is not sufficient
-
                 // Wrap around the head index
                 int headIndex = (int) head & mask;
-                if (required > headIndex) {  // If there is not enough space at the beginning of our buffer
 
+                if (required > headIndex) {  // If there is not enough space at the beginning of our buffer
                     // Update our head index for one last try
                     head = buffer.getLongVolatile(headPositionIndex);
                     headIndex = (int) head & mask;
@@ -250,15 +254,19 @@ public class RingBuffer {
         return (int) (tail - headAfter);
     }
 
-    public AtomicBuffer buffer() {
-        return buffer;
+    public int maxMessageLength() {
+        int remaining = capacity - size();
+        int alignmentAddend = remaining - BitUtil.align(remaining, ALIGNMENT);
+        int length = remaining - alignmentAddend - HEADER_LENGTH;
+
+        return Math.max(length, 0);
     }
 
     public long memoryAddress() {
         return buffer.addressOffset();
     }
 
-    public int capacity() {
-        return capacity;
+    public AtomicBuffer buffer() {
+        return buffer;
     }
 }
