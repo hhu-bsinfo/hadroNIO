@@ -100,7 +100,7 @@ public class CounterDemo implements Runnable {
 
     private void runNonBlocking() throws IOException {
         final Selector selector = Selector.open();
-        final ServerSocketChannel serverSocket;
+        ServerSocketChannel serverSocket = null;
 
         if (isServer) {
             serverSocket = ServerSocketChannel.open();
@@ -126,16 +126,12 @@ public class CounterDemo implements Runnable {
 
         while(isRunning && !selector.keys().isEmpty()) {
             try {
-                if (blocking) {
-                    selector.select();
-                } else {
-                    selector.selectNow();
-                }
+                selector.selectNow();
             } catch (IOException e) {
                 e.printStackTrace();
             }
 
-            for (SelectionKey key : selector.selectedKeys()) {
+            for (final SelectionKey key : selector.selectedKeys()) {
                 final Runnable runnable = (Runnable) key.attachment();
                 if(runnable != null) {
                     runnable.run();
@@ -145,8 +141,12 @@ public class CounterDemo implements Runnable {
             selector.selectedKeys().clear();
         }
 
+        if (serverSocket != null) {
+            serverSocket.close();
+        }
+
         try {
-            for (SelectionKey key : selector.keys()) {
+            for (final SelectionKey key : selector.keys()) {
                 key.cancel();
                 key.channel().close();
             }

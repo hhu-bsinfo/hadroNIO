@@ -97,6 +97,7 @@ public class UcxSelector extends AbstractSelector {
                         if (!cancelledKeys().isEmpty()) {
                             keys.removeAll(cancelledKeys());
                             selectedKeys.removeAll(cancelledKeys());
+                            cancelledKeys().clear();
                         }
                     }
 
@@ -112,6 +113,7 @@ public class UcxSelector extends AbstractSelector {
                         if (!cancelledKeys().isEmpty()) {
                             keys.removeAll(cancelledKeys());
                             selectedKeys.removeAll(cancelledKeys());
+                            cancelledKeys().clear();
                         }
                     }
 

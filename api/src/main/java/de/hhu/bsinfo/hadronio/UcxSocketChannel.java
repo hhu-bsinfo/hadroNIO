@@ -2,7 +2,6 @@ package de.hhu.bsinfo.hadronio;
 
 import de.hhu.bsinfo.hadronio.util.ResourceHandler;
 import de.hhu.bsinfo.hadronio.util.RingBuffer;
-import org.agrona.hints.ThreadHints;
 import org.openucx.jucx.UcxCallback;
 import org.openucx.jucx.ucp.*;
 import org.slf4j.Logger;
@@ -310,6 +309,7 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
         }
 
         if (readableMessages.get() <= 0) {
+            readLock.unlock();
             return 0;
         }
 
@@ -400,11 +400,12 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
         do {
             final int length = Math.min(Math.min(buffer.remaining() + HEADER_LENGTH, sendBuffer.maxMessageLength()), bufferSliceLength);
             if (length <= HEADER_LENGTH) {
-                LOGGER.warn("Unable to claim space in the send buffer (Error: [{}])", INSUFFICIENT_CAPACITY);
+                LOGGER.debug("Unable to claim space in the send buffer (Error: [{}])", INSUFFICIENT_CAPACITY);
                 if (isBlocking()) {
-                    UcxSelectableChannel.pollWorkerBlocking(worker);
+                    UcxSelectableChannel.pollWorkerNonBlocking(worker);
                     continue;
                 } else {
+                    writeLock.unlock();
                     return 0;
                 }
             }
@@ -412,11 +413,12 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
             final int index = sendBuffer.tryClaim(length);
 
             if (index < 0) {
-                LOGGER.warn("Unable to claim space in the send buffer (Error: [{}])", index);
+                LOGGER.debug("Unable to claim space in the send buffer (Error: [{}])", index);
                 if (isBlocking()) {
-                    UcxSelectableChannel.pollWorkerBlocking(worker);
+                    UcxSelectableChannel.pollWorkerNonBlocking(worker);
                     continue;
                 } else {
+                    writeLock.unlock();
                     return 0;
                 }
             }
@@ -506,7 +508,7 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
             readyOps |= SelectionKey.OP_CONNECT;
         }
 
-        if (connected && !outputClosed && sendBuffer.maxMessageLength() > 0) {
+        if (connected && !outputClosed && sendBuffer.maxMessageLength() > HEADER_LENGTH) {
             readyOps |= SelectionKey.OP_WRITE;
         }
 

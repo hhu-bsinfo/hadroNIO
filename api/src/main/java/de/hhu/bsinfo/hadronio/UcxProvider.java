@@ -104,14 +104,14 @@ public class UcxProvider extends SelectorProvider {
     public ServerSocketChannel openServerSocketChannel() throws IOException {
         LOGGER.info("Creating new UcxServerSocketChannel");
 
-        return new UcxServerSocketChannel(this, context, SEND_BUFFER_LENGTH, RECEIVE_BUFFER_LENGTH, BUFFER_SLICE_LENGTH);
+        return new UcxServerSocketChannel(this, context, SEND_BUFFER_LENGTH, RECEIVE_BUFFER_LENGTH, BUFFER_SLICE_LENGTH + UcxSocketChannel.HEADER_LENGTH);
     }
 
     @Override
     public SocketChannel openSocketChannel() throws IOException {
         LOGGER.info("Creating new UcxSocketChannel");
 
-        return new UcxSocketChannel(this, context, SEND_BUFFER_LENGTH, RECEIVE_BUFFER_LENGTH, BUFFER_SLICE_LENGTH);
+        return new UcxSocketChannel(this, context, SEND_BUFFER_LENGTH, RECEIVE_BUFFER_LENGTH, BUFFER_SLICE_LENGTH + UcxSocketChannel.HEADER_LENGTH);
     }
 
     public static void printBanner() {
