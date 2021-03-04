@@ -2,8 +2,6 @@ package de.hhu.bsinfo.hadronio;
 
 import de.hhu.bsinfo.hadronio.util.ResourceHandler;
 import de.hhu.bsinfo.hadronio.util.RingBuffer;
-import org.agrona.concurrent.ManyToManyConcurrentArrayQueue;
-import org.agrona.concurrent.QueuedPipe;
 import org.agrona.hints.ThreadHints;
 import org.openucx.jucx.UcxCallback;
 import org.openucx.jucx.ucp.*;
@@ -49,8 +47,7 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
 
     private final RingBuffer sendBuffer;
     private final RingBuffer receiveBuffer;
-    private final QueuedPipe<Integer> receiveIndexQueue;
-    private final int receiveSliceLength;
+    private final int bufferSliceLength;
 
     private final AtomicInteger readableMessages = new AtomicInteger();
     private final Lock readLock = new ReentrantLock();
@@ -64,26 +61,24 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
     private boolean outputClosed = false;
     private boolean channelClosed = false;
 
-    protected UcxSocketChannel(final SelectorProvider provider, final UcpContext context, final int sendBufferLength, final int receiveBufferLength, final int receiveSliceLength) {
+    protected UcxSocketChannel(final SelectorProvider provider, final UcpContext context, final int sendBufferLength, final int receiveBufferLength, final int bufferSliceLength) {
         super(provider);
 
         worker = context.newWorker(new UcpWorkerParams().requestThreadSafety());
         resourceHandler.addResource(worker);
         sendBuffer = new RingBuffer(sendBufferLength);
         receiveBuffer = new RingBuffer(receiveBufferLength);
-        receiveIndexQueue = new ManyToManyConcurrentArrayQueue<>(receiveBufferLength / receiveSliceLength);
-        this.receiveSliceLength = receiveSliceLength;
+        this.bufferSliceLength = bufferSliceLength;
     }
 
-    protected UcxSocketChannel(final SelectorProvider provider, final UcpContext context, final UcpConnectionRequest connectionRequest, final int sendBufferLength, final int receiveBufferLength, final int receiveSliceLength) throws IOException {
+    protected UcxSocketChannel(final SelectorProvider provider, final UcpContext context, final UcpConnectionRequest connectionRequest, final int sendBufferLength, final int receiveBufferLength, final int bufferSliceLength) throws IOException {
         super(provider);
 
         worker = context.newWorker(new UcpWorkerParams().requestThreadSafety());
         endpoint = worker.newEndpoint(new UcpEndpointParams().setConnectionRequest(connectionRequest).setPeerErrorHandlingMode());
         sendBuffer = new RingBuffer(sendBufferLength);
         receiveBuffer = new RingBuffer(receiveBufferLength);
-        receiveIndexQueue = new ManyToManyConcurrentArrayQueue<>(receiveBufferLength / receiveSliceLength + 1);
-        this.receiveSliceLength = receiveSliceLength;
+        this.bufferSliceLength = bufferSliceLength;
 
         resourceHandler.addResource(worker);
         resourceHandler.addResource(endpoint);
@@ -308,10 +303,9 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
         readLock.lock();
 
         if (isBlocking()) {
-            while (readableMessages.get() <= 0) {
+            if (readableMessages.get() <= 0) {
                 fillReceiveBuffer();
                 UcxSelectableChannel.pollWorkerNonBlocking(worker);
-                ThreadHints.onSpinWait();
             }
         }
 
@@ -338,7 +332,7 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
                 // Put updated message offset
                 directBuffer.putInt(index + HEADER_OFFSET_READ_BYTES, offset + length);
 
-                if (length == messageLength) {
+                if (offset + length == messageLength) {
                     messageCompleted.set(true);
                 }
 
@@ -347,7 +341,7 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
             }, 1);
 
             if (padding.get()) {
-                LOGGER.debug("Read [{}] padding bytes from buffer", readFromBuffer);
+                LOGGER.debug("Read [{}] padding bytes from receive buffer", readFromBuffer);
                 receiveBuffer.commitRead(readFromBuffer);
             }
         } while (padding.get());
@@ -380,12 +374,7 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
         int readTotal = 0;
 
         for (int i = 0; i < length; i++) {
-            try {
-                readTotal += read(buffers[offset + i]);
-            } catch (ClosedChannelException e) {
-                throw new AsynchronousCloseException();
-            }
-
+            readTotal += read(buffers[offset + i]);
             if(buffers[offset + i].remaining() > 0) {
                 break;
             }
@@ -397,7 +386,7 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
 
     @Override
     public int write(final ByteBuffer buffer) throws IOException {
-        if (channelClosed) {
+        if (outputClosed || channelClosed) {
             throw new ClosedChannelException();
         }
 
@@ -405,42 +394,48 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
             throw new NotYetConnectedException();
         }
 
-        if (outputClosed) {
-            return -1;
-        }
-
         writeLock.lock();
         int written = 0;
 
         do {
-            final int length = Math.min(buffer.remaining(), sendBuffer.maxMessageLength());
-            final int index;
-
-            if (length > 0) {
-                index = sendBuffer.tryClaim(length);
-            } else {
-                index = INSUFFICIENT_CAPACITY;
+            final int length = Math.min(Math.min(buffer.remaining() + HEADER_LENGTH, sendBuffer.maxMessageLength()), bufferSliceLength);
+            if (length <= HEADER_LENGTH) {
+                LOGGER.warn("Unable to claim space in the send buffer (Error: [{}])", INSUFFICIENT_CAPACITY);
+                if (isBlocking()) {
+                    UcxSelectableChannel.pollWorkerBlocking(worker);
+                    continue;
+                } else {
+                    return 0;
+                }
             }
+
+            final int index = sendBuffer.tryClaim(length);
 
             if (index < 0) {
                 LOGGER.warn("Unable to claim space in the send buffer (Error: [{}])", index);
                 if (isBlocking()) {
                     UcxSelectableChannel.pollWorkerBlocking(worker);
                     continue;
+                } else {
+                    return 0;
                 }
             }
 
-            // Write bytes from application buffer into send buffer
-            sendBuffer.buffer().putBytes(index, buffer, buffer.position(), length);
+            // Put message length
+            sendBuffer.buffer().putInt(index, length - HEADER_LENGTH);
+            // Put number of read bytes (initially 0)
+            sendBuffer.buffer().putInt(index + Integer.BYTES, 0);
+            // Put message
+            sendBuffer.buffer().putBytes(index + HEADER_LENGTH, buffer, buffer.position(), length - HEADER_LENGTH);
             // Advance position manually, since AtomicBuffer.putBytes() does not do it
-            buffer.position(buffer.position() + length);
+            buffer.position(buffer.position() + length - HEADER_LENGTH);
 
             sendBuffer.commitWrite(index);
-            final UcpRequest request = endpoint.sendTaggedNonBlocking(sendBuffer.memoryAddress() + index, length, MESSAGE_TAG, sendCallback);
+            endpoint.sendTaggedNonBlocking(sendBuffer.memoryAddress() + index, length, MESSAGE_TAG, sendCallback);
 
             if (isBlocking()) {
                 try {
-                    worker.progressRequest(request);
+                    UcxSelectableChannel.pollWorkerNonBlocking(worker);
                 } catch (Exception e) {
                     throw new IOException("Failed to progress worker while sending a message!", e);
                 }
@@ -471,12 +466,7 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
         int writtenTotal = 0;
 
         for (int i = 0; i < length; i++) {
-            try {
-                writtenTotal += write(buffers[offset + i]);
-            } catch (ClosedChannelException e) {
-                throw new AsynchronousCloseException();
-            }
-
+            writtenTotal += write(buffers[offset + i]);
             if(buffers[offset + i].remaining() > 0) {
                 break;
             }
@@ -541,35 +531,22 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
     }
 
     private void fillReceiveBuffer() {
-        int length = Math.min(receiveSliceLength, receiveBuffer.maxMessageLength());
-        int index;
-
-        if (length > 0) {
-            index = receiveBuffer.tryClaim(length);
-        } else {
-            index = INSUFFICIENT_CAPACITY;
-        }
+        int index = receiveBuffer.tryClaim(bufferSliceLength);
 
         while (index >= 0) {
-            LOGGER.debug("Claimed part of the receive buffer (Index: [{}], Length: [{}])", index, length);
+            LOGGER.debug("Claimed part of the receive buffer (Index: [{}], Length: [{}])", index, bufferSliceLength);
 
             receiveBuffer.commitWrite(index);
-            receiveIndexQueue.add(index);
-            worker.recvTaggedNonBlocking(receiveBuffer.memoryAddress() + index + HEADER_LENGTH, receiveSliceLength - HEADER_LENGTH, MESSAGE_TAG, TAG_MASK, receiveCallback);
+            worker.recvTaggedNonBlocking(receiveBuffer.memoryAddress() + index, bufferSliceLength, MESSAGE_TAG, TAG_MASK, receiveCallback);
 
-            length = Math.min(receiveSliceLength, receiveBuffer.maxMessageLength());
-            if (length > 0) {
-                index = receiveBuffer.tryClaim(length);
-            } else {
-                index = INSUFFICIENT_CAPACITY;
-            }
+            index = receiveBuffer.tryClaim(bufferSliceLength);
         }
     }
 
     public void onConnection(boolean success) {
         if (success) {
             sendCallback = new SendCallback(this, sendBuffer);
-            receiveCallback = new ReceiveCallback(this, receiveBuffer, receiveIndexQueue, readableMessages);
+            receiveCallback = new ReceiveCallback(this, readableMessages);
             fillReceiveBuffer();
             connected = true;
         } else {

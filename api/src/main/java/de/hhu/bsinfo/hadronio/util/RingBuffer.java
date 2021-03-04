@@ -85,7 +85,7 @@ public class RingBuffer {
             final int recordIndex = headIndex + bytesRead;
             final int recordLength = buffer.getIntVolatile(lengthOffset(recordIndex));
 
-            // If this record wasn't commited yet, we have to abort
+            // If this record has not been committed yet, we have to abort
             if (recordLength <= 0) {
                 break;
             }

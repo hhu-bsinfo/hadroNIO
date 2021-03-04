@@ -18,14 +18,14 @@ import java.nio.channels.SocketChannel;
         description = "Examples application, that sends an increasing counter and receives the other sides counter.",
         showDefaultValues = true,
         separator = " ")
-public class Counter implements Runnable {
+public class CounterDemo implements Runnable {
 
     static {
         System.setProperty("java.nio.channels.spi.SelectorProvider", "de.hhu.bsinfo.hadronio.UcxProvider");
         UcxProvider.printBanner();
     }
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(Application.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(CounterDemo.class);
     private static final int DEFAULT_SERVER_PORT = 2998;
 
     @CommandLine.Option(
@@ -57,9 +57,7 @@ public class Counter implements Runnable {
             return;
         }
 
-        if (!isServer) {
-            bindAddress = new InetSocketAddress(bindAddress.getAddress(), 0);
-        }
+        bindAddress = isServer ? bindAddress : new InetSocketAddress(bindAddress.getAddress(), 0);
 
         try {
             if (blocking) {

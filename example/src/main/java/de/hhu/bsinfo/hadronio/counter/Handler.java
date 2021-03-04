@@ -29,38 +29,20 @@ public class Handler implements Runnable {
     }
 
     public void runBlocking() {
-        while (sendCounter < counterLimit && receiveCounter < counterLimit) {
-            LOGGER.info("Sending [{}]", ++sendCounter);
-
-            sendBuffer.putInt(sendCounter);
-            sendBuffer.rewind();
-
-            try {
-                socket.write(sendBuffer);
-            } catch (IOException e) {
-                LOGGER.error("Unable to write to SocketChannel", e);
+        while (sendCounter < counterLimit || receiveCounter < counterLimit) {
+            if (sendCounter < counterLimit) {
+                write();
             }
 
-            sendBuffer.clear();
-
-            try {
-                socket.read(receiveBuffer);
-            } catch (IOException e) {
-                LOGGER.error("Unable to read from SocketChannel", e);
+            if (receiveCounter < counterLimit) {
+                read();
             }
+        }
 
-            receiveBuffer.flip();
-            final int counter = receiveBuffer.getInt();
-
-            if (counter != receiveCounter + 1) {
-                LOGGER.warn("Counter jump from [{}] to [{}] detected!", receiveCounter, counter);
-                System.exit(1);
-            }
-
-            receiveCounter = counter;
-            LOGGER.info("Received [{}]", receiveCounter);
-
-            receiveBuffer.clear();
+        try {
+            Thread.sleep(1000);
+        } catch (InterruptedException e) {
+            LOGGER.error("Thread interrupted unexpectedly", e);
         }
     }
 
@@ -79,43 +61,63 @@ public class Handler implements Runnable {
         }
 
         if (key.isWritable() && sendCounter < counterLimit) {
-            LOGGER.info("Sending [{}]", ++sendCounter);
-
-            sendBuffer.putInt(sendCounter);
-            sendBuffer.rewind();
-
-            try {
-                socket.write(sendBuffer);
-            } catch (IOException e) {
-                LOGGER.error("Unable to write to SocketChannel", e);
-            }
-
-            sendBuffer.clear();
+            write();
         }
 
         if (key.isReadable() && receiveCounter < counterLimit) {
-            try {
-                socket.read(receiveBuffer);
-            } catch (IOException e) {
-                LOGGER.error("Unable to read from SocketChannel", e);
-            }
-
-            receiveBuffer.flip();
-            final int counter = receiveBuffer.getInt();
-
-            if (counter != receiveCounter + 1) {
-                LOGGER.warn("Counter jump from [{}] to [{}] detected!", receiveCounter, counter);
-                System.exit(1);
-            }
-
-            receiveCounter = counter;
-            LOGGER.info("Received [{}]", receiveCounter);
-
-            receiveBuffer.clear();
+            read();
         }
 
         if (sendCounter >= counterLimit && receiveCounter >= counterLimit) {
             key.cancel();
         }
+    }
+
+    private void write() {
+        if (sendBuffer.position() == 0) {
+            LOGGER.info("Sending [{}]", ++sendCounter);
+
+            sendBuffer.putInt(sendCounter);
+            sendBuffer.rewind();
+        }
+
+        try {
+            socket.write(sendBuffer);
+        } catch (IOException e) {
+            LOGGER.error("Unable to write to SocketChannel", e);
+        }
+
+        if (sendBuffer.hasRemaining()) {
+            LOGGER.debug("Could not write all bytes at once! Remaining bytes: [{}]", sendBuffer.remaining());
+            return;
+        }
+
+        sendBuffer.clear();
+    }
+
+    private void read() {
+        try {
+            socket.read(receiveBuffer);
+        } catch (IOException e) {
+            LOGGER.error("Unable to read from SocketChannel", e);
+        }
+
+        if (receiveBuffer.hasRemaining()) {
+            LOGGER.debug("Could not read all bytes at once! Remaining bytes: [{}]", receiveBuffer.remaining());
+            return;
+        }
+
+        receiveBuffer.flip();
+        final int counter = receiveBuffer.getInt();
+
+        if (counter != receiveCounter + 1) {
+            LOGGER.warn("Counter jump from [{}] to [{}] detected!", receiveCounter, counter);
+            System.exit(1);
+        }
+
+        receiveCounter = counter;
+        LOGGER.info("Received [{}]", receiveCounter);
+
+        receiveBuffer.clear();
     }
 }

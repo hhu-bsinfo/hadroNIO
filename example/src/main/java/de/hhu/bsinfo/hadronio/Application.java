@@ -1,6 +1,6 @@
 package de.hhu.bsinfo.hadronio;
 
-import de.hhu.bsinfo.hadronio.counter.Counter;
+import de.hhu.bsinfo.hadronio.counter.CounterDemo;
 import de.hhu.bsinfo.hadronio.util.InetSocketAddressConverter;
 import picocli.CommandLine;
 
@@ -9,7 +9,7 @@ import java.net.InetSocketAddress;
 @CommandLine.Command(
         name = "hadronio",
         description = "Test applications for hadroNIO",
-        subcommands = { Counter.class }
+        subcommands = { CounterDemo.class }
 )
 public class Application implements Runnable {
 

@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.channels.SocketChannel;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 class SendCallback extends UcxCallback {
 
@@ -24,13 +25,27 @@ class SendCallback extends UcxCallback {
     @Override
     public void onSuccess(final UcpRequest request) {
         LOGGER.debug("SendCallback called (Completed: [{}])", request.isCompleted());
+        if (!request.isCompleted()) {
+            return;
+        }
+
+        final AtomicBoolean padding = new AtomicBoolean(true);
+        int readFromBuffer;
 
         if (request.isCompleted()) {
-            final int read = sendBuffer.read((msgTypeId, buffer, index, length) -> {
-                LOGGER.debug("Message type id: [{}], Index: [{}], Length: [{}]", msgTypeId, index, length);
-            }, 1);
+            do {
+                readFromBuffer = sendBuffer.read((msgTypeId, buffer, index, length) -> {
+                    LOGGER.debug("Message type id: [{}], Index: [{}], Length: [{}]", msgTypeId, index, length);
+                    padding.set(false);
+                }, 1);
 
-            sendBuffer.commitRead(read);
+                if (padding.get()) {
+                    LOGGER.debug("Read [{}] padding bytes from receive buffer", readFromBuffer);
+                    sendBuffer.commitRead(readFromBuffer);
+                }
+            } while (padding.get());
+
+            sendBuffer.commitRead(readFromBuffer);
         }
     }
 

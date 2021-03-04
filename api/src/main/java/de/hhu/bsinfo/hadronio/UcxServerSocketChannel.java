@@ -30,20 +30,20 @@ public class UcxServerSocketChannel extends ServerSocketChannel implements UcxSe
 
     private final int sendBufferLength;
     private final int receiveBufferLength;
-    private final int receiveSliceLength;
+    private final int bufferSliceLength;
 
     private InetSocketAddress localAddress;
 
     private boolean channelClosed = false;
 
-    protected UcxServerSocketChannel(final SelectorProvider provider, final UcpContext context, final int sendBufferLength, final int receiveBufferLength, final int receiveSliceLength) {
+    protected UcxServerSocketChannel(final SelectorProvider provider, final UcpContext context, final int sendBufferLength, final int receiveBufferLength, final int bufferSliceLength) {
         super(provider);
 
         this.provider = provider;
         this.context = context;
         this.sendBufferLength = sendBufferLength;
         this.receiveBufferLength = receiveBufferLength;
-        this.receiveSliceLength = receiveSliceLength;
+        this.bufferSliceLength = bufferSliceLength;
 
         worker = context.newWorker(new UcpWorkerParams().requestThreadSafety());
         resourceHandler.addResource(worker);
@@ -138,7 +138,7 @@ public class UcxServerSocketChannel extends ServerSocketChannel implements UcxSe
         }
 
         LOGGER.info("Creating new UcxSocketChannel");
-        final UcxSocketChannel socket = new UcxSocketChannel(provider, context, pendingConnections.pop(), sendBufferLength, receiveBufferLength, receiveSliceLength);
+        final UcxSocketChannel socket = new UcxSocketChannel(provider, context, pendingConnections.pop(), sendBufferLength, receiveBufferLength, bufferSliceLength);
         LOGGER.info("Accepted incoming connection");
 
         return socket;

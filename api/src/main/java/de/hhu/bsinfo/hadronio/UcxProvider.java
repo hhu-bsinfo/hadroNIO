@@ -1,6 +1,7 @@
 package de.hhu.bsinfo.hadronio;
 
 import de.hhu.bsinfo.hadronio.generated.BuildConfig;
+import org.agrona.BitUtil;
 import org.openucx.jucx.ucp.UcpContext;
 import org.openucx.jucx.ucp.UcpParams;
 import org.slf4j.Logger;
@@ -25,15 +26,15 @@ public class UcxProvider extends SelectorProvider {
 
     private static final int MIN_SEND_BUFFER_LENGTH = 128;
     private static final int MIN_RECEIVE_BUFFER_LENGTH = 128;
-    private static final int MIN_RECEIVE_SLICE_LENGTH = 32;
+    private static final int MIN_BUFFER_SLICE_LENGTH = 32;
 
     private static final int DEFAULT_SEND_BUFFER_LENGTH = 4 * 1024 * 1024;
     private static final int DEFAULT_RECEIVE_BUFFER_LENGTH = 4 * 1024 * 1024;
-    private static final int DEFAULT_RECEIVE_SLICE_LENGTH = 32 * 1024;
+    private static final int DEFAULT_BUFFER_SLICE_LENGTH = 32 * 1024;
 
     private static final int SEND_BUFFER_LENGTH = Integer.parseInt(System.getProperty("de.hhu.bsinfo.hadronio.SEND_BUFFER_LENGTH", String.valueOf(DEFAULT_SEND_BUFFER_LENGTH)));
     private static final int RECEIVE_BUFFER_LENGTH = Integer.parseInt(System.getProperty("de.hhu.bsinfo.hadronio.RECEIVE_BUFFER_LENGTH", String.valueOf(DEFAULT_RECEIVE_BUFFER_LENGTH)));
-    private static final int RECEIVE_SLICE_LENGTH = Integer.parseInt(System.getProperty("de.hhu.bsinfo.hadronio.RECEIVE_SLICE_LENGTH", String.valueOf(DEFAULT_RECEIVE_SLICE_LENGTH)));
+    private static final int BUFFER_SLICE_LENGTH = Integer.parseInt(System.getProperty("de.hhu.bsinfo.hadronio.BUFFER_SLICE_LENGTH", String.valueOf(DEFAULT_BUFFER_SLICE_LENGTH)));
 
     static {
         if (System.getProperty("java.nio.channels.spi.SelectorProvider").equals("de.hhu.bsinfo.hadronio.UcxProvider")) {
@@ -50,8 +51,28 @@ public class UcxProvider extends SelectorProvider {
             throw new IllegalArgumentException("RECEIVE_BUFFER_LENGTH must be a at least " + MIN_RECEIVE_BUFFER_LENGTH + " byte!");
         }
 
-        if (RECEIVE_SLICE_LENGTH < MIN_RECEIVE_SLICE_LENGTH) {
-            throw new IllegalArgumentException("RECEIVE_SLICE_LENGTH must be a at least " + MIN_RECEIVE_SLICE_LENGTH + " byte!");
+        if (BUFFER_SLICE_LENGTH < MIN_BUFFER_SLICE_LENGTH) {
+            throw new IllegalArgumentException("BUFFER_SLICE_LENGTH must be a at least " + MIN_BUFFER_SLICE_LENGTH + " byte!");
+        }
+
+        if (!BitUtil.isPowerOfTwo(BUFFER_SLICE_LENGTH)) {
+            throw new IllegalArgumentException("BUFFER_SLICE_LENGTH must be a power of 2");
+        }
+
+        if (!BitUtil.isPowerOfTwo(SEND_BUFFER_LENGTH)) {
+            throw new IllegalArgumentException("SEND_BUFFER_LENGTH must be a power of 2");
+        }
+
+        if (!BitUtil.isPowerOfTwo(RECEIVE_BUFFER_LENGTH)) {
+            throw new IllegalArgumentException("RECEIVE_BUFFER_LENGTH must be a power of 2");
+        }
+
+        if (SEND_BUFFER_LENGTH < 2 * BUFFER_SLICE_LENGTH) {
+            throw new IllegalArgumentException("SEND_BUFFER_LENGTH must be a at least twice as high as BUFFER_SLICE_LENGTH!");
+        }
+
+        if (RECEIVE_BUFFER_LENGTH < 2 * BUFFER_SLICE_LENGTH) {
+            throw new IllegalArgumentException("SEND_BUFFER_LENGTH must be a at least twice as high as RECEIVE_BUFFER_LENGTH!");
         }
     }
 
@@ -83,14 +104,14 @@ public class UcxProvider extends SelectorProvider {
     public ServerSocketChannel openServerSocketChannel() throws IOException {
         LOGGER.info("Creating new UcxServerSocketChannel");
 
-        return new UcxServerSocketChannel(this, context, SEND_BUFFER_LENGTH, RECEIVE_BUFFER_LENGTH, RECEIVE_SLICE_LENGTH);
+        return new UcxServerSocketChannel(this, context, SEND_BUFFER_LENGTH, RECEIVE_BUFFER_LENGTH, BUFFER_SLICE_LENGTH);
     }
 
     @Override
     public SocketChannel openSocketChannel() throws IOException {
         LOGGER.info("Creating new UcxSocketChannel");
 
-        return new UcxSocketChannel(this, context, SEND_BUFFER_LENGTH, RECEIVE_BUFFER_LENGTH, RECEIVE_SLICE_LENGTH);
+        return new UcxSocketChannel(this, context, SEND_BUFFER_LENGTH, RECEIVE_BUFFER_LENGTH, BUFFER_SLICE_LENGTH);
     }
 
     public static void printBanner() {
