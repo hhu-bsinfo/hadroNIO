@@ -10,10 +10,12 @@ public class Acceptor implements Runnable {
 
     private final Selector selector;
     private final ServerSocketChannel serverSocket;
+    private final int count;
 
-    public Acceptor(Selector selector, ServerSocketChannel serverSocket) {
+    public Acceptor(Selector selector, ServerSocketChannel serverSocket, int count) {
         this.selector = selector;
         this.serverSocket = serverSocket;
+        this.count = count;
     }
 
     @Override
@@ -23,7 +25,7 @@ public class Acceptor implements Runnable {
             socket.configureBlocking(false);
 
             final SelectionKey key = socket.register(selector, SelectionKey.OP_READ | SelectionKey.OP_WRITE);
-            key.attach(new Handler(key, socket, 1000));
+            key.attach(new Handler(key, socket, count));
         } catch (IOException e) {
             e.printStackTrace();
         }

@@ -48,6 +48,12 @@ public class CounterDemo implements Runnable {
             description = "Use blocking channels.")
     private boolean blocking = false;
 
+
+    @CommandLine.Option(
+        names = {"-c", "--count"},
+        description = "The amount of iterations.")
+    private int count = 1000;
+
     private boolean isRunning = true;
 
     @Override
@@ -86,7 +92,7 @@ public class CounterDemo implements Runnable {
             socket.connect(remoteAddress);
         }
 
-        final Handler handler = new Handler(null, socket, 1000);
+        final Handler handler = new Handler(null, socket, count);
         handler.runBlocking();
 
         socket.close();
@@ -102,7 +108,7 @@ public class CounterDemo implements Runnable {
             serverSocket.bind(bindAddress);
 
             final SelectionKey key = serverSocket.register(selector, SelectionKey.OP_ACCEPT);
-            final Acceptor acceptor = new Acceptor(selector, serverSocket);
+            final Acceptor acceptor = new Acceptor(selector, serverSocket, count);
             key.attach(acceptor);
         } else {
             final SocketChannel socket = SocketChannel.open();
@@ -110,7 +116,7 @@ public class CounterDemo implements Runnable {
             socket.connect(remoteAddress);
 
             final SelectionKey key = socket.register(selector, SelectionKey.OP_CONNECT);
-            key.attach(new Handler(key, socket, 1000));
+            key.attach(new Handler(key, socket, count));
         }
 
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {

@@ -60,11 +60,11 @@ public class Handler implements Runnable {
             key.interestOps(SelectionKey.OP_READ | SelectionKey.OP_WRITE);
         }
 
-        if (key.isWritable() && sendCounter < counterLimit) {
+        if (key.isWritable()) {
             write();
         }
 
-        if (key.isReadable() && receiveCounter < counterLimit) {
+        if (key.isReadable()) {
             read();
         }
 
