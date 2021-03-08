@@ -1,6 +1,6 @@
 package de.hhu.bsinfo.hadronio.util;
 
-public class Result {
+public class ThroughputResult {
 
     private final int operationCount;
     private final int operationSize;
@@ -10,7 +10,7 @@ public class Result {
     private double operationThroughput;
     private double dataThroughput;
 
-    public Result(int operationCount, int operationSize) {
+    public ThroughputResult(final int operationCount, final int operationSize) {
         this.operationCount = operationCount;
         this.operationSize = operationSize;
         this.totalData = (long) operationCount * (long) operationSize;
@@ -20,7 +20,7 @@ public class Result {
         return totalTime;
     }
 
-    public void setMeasuredTime(long timeInNanos) {
+    public void setMeasuredTime(final long timeInNanos) {
         this.totalTime = timeInNanos / 1000000000d;
 
         operationThroughput = (double) operationCount / totalTime;
@@ -29,7 +29,7 @@ public class Result {
 
     @Override
     public String toString() {
-        return "ThroughputMeasurement {" +
+        return "ThroughputResult {" +
                 "\n\t" + ValueFormatter.formatValue("operationCount", operationCount) +
                 ",\n\t" + ValueFormatter.formatValue("operationSize", operationSize, "Byte") +
                 ",\n\t" + ValueFormatter.formatValue("totalData", totalData, "Byte") +

@@ -452,16 +452,12 @@ public class UcxSocketChannel extends SocketChannel implements UcxSelectableChan
 
     @Override
     public long write(final ByteBuffer[] buffers, final int offset, final int length) throws IOException {
-        if (channelClosed) {
+        if (outputClosed || channelClosed) {
             throw new ClosedChannelException();
         }
 
         if (!connected) {
             throw new NotYetConnectedException();
-        }
-
-        if (outputClosed) {
-            return -1;
         }
 
         writeLock.lock();

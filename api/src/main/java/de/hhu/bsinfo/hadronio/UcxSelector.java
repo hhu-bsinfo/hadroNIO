@@ -143,9 +143,9 @@ public class UcxSelector extends AbstractSelector {
 
     private boolean selectKey(final UcxSelectionKey key) {
         final int oldReadyOps = key.readyOps();
-        final int readyOps = ((UcxSelectableChannel) key.channel()).readyOps();
+        final int readyOps = ((UcxSelectableChannel) key.channel()).readyOps() & key.interestOps();
 
-        if ((readyOps & key.interestOps()) != 0) {
+        if (readyOps != 0) {
             if (selectedKeys.contains(key)) {
                 key.readyOpsOr(readyOps);
             } else {

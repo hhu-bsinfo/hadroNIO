@@ -1,4 +1,4 @@
-package de.hhu.bsinfo.hadronio.benchmark.throughput;
+package de.hhu.bsinfo.hadronio.benchmark.latency;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,15 +27,29 @@ public class ClientHandler implements Runnable {
 
     @Override
     public void run() {
-        try {
-            socket.read(messageBuffer);
-        } catch (IOException e) {
-            LOGGER.error("Failed to receive a message!");
-        }
+        if (key.isReadable()) {
+            try {
+                socket.read(messageBuffer);
+            } catch (IOException e) {
+                LOGGER.error("Failed to receive a message!");
+            }
 
-        if (!messageBuffer.hasRemaining()) {
-            messageBuffer.clear();
-            remainingMessages--;
+            if (!messageBuffer.hasRemaining()) {
+                messageBuffer.flip();
+                key.interestOps(SelectionKey.OP_WRITE);
+            }
+        } else if (key.isWritable()) {
+            try {
+                socket.write(messageBuffer);
+            } catch (IOException e) {
+                LOGGER.error("Failed to send a message!");
+            }
+
+            if (!messageBuffer.hasRemaining()) {
+                messageBuffer.flip();
+                remainingMessages--;
+                key.interestOps(SelectionKey.OP_READ);
+            }
         }
 
         if (remainingMessages <= 0) {

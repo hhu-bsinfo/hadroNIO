@@ -15,7 +15,6 @@ public class ServerHandler implements Runnable {
     private final SocketChannel socket;
     private final SelectionKey key;
     private final ByteBuffer messageBuffer;
-    private final int messageCount;
 
     private int remainingMessages;
 
@@ -23,21 +22,18 @@ public class ServerHandler implements Runnable {
         this.socket = socket;
         this.key = key;
         this.messageBuffer = messageBuffer;
-        this.messageCount = messageCount;
         remainingMessages = messageCount;
     }
 
     @Override
     public void run() {
         try {
-            LOGGER.trace("Sending [{}]", messageCount - remainingMessages + 1);
             socket.write(messageBuffer);
         } catch (IOException e) {
             LOGGER.error("Failed to send a message!");
         }
 
         if (!messageBuffer.hasRemaining()) {
-            LOGGER.trace("Sent [{}]", messageCount - remainingMessages + 1);
             messageBuffer.clear();
             remainingMessages--;
         }
