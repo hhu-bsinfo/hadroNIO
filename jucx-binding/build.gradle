@@ -1,6 +1,5 @@
 plugins {
-    id 'java'
-    id 'application'
+    id 'java-library'
 }
 
 group 'de.hhu.bsinfo'
@@ -12,20 +11,14 @@ compileJava {
     options.encoding = 'UTF-8'
 }
 
-application {
-    applicationName = 'hadronio'
-    mainClassName = 'de.hhu.bsinfo.hadronio.Application'
-}
-
 repositories {
     mavenCentral()
 }
 
 dependencies {
-    implementation project(':provider')
-
-    implementation 'org.apache.logging.log4j:log4j-slf4j-impl:2.14.0'
-    implementation 'info.picocli:picocli:4.6.1'
+    implementation project(':api')
+    implementation 'org.openucx:jucx:1.9.0'
+    implementation 'org.slf4j:slf4j-api:1.7.30'
 
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.6.0'
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine'

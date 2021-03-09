@@ -5,7 +5,7 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.spi.AbstractSelectionKey;
 
-class UcxSelectionKey extends AbstractSelectionKey {
+class HadronioSelectionKey extends AbstractSelectionKey {
 
     private final SelectableChannel channel;
     private final Selector selector;
@@ -13,7 +13,7 @@ class UcxSelectionKey extends AbstractSelectionKey {
     private int interestOps = 0;
     private int readyOps = 0;
 
-    public UcxSelectionKey(final SelectableChannel channel, final Selector selector) {
+    HadronioSelectionKey(final SelectableChannel channel, final Selector selector) {
         this.channel = channel;
         this.selector = selector;
     }

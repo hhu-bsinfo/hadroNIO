@@ -18,6 +18,8 @@ repositories {
 }
 
 dependencies {
+    implementation project(':api')
+    implementation project(':jucx-binding')
     implementation 'org.agrona:agrona:1.9.0'
     implementation 'org.slf4j:slf4j-api:1.7.30'
 
@@ -27,4 +29,20 @@ dependencies {
 
 test {
     useJUnitPlatform()
+}
+
+buildConfig {
+    def gitVersion = versionDetails()
+
+    appName = project.name
+    version = project.version
+
+    clsName = 'BuildConfig'
+    packageName = 'de.hhu.bsinfo.hadronio.generated'
+
+    charset = 'UTF-8'
+
+    buildConfigField 'String', 'BUILD_DATE', new Date().format('yyyy-MM-dd HH:mm:ss')
+    buildConfigField 'String', 'GIT_COMMIT', gitVersion.gitHash
+    buildConfigField 'String', 'GIT_BRANCH', gitVersion.branchName
 }

@@ -1,6 +1,6 @@
 package de.hhu.bsinfo.hadronio.benchmark.latency;
 
-import de.hhu.bsinfo.hadronio.UcxProvider;
+import de.hhu.bsinfo.hadronio.HadronioProvider;
 import de.hhu.bsinfo.hadronio.util.LatencyResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,8 +22,8 @@ import java.nio.channels.SocketChannel;
 public class LatencyBenchmark implements Runnable {
 
     static {
-        System.setProperty("java.nio.channels.spi.SelectorProvider", "de.hhu.bsinfo.hadronio.UcxProvider");
-        UcxProvider.printBanner();
+        System.setProperty("java.nio.channels.spi.SelectorProvider", "de.hhu.bsinfo.hadronio.HadronioProvider");
+        HadronioProvider.printBanner();
     }
 
     private static final Logger LOGGER = LoggerFactory.getLogger(LatencyBenchmark.class);

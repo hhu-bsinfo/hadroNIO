@@ -1,6 +1,6 @@
 package de.hhu.bsinfo.hadronio.benchmark.throughput;
 
-import de.hhu.bsinfo.hadronio.UcxProvider;
+import de.hhu.bsinfo.hadronio.HadronioProvider;
 import de.hhu.bsinfo.hadronio.util.ThroughputResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,8 +23,8 @@ import java.nio.charset.StandardCharsets;
 public class ThroughputBenchmark implements Runnable {
 
     static {
-        System.setProperty("java.nio.channels.spi.SelectorProvider", "de.hhu.bsinfo.hadronio.UcxProvider");
-        UcxProvider.printBanner();
+        System.setProperty("java.nio.channels.spi.SelectorProvider", "de.hhu.bsinfo.hadronio.HadronioProvider");
+        HadronioProvider.printBanner();
     }
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ThroughputBenchmark.class);
@@ -119,7 +119,12 @@ public class ThroughputBenchmark implements Runnable {
             final long startTime = System.nanoTime();
 
             for (int i = 1; i <= messageCount; i++) {
-                socket.write(messageBuffer);
+                int written = socket.write(messageBuffer);
+
+                if (messageBuffer.hasRemaining()) {
+                    LOGGER.error("Buffer not fully written!");
+                }
+
                 messageBuffer.clear();
             }
 
@@ -133,7 +138,7 @@ public class ThroughputBenchmark implements Runnable {
         } else {
             for (int i = 1; i <= messageCount; i++) {
                 do {
-                    socket.read(messageBuffer);
+                    int read = socket.read(messageBuffer);
                 } while (messageBuffer.hasRemaining());
 
                 messageBuffer.clear();

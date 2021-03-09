@@ -1,7 +1,6 @@
 package de.hhu.bsinfo.hadronio.counter;
 
-import de.hhu.bsinfo.hadronio.Application;
-import de.hhu.bsinfo.hadronio.UcxProvider;
+import de.hhu.bsinfo.hadronio.HadronioProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import picocli.CommandLine;
@@ -21,8 +20,8 @@ import java.nio.channels.SocketChannel;
 public class CounterDemo implements Runnable {
 
     static {
-        System.setProperty("java.nio.channels.spi.SelectorProvider", "de.hhu.bsinfo.hadronio.UcxProvider");
-        UcxProvider.printBanner();
+        System.setProperty("java.nio.channels.spi.SelectorProvider", "de.hhu.bsinfo.hadronio.HadronioProvider");
+        HadronioProvider.printBanner();
     }
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CounterDemo.class);

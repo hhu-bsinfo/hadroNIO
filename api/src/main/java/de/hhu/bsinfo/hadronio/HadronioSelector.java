@@ -12,9 +12,9 @@ import java.nio.channels.spi.AbstractSelector;
 import java.nio.channels.spi.SelectorProvider;
 import java.util.*;
 
-public class UcxSelector extends AbstractSelector {
+class HadronioSelector extends AbstractSelector {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(UcxSelector.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(HadronioSelector.class);
 
     private final Set<SelectionKey> keys = new HashSet<>();
     private final UngrowableSelectionKeySet selectedKeys = new UngrowableSelectionKeySet();
@@ -22,7 +22,7 @@ public class UcxSelector extends AbstractSelector {
     private boolean selectorClosed = false;
     private boolean wakeup = false;
 
-    protected UcxSelector(final SelectorProvider provider) {
+    HadronioSelector(final SelectorProvider provider) {
         super(provider);
     }
 
@@ -54,7 +54,7 @@ public class UcxSelector extends AbstractSelector {
             throw new ClosedSelectorException();
         }
 
-        final UcxSelectionKey key = new UcxSelectionKey(channel, this);
+        final HadronioSelectionKey key = new HadronioSelectionKey(channel, this);
 
         key.interestOps(interestOps);
         key.attach(attachment);
@@ -102,9 +102,9 @@ public class UcxSelector extends AbstractSelector {
                     }
 
                     for (SelectionKey key : Collections.unmodifiableSet(keys)) {
-                        ((UcxSelectableChannel) key.channel()).select();
+                        ((HadronioSelectableChannel) key.channel()).select();
 
-                        if (selectKey((UcxSelectionKey) key)) {
+                        if (selectKey((HadronioSelectionKey) key)) {
                             ret++;
                         }
                     }
@@ -141,9 +141,9 @@ public class UcxSelector extends AbstractSelector {
         return select(0);
     }
 
-    private boolean selectKey(final UcxSelectionKey key) {
+    private boolean selectKey(final HadronioSelectionKey key) {
         final int oldReadyOps = key.readyOps();
-        final int readyOps = ((UcxSelectableChannel) key.channel()).readyOps() & key.interestOps();
+        final int readyOps = ((HadronioSelectableChannel) key.channel()).readyOps() & key.interestOps();
 
         if (readyOps != 0) {
             if (selectedKeys.contains(key)) {
