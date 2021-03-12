@@ -10,9 +10,10 @@ jobs:
     - stage: build
       script:
         - ./gradlew distZip
+        - ./gradlew provider:shadowJar
 
 before_deploy:
-  - export LIB_JAR_FILE=$(ls build/api/libs/*.jar)
+  - export LIB_JAR_FILE=$(ls build/provider/libs/*all.jar)
   - export DIST_ZIP_FILE=$(ls build/example/distributions/*.zip)
 
 deploy:
