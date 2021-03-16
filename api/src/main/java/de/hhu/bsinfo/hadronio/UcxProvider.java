@@ -5,7 +5,7 @@ import java.nio.channels.SocketChannel;
 
 public interface UcxProvider {
 
-    ServerSocketChannel createServerSocketChannel();
+    UcxServerSocketChannel createServerSocketChannel();
 
-    SocketChannel createSocketChannel();
+    UcxSocketChannel createSocketChannel();
 }

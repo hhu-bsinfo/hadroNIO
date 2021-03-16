@@ -43,6 +43,8 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
     private final Lock readLock = new ReentrantLock();
     private final Lock writeLock = new ReentrantLock();
 
+    private boolean connectionPending = false;
+    private boolean connectionFailed = false;
     private boolean connectable = false;
     private boolean inputClosed = false;
     private boolean outputClosed = false;
@@ -50,12 +52,15 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
 
     public HadronioSocketChannel(final SelectorProvider provider, final UcxSocketChannel socketChannel, final int sendBufferLength, final int receiveBufferLength, final int bufferSliceLength) {
         super(provider);
-        socketChannel.configureBlocking(isBlocking());
 
         this.socketChannel = socketChannel;
         sendBuffer = new RingBuffer(sendBufferLength);
         receiveBuffer = new RingBuffer(receiveBufferLength);
         this.bufferSliceLength = bufferSliceLength;
+
+        if (socketChannel.isConnected()) {
+            onConnection(true);
+        }
     }
 
     @Override
@@ -138,7 +143,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
 
     @Override
     public boolean isConnectionPending() {
-        return socketChannel.isConnectionPending();
+        return connectionPending;
     }
 
     @Override
@@ -151,19 +156,20 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
             throw new AlreadyConnectedException();
         }
 
-        if (socketChannel.isConnectionPending()) {
+        if (connectionPending) {
             throw new ConnectionPendingException();
         }
 
-        if (remoteAddress instanceof InetSocketAddress) {
-            LOGGER.info("Connecting to [{}]", remoteAddress);
-            socketChannel.connect((InetSocketAddress) remoteAddress, new ConnectionCallback(this));
-        } else {
+        if (!(remoteAddress instanceof InetSocketAddress)) {
             throw new UnsupportedAddressTypeException();
         }
 
-        if (socketChannel.isConnected()) {
-            connectable = false;
+        connectionPending = true;
+        LOGGER.info("Connecting to [{}]", remoteAddress);
+        socketChannel.connect((InetSocketAddress) remoteAddress, new ConnectionCallback(this));
+
+        if (isBlocking()) {
+            finishConnect();
         }
 
         return socketChannel.isConnected();
@@ -175,11 +181,23 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
             throw new ClosedChannelException();
         }
 
-        if (!socketChannel.isConnectionPending()) {
+        if (!connectionPending) {
             throw new NoConnectionPendingException();
         }
 
-        return socketChannel.finishConnect();
+        if (isBlocking()) {
+            while (!socketChannel.isConnected()) {
+                socketChannel.pollWorker(true);
+            }
+        }
+
+        if (socketChannel.isConnected()) {
+            connectable = false;
+        } else if (connectionFailed) {
+            throw new IOException("Failed to connect socket channel!");
+        }
+
+        return socketChannel.isConnected();
     }
 
     @Override
@@ -212,7 +230,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
         if (isBlocking()) {
             if (readableMessages.get() <= 0) {
                 fillReceiveBuffer();
-                socketChannel.pollWorkerNonBlocking();
+                socketChannel.pollWorker(false);
             }
         }
 
@@ -310,7 +328,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
             if (length <= HEADER_LENGTH) {
                 LOGGER.debug("Unable to claim space in the send buffer (Error: [{}])", INSUFFICIENT_CAPACITY);
                 if (isBlocking()) {
-                    socketChannel.pollWorkerNonBlocking();
+                    socketChannel.pollWorker(false);
                     continue;
                 } else {
                     writeLock.unlock();
@@ -323,7 +341,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
             if (index < 0) {
                 LOGGER.debug("Unable to claim space in the send buffer (Error: [{}])", index);
                 if (isBlocking()) {
-                    socketChannel.pollWorkerNonBlocking();
+                    socketChannel.pollWorker(false);
                     continue;
                 } else {
                     writeLock.unlock();
@@ -345,7 +363,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
 
             if (isBlocking()) {
                 try {
-                    socketChannel.pollWorkerNonBlocking();
+                    socketChannel.pollWorker(false);
                 } catch (Exception e) {
                     throw new IOException("Failed to progress worker while sending a message!", e);
                 }
@@ -402,7 +420,6 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
     @Override
     protected void implConfigureBlocking(final boolean blocking) throws IOException {
         LOGGER.info("Socket channel is now configured to be [{}]", blocking ? "BLOCKING" : "NON-BLOCKING");
-        socketChannel.configureBlocking(blocking);
     }
 
     @Override
@@ -430,17 +447,21 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
             fillReceiveBuffer();
         }
 
-        socketChannel.pollWorkerNonBlocking();
+        socketChannel.pollWorker(false);
     }
 
-    public void onConnection(boolean success) {
+    public void onConnection(final boolean success) {
         if (success) {
             socketChannel.setSendCallback(new SendCallback(this, sendBuffer));
             socketChannel.setReceiveCallback(new ReceiveCallback(this, readableMessages));
             fillReceiveBuffer();
+        } else {
+            connectionFailed = true;
         }
 
-        connectable = true;
+        if (!isBlocking()) {
+            connectable = true;
+        }
     }
 
     private void fillReceiveBuffer() {

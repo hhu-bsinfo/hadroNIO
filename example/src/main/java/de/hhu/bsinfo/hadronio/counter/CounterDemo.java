@@ -71,7 +71,7 @@ public class CounterDemo implements Runnable {
                 runNonBlocking();
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            LOGGER.error("Failed to run demo", e);
         }
     }
 
@@ -124,11 +124,7 @@ public class CounterDemo implements Runnable {
         }));
 
         while(isRunning && !selector.keys().isEmpty()) {
-            try {
-                selector.selectNow();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+            selector.selectNow();
 
             for (final SelectionKey key : selector.selectedKeys()) {
                 final Runnable runnable = (Runnable) key.attachment();
@@ -144,15 +140,11 @@ public class CounterDemo implements Runnable {
             serverSocket.close();
         }
 
-        try {
-            for (final SelectionKey key : selector.keys()) {
-                key.cancel();
-                key.channel().close();
-            }
-
-            selector.close();
-        } catch (IOException e) {
-            LOGGER.warn("Unable to close resources", e);
+        for (final SelectionKey key : selector.keys()) {
+            key.cancel();
+            key.channel().close();
         }
+
+        selector.close();
     }
 }

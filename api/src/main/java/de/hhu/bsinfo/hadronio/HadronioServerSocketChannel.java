@@ -13,21 +13,28 @@ import java.nio.channels.spi.SelectorProvider;
 import java.util.Collections;
 import java.util.Set;
 
+import static java.nio.channels.SelectionKey.OP_ACCEPT;
+
 public class HadronioServerSocketChannel extends ServerSocketChannel implements HadronioSelectableChannel {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(HadronioServerSocketChannel.class);
     private static final int DEFAULT_SERVER_PORT = 2998;
     private final UcxServerSocketChannel serverSocketChannel;
 
+    private final int sendBufferLength;
+    private final int receiveBufferLength;
+    private final int bufferSliceLength;
+
     private InetSocketAddress localAddress;
 
     private boolean channelClosed = false;
 
-    public HadronioServerSocketChannel(final SelectorProvider provider, final UcxServerSocketChannel serverSocketChannel) {
+    public HadronioServerSocketChannel(final SelectorProvider provider, final UcxServerSocketChannel serverSocketChannel, final int sendBufferLength, final int receiveBufferLength, final int bufferSliceLength) {
         super(provider);
-        serverSocketChannel.configureBlocking(isBlocking());
-
         this.serverSocketChannel = serverSocketChannel;
+        this.sendBufferLength = sendBufferLength;
+        this.receiveBufferLength = receiveBufferLength;
+        this.bufferSliceLength = bufferSliceLength;
     }
 
     @Override
@@ -90,7 +97,12 @@ public class HadronioServerSocketChannel extends ServerSocketChannel implements 
             throw new NotYetBoundException();
         }
 
-        return serverSocketChannel.accept();
+        while (isBlocking() && !serverSocketChannel.hasPendingConnections()) {
+            serverSocketChannel.pollWorker(true);
+        }
+
+        final UcxSocketChannel socketChannel = serverSocketChannel.accept();
+        return socketChannel == null ? null : new HadronioSocketChannel(provider(), socketChannel, sendBufferLength, receiveBufferLength, bufferSliceLength);
     }
 
     @Override
@@ -107,17 +119,16 @@ public class HadronioServerSocketChannel extends ServerSocketChannel implements 
 
     @Override
     protected void implConfigureBlocking(boolean blocking) throws IOException {
-        serverSocketChannel.configureBlocking(blocking);
         LOGGER.info("Server socket channel is now configured to be [{}]", blocking ? "BLOCKING" : "NON-BLOCKING");
     }
 
     @Override
     public int readyOps() {
-        return serverSocketChannel.readyOps();
+        return serverSocketChannel.hasPendingConnections() ? OP_ACCEPT : 0;
     }
 
     @Override
     public void select() throws IOException {
-        serverSocketChannel.select();
+        serverSocketChannel.pollWorker(false);
     }
 }
