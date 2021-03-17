@@ -28,7 +28,7 @@
     	<Root level="error">
 				<AppenderRef ref="ConsoleAsync"/>
     	</Root>
-			<Logger name="de.hhu.bsinfo" level="info" additivity="false">
+			<Logger name="de.hhu.bsinfo" level="debug" additivity="false">
 				<AppenderRef ref="ConsoleAsync" />
 			</Logger>
   	</Loggers>

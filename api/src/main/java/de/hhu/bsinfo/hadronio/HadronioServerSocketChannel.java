@@ -38,7 +38,7 @@ public class HadronioServerSocketChannel extends ServerSocketChannel implements 
     }
 
     @Override
-    public ServerSocketChannel bind(final SocketAddress socketAddress, final int backlog) throws IOException {
+    public synchronized ServerSocketChannel bind(final SocketAddress socketAddress, final int backlog) throws IOException {
         if (channelClosed) {
             throw new ClosedChannelException();
         }
@@ -88,7 +88,7 @@ public class HadronioServerSocketChannel extends ServerSocketChannel implements 
     }
 
     @Override
-    public SocketChannel accept() throws IOException {
+    public synchronized SocketChannel accept() throws IOException {
         if (channelClosed) {
             throw new ClosedChannelException();
         }

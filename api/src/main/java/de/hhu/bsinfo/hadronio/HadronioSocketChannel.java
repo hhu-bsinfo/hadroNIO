@@ -40,8 +40,6 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
     private final int bufferSliceLength;
 
     private final AtomicInteger readableMessages = new AtomicInteger();
-    private final Lock readLock = new ReentrantLock();
-    private final Lock writeLock = new ReentrantLock();
 
     private boolean connectionPending = false;
     private boolean connectionFailed = false;
@@ -147,7 +145,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
     }
 
     @Override
-    public boolean connect(final SocketAddress remoteAddress) throws IOException {
+    public synchronized boolean connect(final SocketAddress remoteAddress) throws IOException {
         if (channelClosed) {
             throw new ClosedChannelException();
         }
@@ -176,7 +174,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
     }
 
     @Override
-    public boolean finishConnect() throws IOException {
+    public synchronized boolean finishConnect() throws IOException {
         if (channelClosed) {
             throw new ClosedChannelException();
         }
@@ -225,61 +223,59 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
             return -1;
         }
 
-        readLock.lock();
-
-        if (isBlocking()) {
-            if (readableMessages.get() <= 0) {
-                fillReceiveBuffer();
-                socketChannel.pollWorker(false);
-            }
-        }
-
-        if (readableMessages.get() <= 0) {
-            readLock.unlock();
-            return 0;
-        }
-
-        final AtomicBoolean padding = new AtomicBoolean(true);
-        final AtomicBoolean messageCompleted = new AtomicBoolean(false);
-        final AtomicInteger readBytes = new AtomicInteger();
-        int readFromBuffer;
-
-        do {
-            readFromBuffer = receiveBuffer.read((msgTypeId, directBuffer, index, bufferLength) -> {
-                // Get message length
-                final int messageLength = directBuffer.getInt(index + HEADER_OFFSET_MESSAGE_LENGTH);
-                // Get message offset
-                final int offset = directBuffer.getInt(index + HEADER_OFFSET_READ_BYTES);
-                LOGGER.debug("Message type id: [{}], Index: [{}], Buffer Length: [{}], Message Length: [{}], Offset: [{}]", msgTypeId, index, bufferLength, messageLength, offset);
-
-                final int length = Math.min(buffer.remaining(), messageLength - offset);
-                // Get message data
-                directBuffer.getBytes(index + HEADER_OFFSET_MESSAGE_DATA + offset, buffer, length);
-                // Put updated message offset
-                directBuffer.putInt(index + HEADER_OFFSET_READ_BYTES, offset + length);
-
-                if (offset + length == messageLength) {
-                    messageCompleted.set(true);
+        synchronized (receiveBuffer) {
+            if (isBlocking()) {
+                if (readableMessages.get() <= 0) {
+                    fillReceiveBuffer();
+                    socketChannel.pollWorker(false);
                 }
+            }
 
-                padding.set(false);
-                readBytes.set(length);
-            }, 1);
+            if (readableMessages.get() <= 0) {
+                return 0;
+            }
 
-            if (padding.get()) {
-                LOGGER.debug("Read [{}] padding bytes from receive buffer", readFromBuffer);
+            final AtomicBoolean padding = new AtomicBoolean(true);
+            final AtomicBoolean messageCompleted = new AtomicBoolean(false);
+            final AtomicInteger readBytes = new AtomicInteger();
+            int readFromBuffer;
+
+            do {
+                readFromBuffer = receiveBuffer.read((msgTypeId, directBuffer, index, bufferLength) -> {
+                    // Get message length
+                    final int messageLength = directBuffer.getInt(index + HEADER_OFFSET_MESSAGE_LENGTH);
+                    // Get message offset
+                    final int offset = directBuffer.getInt(index + HEADER_OFFSET_READ_BYTES);
+                    LOGGER.debug("Message type id: [{}], Index: [{}], Buffer Length: [{}], Message Length: [{}], Offset: [{}]", msgTypeId, index, bufferLength, messageLength, offset);
+
+                    final int length = Math.min(buffer.remaining(), messageLength - offset);
+                    // Get message data
+                    directBuffer.getBytes(index + HEADER_OFFSET_MESSAGE_DATA + offset, buffer, length);
+                    // Put updated message offset
+                    directBuffer.putInt(index + HEADER_OFFSET_READ_BYTES, offset + length);
+
+                    if (offset + length == messageLength) {
+                        messageCompleted.set(true);
+                    }
+
+                    padding.set(false);
+                    readBytes.set(length);
+                }, 1);
+
+                if (padding.get()) {
+                    LOGGER.debug("Read [{}] padding bytes from receive buffer", readFromBuffer);
+                    receiveBuffer.commitRead(readFromBuffer);
+                }
+            } while (padding.get());
+
+            if (messageCompleted.get()) {
+                final int readable = readableMessages.decrementAndGet();
+                LOGGER.debug("Readable messages left: [{}]", readable);
                 receiveBuffer.commitRead(readFromBuffer);
             }
-        } while (padding.get());
 
-        if (messageCompleted.get()) {
-            final int readable = readableMessages.decrementAndGet();
-            LOGGER.debug("Readable messages left: [{}]", readable);
-            receiveBuffer.commitRead(readFromBuffer);
+            return readBytes.get();
         }
-
-        readLock.unlock();
-        return readBytes.get();
     }
 
     @Override
@@ -296,18 +292,18 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
             return -1;
         }
 
-        readLock.lock();
-        int readTotal = 0;
+        synchronized (receiveBuffer) {
+            int readTotal = 0;
 
-        for (int i = 0; i < length; i++) {
-            readTotal += read(buffers[offset + i]);
-            if(buffers[offset + i].remaining() > 0) {
-                break;
+            for (int i = 0; i < length; i++) {
+                readTotal += read(buffers[offset + i]);
+                if (buffers[offset + i].remaining() > 0) {
+                    break;
+                }
             }
-        }
 
-        readLock.unlock();
-        return readTotal;
+            return readTotal;
+        }
     }
 
     @Override
@@ -320,60 +316,58 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
             throw new NotYetConnectedException();
         }
 
-        writeLock.lock();
-        int written = 0;
+        synchronized (sendBuffer) {
+            int written = 0;
 
-        do {
-            final int length = Math.min(Math.min(buffer.remaining() + HEADER_LENGTH, sendBuffer.maxMessageLength()), bufferSliceLength);
-            if (length <= HEADER_LENGTH) {
-                LOGGER.debug("Unable to claim space in the send buffer (Error: [{}])", INSUFFICIENT_CAPACITY);
+            do {
+                final int length = Math.min(Math.min(buffer.remaining() + HEADER_LENGTH, sendBuffer.maxMessageLength()), bufferSliceLength);
+                if (length <= HEADER_LENGTH) {
+                    LOGGER.debug("Unable to claim space in the send buffer (Error: [{}])", INSUFFICIENT_CAPACITY);
+                    if (isBlocking()) {
+                        socketChannel.pollWorker(false);
+                        continue;
+                    } else {
+                        return 0;
+                    }
+                }
+
+                final int index = sendBuffer.tryClaim(length);
+
+                if (index < 0) {
+                    LOGGER.debug("Unable to claim space in the send buffer (Error: [{}])", index);
+                    if (isBlocking()) {
+                        socketChannel.pollWorker(false);
+                        continue;
+                    } else {
+                        return 0;
+                    }
+                }
+
+                // Put message length
+                sendBuffer.buffer().putInt(index, length - HEADER_LENGTH);
+                // Put number of read bytes (initially 0)
+                sendBuffer.buffer().putInt(index + Integer.BYTES, 0);
+                // Put message
+                sendBuffer.buffer().putBytes(index + HEADER_LENGTH, buffer, buffer.position(), length - HEADER_LENGTH);
+                // Advance position manually, since AtomicBuffer.putBytes() does not do it
+                buffer.position(buffer.position() + length - HEADER_LENGTH);
+
+                sendBuffer.commitWrite(index);
+                socketChannel.sendTaggedMessage(sendBuffer.memoryAddress() + index, length, MESSAGE_TAG);
+
                 if (isBlocking()) {
-                    socketChannel.pollWorker(false);
-                    continue;
-                } else {
-                    writeLock.unlock();
-                    return 0;
+                    try {
+                        socketChannel.pollWorker(false);
+                    } catch (Exception e) {
+                        throw new IOException("Failed to progress worker while sending a message!", e);
+                    }
                 }
-            }
 
-            final int index = sendBuffer.tryClaim(length);
+                written += length - HEADER_LENGTH;
+            } while (isBlocking() && buffer.hasRemaining());
 
-            if (index < 0) {
-                LOGGER.debug("Unable to claim space in the send buffer (Error: [{}])", index);
-                if (isBlocking()) {
-                    socketChannel.pollWorker(false);
-                    continue;
-                } else {
-                    writeLock.unlock();
-                    return 0;
-                }
-            }
-
-            // Put message length
-            sendBuffer.buffer().putInt(index, length - HEADER_LENGTH);
-            // Put number of read bytes (initially 0)
-            sendBuffer.buffer().putInt(index + Integer.BYTES, 0);
-            // Put message
-            sendBuffer.buffer().putBytes(index + HEADER_LENGTH, buffer, buffer.position(), length - HEADER_LENGTH);
-            // Advance position manually, since AtomicBuffer.putBytes() does not do it
-            buffer.position(buffer.position() + length - HEADER_LENGTH);
-
-            sendBuffer.commitWrite(index);
-            socketChannel.sendTaggedMessage(sendBuffer.memoryAddress() + index, length, MESSAGE_TAG);
-
-            if (isBlocking()) {
-                try {
-                    socketChannel.pollWorker(false);
-                } catch (Exception e) {
-                    throw new IOException("Failed to progress worker while sending a message!", e);
-                }
-            }
-
-            written += length - HEADER_LENGTH;
-        } while (isBlocking() && buffer.hasRemaining());
-
-        writeLock.unlock();
-        return written;
+            return written;
+        }
     }
 
     @Override
@@ -386,18 +380,18 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
             throw new NotYetConnectedException();
         }
 
-        writeLock.lock();
-        int writtenTotal = 0;
+        synchronized (sendBuffer) {
+            int writtenTotal = 0;
 
-        for (int i = 0; i < length; i++) {
-            writtenTotal += write(buffers[offset + i]);
-            if(buffers[offset + i].remaining() > 0) {
-                break;
+            for (int i = 0; i < length; i++) {
+                writtenTotal += write(buffers[offset + i]);
+                if (buffers[offset + i].remaining() > 0) {
+                    break;
+                }
             }
-        }
 
-        writeLock.unlock();
-        return writtenTotal;
+            return writtenTotal;
+        }
     }
 
     @Override
