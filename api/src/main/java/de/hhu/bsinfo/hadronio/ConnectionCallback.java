@@ -9,7 +9,7 @@ class ConnectionCallback implements UcxCallback {
     }
 
     @Override
-    public void onSuccess() {
+    public void onSuccess(long tag) {
         socket.onConnection(true);
     }
 

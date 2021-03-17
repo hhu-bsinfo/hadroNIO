@@ -19,7 +19,7 @@ public class SendCallback extends org.openucx.jucx.UcxCallback {
     public void onSuccess(final UcpRequest request) {
         LOGGER.debug("SendCallback called (Completed: [{}])", request.isCompleted());
         if (request.isCompleted()) {
-            callback.onSuccess();
+            callback.onSuccess(0);
             request.close();
         }
     }

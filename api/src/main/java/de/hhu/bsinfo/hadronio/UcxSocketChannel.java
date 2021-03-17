@@ -10,9 +10,9 @@ public interface UcxSocketChannel extends UcxSelectableChannel, Closeable {
 
     void connect(InetSocketAddress remoteAddress, UcxCallback callback) throws IOException;
 
-    void sendTaggedMessage(long address, long size, long tag);
+    boolean sendTaggedMessage(long address, long size, long tag, boolean useCallback, boolean blocking) throws IOException;
 
-    void receiveTaggedMessage(long address, long size, long tag, long tagMask);
+    boolean receiveTaggedMessage(long address, long size, long tag, long tagMask, boolean useCallback, boolean blocking) throws IOException;
 
     void setSendCallback(UcxCallback sendCallback);
 

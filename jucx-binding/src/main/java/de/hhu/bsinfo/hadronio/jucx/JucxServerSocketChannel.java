@@ -1,9 +1,7 @@
 package de.hhu.bsinfo.hadronio.jucx;
 
 import de.hhu.bsinfo.hadronio.UcxServerSocketChannel;
-import de.hhu.bsinfo.hadronio.HadronioSocketChannel;
 import de.hhu.bsinfo.hadronio.UcxSocketChannel;
-import de.hhu.bsinfo.hadronio.util.ResourceHandler;
 import org.openucx.jucx.UcxException;
 import org.openucx.jucx.ucp.*;
 import org.slf4j.Logger;
@@ -11,8 +9,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.nio.channels.*;
-import java.nio.channels.spi.SelectorProvider;
 import java.util.Stack;
 
 public class JucxServerSocketChannel extends JucxSelectableChannel implements UcxServerSocketChannel {
@@ -23,7 +19,7 @@ public class JucxServerSocketChannel extends JucxSelectableChannel implements Uc
     private final UcpContext context;
     private UcpListener listener;
 
-    JucxServerSocketChannel(final SelectorProvider provider, final UcpContext context) {
+    JucxServerSocketChannel(final UcpContext context) {
         super(context.newWorker(new UcpWorkerParams().requestThreadSafety()));
         this.context = context;
     }

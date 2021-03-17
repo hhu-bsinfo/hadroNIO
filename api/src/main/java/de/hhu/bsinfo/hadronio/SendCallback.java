@@ -12,16 +12,16 @@ class SendCallback implements UcxCallback {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SendCallback.class);
 
-    private final SocketChannel socket;
+    private final HadronioSocketChannel socket;
     private final RingBuffer sendBuffer;
 
-    SendCallback(final SocketChannel socket, final RingBuffer sendBuffer) {
+    SendCallback(final HadronioSocketChannel socket, final RingBuffer sendBuffer) {
         this.socket = socket;
         this.sendBuffer = sendBuffer;
     }
 
     @Override
-    public void onSuccess() {
+    public void onSuccess(long tag) {
         final AtomicBoolean padding = new AtomicBoolean(true);
         int readFromBuffer;
 
@@ -32,7 +32,7 @@ class SendCallback implements UcxCallback {
             }, 1);
 
             if (padding.get()) {
-                LOGGER.debug("Read [{}] padding bytes from receive buffer", readFromBuffer);
+                LOGGER.debug("Read [{}] padding bytes from send buffer", readFromBuffer);
                 sendBuffer.commitRead(readFromBuffer);
             }
         } while (padding.get());

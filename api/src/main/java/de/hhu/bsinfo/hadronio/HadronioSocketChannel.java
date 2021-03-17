@@ -1,6 +1,8 @@
 package de.hhu.bsinfo.hadronio;
 
 import de.hhu.bsinfo.hadronio.util.RingBuffer;
+import org.agrona.concurrent.AtomicBuffer;
+import org.agrona.concurrent.UnsafeBuffer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,8 +18,6 @@ import java.util.Collections;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 
 import static org.agrona.concurrent.ringbuffer.RingBuffer.INSUFFICIENT_CAPACITY;
 
@@ -26,7 +26,10 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
     private static final Logger LOGGER = LoggerFactory.getLogger(HadronioSocketChannel.class);
 
     static final long MESSAGE_TAG = 1;
+    static final long FLUSH_TAG = 2;
     static final long TAG_MASK = 0xffffffffffffffffL;
+
+    static final long FLUSH_ANSWER = 0xDEADBEEFDEAFBEEFL;
 
     static final int HEADER_LENGTH = Integer.BYTES * 2;
     static final int HEADER_OFFSET_MESSAGE_LENGTH = 0;
@@ -38,8 +41,12 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
     private final RingBuffer sendBuffer;
     private final RingBuffer receiveBuffer;
     private final int bufferSliceLength;
+    private final int flushIntervalSize;
 
+    private final AtomicBuffer flushBuffer = new UnsafeBuffer(ByteBuffer.allocateDirect(8));
+    private final AtomicBoolean isFlushing = new AtomicBoolean();
     private final AtomicInteger readableMessages = new AtomicInteger();
+    private int sendCounter = 0;
 
     private boolean connectionPending = false;
     private boolean connectionFailed = false;
@@ -48,13 +55,14 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
     private boolean outputClosed = false;
     private boolean channelClosed = false;
 
-    public HadronioSocketChannel(final SelectorProvider provider, final UcxSocketChannel socketChannel, final int sendBufferLength, final int receiveBufferLength, final int bufferSliceLength) {
+    public HadronioSocketChannel(final SelectorProvider provider, final UcxSocketChannel socketChannel, final int sendBufferLength, final int receiveBufferLength, final int bufferSliceLength, final int flushIntervalSize) {
         super(provider);
 
         this.socketChannel = socketChannel;
         sendBuffer = new RingBuffer(sendBufferLength);
         receiveBuffer = new RingBuffer(receiveBufferLength);
         this.bufferSliceLength = bufferSliceLength;
+        this.flushIntervalSize = flushIntervalSize;
 
         if (socketChannel.isConnected()) {
             onConnection(true);
@@ -225,7 +233,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
 
         synchronized (receiveBuffer) {
             if (isBlocking()) {
-                if (readableMessages.get() <= 0) {
+                while (readableMessages.get() <= 0) {
                     fillReceiveBuffer();
                     socketChannel.pollWorker(false);
                 }
@@ -323,24 +331,14 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
                 final int length = Math.min(Math.min(buffer.remaining() + HEADER_LENGTH, sendBuffer.maxMessageLength()), bufferSliceLength);
                 if (length <= HEADER_LENGTH) {
                     LOGGER.debug("Unable to claim space in the send buffer (Error: [{}])", INSUFFICIENT_CAPACITY);
-                    if (isBlocking()) {
-                        socketChannel.pollWorker(false);
-                        continue;
-                    } else {
-                        return 0;
-                    }
+                    return written;
                 }
 
                 final int index = sendBuffer.tryClaim(length);
 
                 if (index < 0) {
                     LOGGER.debug("Unable to claim space in the send buffer (Error: [{}])", index);
-                    if (isBlocking()) {
-                        socketChannel.pollWorker(false);
-                        continue;
-                    } else {
-                        return 0;
-                    }
+                    return written;
                 }
 
                 // Put message length
@@ -353,14 +351,12 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
                 buffer.position(buffer.position() + length - HEADER_LENGTH);
 
                 sendBuffer.commitWrite(index);
-                socketChannel.sendTaggedMessage(sendBuffer.memoryAddress() + index, length, MESSAGE_TAG);
 
-                if (isBlocking()) {
-                    try {
-                        socketChannel.pollWorker(false);
-                    } catch (Exception e) {
-                        throw new IOException("Failed to progress worker while sending a message!", e);
-                    }
+                final boolean completed = socketChannel.sendTaggedMessage(sendBuffer.memoryAddress() + index, length, MESSAGE_TAG, true, isBlocking());
+                LOGGER.debug("Send request completed instantly: [{}]", completed);
+
+                if (++sendCounter % flushIntervalSize == 0 && !isBlocking()) {
+                    flush();
                 }
 
                 written += length - HEADER_LENGTH;
@@ -424,7 +420,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
             readyOps |= SelectionKey.OP_CONNECT;
         }
 
-        if (socketChannel.isConnected() && !outputClosed && sendBuffer.maxMessageLength() > HEADER_LENGTH) {
+        if (socketChannel.isConnected() && !outputClosed && !isFlushing.get() && sendBuffer.maxMessageLength() > HEADER_LENGTH) {
             readyOps |= SelectionKey.OP_WRITE;
         }
 
@@ -444,11 +440,22 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
         socketChannel.pollWorker(false);
     }
 
+    private void flush() throws IOException {
+        isFlushing.set(true);
+        flushBuffer.putLong(0, 0);
+        socketChannel.receiveTaggedMessage(flushBuffer.addressOffset(), flushBuffer.capacity(), FLUSH_TAG, TAG_MASK,true, false);
+    }
+
     public void onConnection(final boolean success) {
         if (success) {
             socketChannel.setSendCallback(new SendCallback(this, sendBuffer));
-            socketChannel.setReceiveCallback(new ReceiveCallback(this, readableMessages));
-            fillReceiveBuffer();
+            socketChannel.setReceiveCallback(new ReceiveCallback(this, readableMessages, isFlushing, flushIntervalSize));
+
+            try {
+                fillReceiveBuffer();
+            } catch (IOException e) {
+                LOGGER.error("Failed to fill receive buffer", e);
+            }
         } else {
             connectionFailed = true;
         }
@@ -458,16 +465,21 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
         }
     }
 
-    private void fillReceiveBuffer() {
+    private void fillReceiveBuffer() throws IOException {
         int index = receiveBuffer.tryClaim(bufferSliceLength);
 
         while (index >= 0) {
             LOGGER.debug("Claimed part of the receive buffer (Index: [{}], Length: [{}])", index, bufferSliceLength);
 
             receiveBuffer.commitWrite(index);
-            socketChannel.receiveTaggedMessage(receiveBuffer.memoryAddress() + index, bufferSliceLength, MESSAGE_TAG, TAG_MASK);
+            final boolean completed = socketChannel.receiveTaggedMessage(receiveBuffer.memoryAddress() + index, bufferSliceLength, MESSAGE_TAG, TAG_MASK, true, false);
+            LOGGER.debug("Receive request completed instantly: [{}]", completed);
 
             index = receiveBuffer.tryClaim(bufferSliceLength);
         }
+    }
+
+    UcxSocketChannel getSocketChannelImplementation() {
+        return socketChannel;
     }
 }

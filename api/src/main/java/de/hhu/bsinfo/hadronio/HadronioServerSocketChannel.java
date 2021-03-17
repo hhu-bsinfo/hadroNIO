@@ -24,17 +24,19 @@ public class HadronioServerSocketChannel extends ServerSocketChannel implements 
     private final int sendBufferLength;
     private final int receiveBufferLength;
     private final int bufferSliceLength;
+    private final int flushIntervalSize;
 
     private InetSocketAddress localAddress;
 
     private boolean channelClosed = false;
 
-    public HadronioServerSocketChannel(final SelectorProvider provider, final UcxServerSocketChannel serverSocketChannel, final int sendBufferLength, final int receiveBufferLength, final int bufferSliceLength) {
+    public HadronioServerSocketChannel(final SelectorProvider provider, final UcxServerSocketChannel serverSocketChannel, final int sendBufferLength, final int receiveBufferLength, final int bufferSliceLength, final int flushIntervalSize) {
         super(provider);
         this.serverSocketChannel = serverSocketChannel;
         this.sendBufferLength = sendBufferLength;
         this.receiveBufferLength = receiveBufferLength;
         this.bufferSliceLength = bufferSliceLength;
+        this.flushIntervalSize = flushIntervalSize;
     }
 
     @Override
@@ -102,7 +104,7 @@ public class HadronioServerSocketChannel extends ServerSocketChannel implements 
         }
 
         final UcxSocketChannel socketChannel = serverSocketChannel.accept();
-        return socketChannel == null ? null : new HadronioSocketChannel(provider(), socketChannel, sendBufferLength, receiveBufferLength, bufferSliceLength);
+        return socketChannel == null ? null : new HadronioSocketChannel(provider(), socketChannel, sendBufferLength, receiveBufferLength, bufferSliceLength, flushIntervalSize);
     }
 
     @Override

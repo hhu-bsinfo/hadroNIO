@@ -37,7 +37,7 @@ public class ConnectionCallback extends org.openucx.jucx.UcxCallback {
                     LOGGER.info("Connection has been established successfully");
                     successCounter.set(0);
                     socket.onConnection(true);
-                    callback.onSuccess();
+                    callback.onSuccess(0);
                 } else {
                     LOGGER.error("Connection callback has been called, but magic number is wrong! Expected: [{}], Received: [{}] -> Discarding connection", Long.toHexString(CONNECTION_MAGIC_NUMBER), Long.toHexString(magic));
                     socket.onConnection(false);

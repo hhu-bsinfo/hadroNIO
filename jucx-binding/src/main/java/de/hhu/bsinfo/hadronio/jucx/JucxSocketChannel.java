@@ -41,12 +41,12 @@ public class JucxSocketChannel extends JucxSelectableChannel implements UcxSocke
     }
 
     @Override
-    public void setSendCallback(UcxCallback sendCallback) {
+    public void setSendCallback(final UcxCallback sendCallback) {
         this.sendCallback = new SendCallback(sendCallback);
     }
 
     @Override
-    public void setReceiveCallback(UcxCallback receiveCallback) {
+    public void setReceiveCallback(final UcxCallback receiveCallback) {
         this.receiveCallback = new ReceiveCallback(receiveCallback);
     }
 
@@ -64,7 +64,7 @@ public class JucxSocketChannel extends JucxSelectableChannel implements UcxSocke
         establishConnection(callback);
     }
 
-    private void establishConnection(UcxCallback callback) {
+    private void establishConnection(final UcxCallback callback) {
         final ByteBuffer sendBuffer = ByteBuffer.allocateDirect(8);
         final ByteBuffer receiveBuffer = ByteBuffer.allocateDirect(8);
 
@@ -79,16 +79,43 @@ public class JucxSocketChannel extends JucxSelectableChannel implements UcxSocke
     }
 
     @Override
-    public void sendTaggedMessage(long address, long size, long tag) {
-        endpoint.sendTaggedNonBlocking(address, size, tag, sendCallback);
+    public boolean sendTaggedMessage(final long address, final long size, final long tag, final boolean useCallback, final boolean blocking) throws IOException {
+        final UcpRequest request = endpoint.sendTaggedNonBlocking(address, size, tag, useCallback ? sendCallback : null);
+        while (blocking && !request.isCompleted()) {
+            try {
+                getWorker().progressRequest(request);
+                request.close();
+            } catch (Exception e) {
+                throw new IOException(e);
+            }
+        }
+
+        if (!useCallback && request.isCompleted()) {
+            request.close();
+        }
+
+        return request.isCompleted();
     }
 
     @Override
-    public void receiveTaggedMessage(long address, long size, long tag, long tagMask) {
-        getWorker().recvTaggedNonBlocking(address, size, tag, tagMask, receiveCallback);
+    public boolean receiveTaggedMessage(final long address, final long size, final long tag, final long tagMask, final boolean useCallback, final boolean blocking) throws IOException {
+        final UcpRequest request = getWorker().recvTaggedNonBlocking(address, size, tag, tagMask, useCallback ? receiveCallback : null);
+        while (blocking && !request.isCompleted()) {
+            try {
+                getWorker().progressRequest(request);
+            } catch (Exception e) {
+                throw new IOException(e);
+            }
+        }
+
+        if (!useCallback && request.isCompleted()) {
+            request.close();
+        }
+
+        return request.isCompleted();
     }
 
-    void onConnection(boolean success) {
+    void onConnection(final boolean success) {
         connected = success;
     }
 

@@ -19,7 +19,7 @@ public class ReceiveCallback extends org.openucx.jucx.UcxCallback {
     public void onSuccess(final UcpRequest request) {
         LOGGER.debug("ReceiveCallback called (Completed: [{}], Size: [{}])", request.isCompleted(), request.getRecvSize());
         if (request.isCompleted()) {
-            callback.onSuccess();
+            callback.onSuccess(request.getSenderTag());
             request.close();
         }
     }
