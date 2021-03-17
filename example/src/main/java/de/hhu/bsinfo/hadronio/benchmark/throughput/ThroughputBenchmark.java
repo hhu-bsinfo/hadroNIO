@@ -1,6 +1,7 @@
 package de.hhu.bsinfo.hadronio.benchmark.throughput;
 
 import de.hhu.bsinfo.hadronio.HadronioProvider;
+import de.hhu.bsinfo.hadronio.util.CloseSignal;
 import de.hhu.bsinfo.hadronio.util.ThroughputResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,7 +30,6 @@ public class ThroughputBenchmark implements Runnable {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ThroughputBenchmark.class);
     private static final int DEFAULT_SERVER_PORT = 2998;
-    private static final String CLOSE_SIGNAL = "CLOSE";
 
     @CommandLine.Option(
             names = {"-s", "--server"},
@@ -63,8 +63,8 @@ public class ThroughputBenchmark implements Runnable {
 
     private SocketChannel socket;
     private ByteBuffer messageBuffer;
-    private ByteBuffer closeBuffer;
     private ThroughputResult result;
+    private CloseSignal closeSignal;
 
     @Override
     public void run() {
@@ -75,11 +75,10 @@ public class ThroughputBenchmark implements Runnable {
 
         bindAddress = isServer ? bindAddress : new InetSocketAddress(bindAddress.getAddress(), 0);
         messageBuffer = ByteBuffer.allocateDirect(messageSize);
-        closeBuffer = ByteBuffer.allocateDirect(StandardCharsets.UTF_8.encode(CLOSE_SIGNAL).capacity());
+        result = new ThroughputResult(messageCount, messageSize);
 
         try {
             if (isServer) {
-                result = new ThroughputResult(messageCount, messageSize);
                 final ServerSocketChannel serverSocket = ServerSocketChannel.open();
                 serverSocket.configureBlocking(true);
                 serverSocket.bind(bindAddress);
@@ -92,6 +91,8 @@ public class ThroughputBenchmark implements Runnable {
             LOGGER.error("Failed to create socket channel!", e);
             return;
         }
+
+        closeSignal = new CloseSignal(socket);
 
         try {
             if (blocking) {
@@ -114,49 +115,29 @@ public class ThroughputBenchmark implements Runnable {
     private void runBlocking() throws IOException {
         LOGGER.info("Starting benchmark with blocking socket channels");
         socket.configureBlocking(true);
+        final long startTime = System.nanoTime();
 
         if (isServer) {
-            final long startTime = System.nanoTime();
-
             for (int i = 1; i <= messageCount; i++) {
-                int written = socket.write(messageBuffer);
-
+                socket.write(messageBuffer);
                 if (messageBuffer.hasRemaining()) {
                     LOGGER.error("Buffer not fully written!");
                 }
 
                 messageBuffer.clear();
             }
-
-            LOGGER.info("Waiting for close signal");
-            socket.write(StandardCharsets.UTF_8.encode(CLOSE_SIGNAL));
-            do {
-                socket.read(closeBuffer);
-            } while (closeBuffer.hasRemaining());
-
-            result.setMeasuredTime(System.nanoTime() - startTime);
         } else {
             for (int i = 1; i <= messageCount; i++) {
                 do {
-                    int read = socket.read(messageBuffer);
+                    socket.read(messageBuffer);
                 } while (messageBuffer.hasRemaining());
 
                 messageBuffer.clear();
             }
-
-            LOGGER.info("Waiting for close signal");
-            do {
-                socket.read(closeBuffer);
-            } while (closeBuffer.hasRemaining());
-            socket.write(StandardCharsets.UTF_8.encode(CLOSE_SIGNAL));
         }
 
-        LOGGER.info("Received close signal!");
-        closeBuffer.flip();
-        final String receivedCloseSignal = StandardCharsets.UTF_8.decode(closeBuffer).toString();
-        if (!receivedCloseSignal.equals(CLOSE_SIGNAL)) {
-            throw new IOException("Got wrong close signal! Expected: [" + CLOSE_SIGNAL + "], Got: [" + receivedCloseSignal + "]");
-        }
+        closeSignal.exchange();
+        result.setMeasuredTime(System.nanoTime() - startTime);
     }
 
     private void runNonBlocking() throws IOException {
@@ -184,28 +165,7 @@ public class ThroughputBenchmark implements Runnable {
             selector.selectedKeys().clear();
         }
 
-        socket.configureBlocking(true);
-        LOGGER.info("Waiting for close signal");
-        if (isServer) {
-            socket.write(StandardCharsets.UTF_8.encode(CLOSE_SIGNAL));
-            do {
-                socket.read(closeBuffer);
-            } while (closeBuffer.hasRemaining());
-
-            result.setMeasuredTime(System.nanoTime() - startTime);
-        } else {
-            do {
-                socket.read(closeBuffer);
-            } while (closeBuffer.hasRemaining());
-            socket.write(StandardCharsets.UTF_8.encode(CLOSE_SIGNAL));
-        }
-
-        LOGGER.info("Received close signal!");
-
-        closeBuffer.flip();
-        final String receivedCloseSignal = StandardCharsets.UTF_8.decode(closeBuffer).toString();
-        if (!receivedCloseSignal.equals(CLOSE_SIGNAL)) {
-            throw new IOException("Got wrong close signal! Expected: [" + CLOSE_SIGNAL + "], Got: [" + receivedCloseSignal + "]");
-        }
+        closeSignal.exchange();
+        result.setMeasuredTime(System.nanoTime() - startTime);
     }
 }

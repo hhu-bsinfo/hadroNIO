@@ -1,6 +1,7 @@
 package de.hhu.bsinfo.hadronio.benchmark.latency;
 
 import de.hhu.bsinfo.hadronio.HadronioProvider;
+import de.hhu.bsinfo.hadronio.util.CloseSignal;
 import de.hhu.bsinfo.hadronio.util.LatencyResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,6 +14,7 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
+import java.nio.charset.StandardCharsets;
 
 @CommandLine.Command(
         name = "latency",
@@ -62,6 +64,7 @@ public class LatencyBenchmark implements Runnable {
     private SocketChannel socket;
     private ByteBuffer messageBuffer;
     private LatencyResult result;
+    private CloseSignal closeSignal;
 
     @Override
     public void run() {
@@ -88,6 +91,8 @@ public class LatencyBenchmark implements Runnable {
             LOGGER.error("Failed to create socket channel!", e);
             return;
         }
+
+        closeSignal = new CloseSignal(socket);
 
         try {
             if (blocking) {
@@ -140,6 +145,7 @@ public class LatencyBenchmark implements Runnable {
             }
         }
 
+        closeSignal.exchange();
     }
 
     private void runNonBlocking() throws IOException {
@@ -170,5 +176,7 @@ public class LatencyBenchmark implements Runnable {
         if (isServer) {
             result.finishMeasuring(System.nanoTime() - startTime);
         }
+
+        closeSignal.exchange();
     }
 }
