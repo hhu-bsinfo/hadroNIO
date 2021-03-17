@@ -46,7 +46,7 @@ public class HadronioProvider extends SelectorProvider {
         LOGGER.info("Using [{}] as provider implementation", providerClass);
 
         try {
-            provider = (UcxProvider) Class.forName(providerClass).getConstructor(SelectorProvider.class).newInstance(this);
+            provider = (UcxProvider) Class.forName(providerClass).getConstructor().newInstance();
         } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException | ClassNotFoundException e) {
             throw new IllegalArgumentException("Unable to instantiate class '" + providerClass + "'!", e);
         }

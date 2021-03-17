@@ -26,11 +26,11 @@ public class JucxSocketChannel extends JucxSelectableChannel implements UcxSocke
     private boolean connected = false;
 
     JucxSocketChannel(final UcpContext context) {
-        super(context.newWorker(new UcpWorkerParams().requestThreadSafety()));
+        super(context.newWorker(new UcpWorkerParams().requestThreadSafety().requestWakeupTagSend().requestWakeupTagRecv()));
     }
 
     JucxSocketChannel(final UcpContext context, final UcpConnectionRequest connectionRequest) throws IOException {
-        super(context.newWorker(new UcpWorkerParams().requestThreadSafety()));
+        super(context.newWorker(new UcpWorkerParams().requestThreadSafety().requestWakeupTagSend().requestWakeupTagRecv()));
         endpoint = getWorker().newEndpoint(new UcpEndpointParams().setConnectionRequest(connectionRequest).setPeerErrorHandlingMode());
         LOGGER.info("Endpoint created: [{}]", endpoint);
 

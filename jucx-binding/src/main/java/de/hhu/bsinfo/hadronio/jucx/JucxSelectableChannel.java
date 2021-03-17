@@ -17,9 +17,9 @@ public class JucxSelectableChannel implements UcxSelectableChannel {
     public void pollWorker(final boolean blocking) throws IOException {
         try {
             int events = worker.progress();
-            while (blocking && events == 0) {
+            if (blocking && events == 0) {
                 worker.waitForEvents();
-                events = worker.progress();
+                worker.progress();
             }
         } catch (Exception e) {
             throw new IOException("Failed to progress worker!", e);

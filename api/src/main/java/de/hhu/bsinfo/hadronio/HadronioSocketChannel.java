@@ -1,6 +1,7 @@
 package de.hhu.bsinfo.hadronio;
 
 import de.hhu.bsinfo.hadronio.util.RingBuffer;
+import org.agrona.hints.ThreadHints;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,8 +17,6 @@ import java.util.Collections;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 
 import static org.agrona.concurrent.ringbuffer.RingBuffer.INSUFFICIENT_CAPACITY;
 
@@ -34,6 +33,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
     static final int HEADER_OFFSET_MESSAGE_DATA = Integer.BYTES * 2;
 
     private final UcxSocketChannel socketChannel;
+    private BlockingPollThread pollThread;
 
     private final RingBuffer sendBuffer;
     private final RingBuffer receiveBuffer;
@@ -52,6 +52,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
         super(provider);
 
         this.socketChannel = socketChannel;
+        pollThread = new BlockingPollThread(socketChannel);
         sendBuffer = new RingBuffer(sendBufferLength);
         receiveBuffer = new RingBuffer(receiveBufferLength);
         this.bufferSliceLength = bufferSliceLength;
@@ -225,9 +226,9 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
 
         synchronized (receiveBuffer) {
             if (isBlocking()) {
-                if (readableMessages.get() <= 0) {
-                    fillReceiveBuffer();
-                    socketChannel.pollWorker(false);
+                fillReceiveBuffer();
+                while (readableMessages.get() <= 0) {
+                    ThreadHints.onSpinWait();
                 }
             }
 
@@ -324,7 +325,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
                 if (length <= HEADER_LENGTH) {
                     LOGGER.debug("Unable to claim space in the send buffer (Error: [{}])", INSUFFICIENT_CAPACITY);
                     if (isBlocking()) {
-                        socketChannel.pollWorker(false);
+                        ThreadHints.onSpinWait();
                         continue;
                     } else {
                         return 0;
@@ -336,7 +337,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
                 if (index < 0) {
                     LOGGER.debug("Unable to claim space in the send buffer (Error: [{}])", index);
                     if (isBlocking()) {
-                        socketChannel.pollWorker(false);
+                        ThreadHints.onSpinWait();
                         continue;
                     } else {
                         return 0;
@@ -354,14 +355,6 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
 
                 sendBuffer.commitWrite(index);
                 socketChannel.sendTaggedMessage(sendBuffer.memoryAddress() + index, length, MESSAGE_TAG);
-
-                if (isBlocking()) {
-                    try {
-                        socketChannel.pollWorker(false);
-                    } catch (Exception e) {
-                        throw new IOException("Failed to progress worker while sending a message!", e);
-                    }
-                }
 
                 written += length - HEADER_LENGTH;
             } while (isBlocking() && buffer.hasRemaining());
@@ -408,12 +401,18 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
     protected void implCloseSelectableChannel() throws IOException {
         LOGGER.info("Closing socket channel");
         channelClosed = true;
+        pollThread.stopPolling();
         socketChannel.close();
     }
 
     @Override
     protected void implConfigureBlocking(final boolean blocking) throws IOException {
         LOGGER.info("Socket channel is now configured to be [{}]", blocking ? "BLOCKING" : "NON-BLOCKING");
+        pollThread.stopPolling();
+        if (blocking) {
+            pollThread = new BlockingPollThread(socketChannel);
+            pollThread.start();
+        }
     }
 
     @Override
@@ -449,6 +448,11 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
             socketChannel.setSendCallback(new SendCallback(this, sendBuffer));
             socketChannel.setReceiveCallback(new ReceiveCallback(this, readableMessages));
             fillReceiveBuffer();
+
+            if (isBlocking()) {
+                pollThread = new BlockingPollThread(socketChannel);
+                pollThread.start();
+            }
         } else {
             connectionFailed = true;
         }
@@ -468,6 +472,45 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
             socketChannel.receiveTaggedMessage(receiveBuffer.memoryAddress() + index, bufferSliceLength, MESSAGE_TAG, TAG_MASK);
 
             index = receiveBuffer.tryClaim(bufferSliceLength);
+        }
+    }
+
+    private static final class BlockingPollThread extends Thread {
+
+        private static final Logger LOGGER = LoggerFactory.getLogger(BlockingPollThread.class);
+
+        private final UcxSocketChannel socketChannel;
+        private boolean isRunning = false;
+
+        private BlockingPollThread(UcxSocketChannel socketChannel) {
+            super("poll-thread");
+            this.socketChannel = socketChannel;
+        }
+
+        @Override
+        public void run() {
+            isRunning = true;
+            LOGGER.info("Starting poll thread for blocking socket channel");
+
+            while (isRunning) {
+                try {
+                    socketChannel.pollWorker(false);
+                } catch (IOException e) {
+                    if (isRunning) {
+                        LOGGER.error("Failed to poll worker", e);
+                    }
+                }
+            }
+        }
+
+        public void stopPolling() {
+            LOGGER.info("Stopping poll thread for blocking socket channel");
+            isRunning = false;
+            socketChannel.interruptPolling();
+            while (isAlive()) {
+                ThreadHints.onSpinWait();
+            }
+            LOGGER.info("Stopped poll thread for blocking socket channel");
         }
     }
 }
