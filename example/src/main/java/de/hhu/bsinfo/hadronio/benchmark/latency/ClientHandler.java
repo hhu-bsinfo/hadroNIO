@@ -8,7 +8,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
 
-public class ClientHandler implements Runnable {
+public class ClientHandler implements Handler {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ClientHandler.class);
 
@@ -16,13 +16,22 @@ public class ClientHandler implements Runnable {
     private final SelectionKey key;
     private final ByteBuffer messageBuffer;
 
-    private int remainingMessages;
+    private boolean finished;
 
-    public ClientHandler(final SocketChannel socket, final SelectionKey key, final ByteBuffer messageBuffer, final int messageCount) {
+    public ClientHandler(final SocketChannel socket, final SelectionKey key, final ByteBuffer messageBuffer) {
         this.socket = socket;
         this.key = key;
         this.messageBuffer = messageBuffer;
-        remainingMessages = messageCount;
+        key.interestOps(SelectionKey.OP_READ);
+    }
+
+    public void reset() {
+        finished = false;
+        key.interestOps(SelectionKey.OP_READ);
+    }
+
+    public boolean isFinished() {
+        return finished;
     }
 
     @Override
@@ -46,14 +55,10 @@ public class ClientHandler implements Runnable {
             }
 
             if (!messageBuffer.hasRemaining()) {
+                finished = true;
                 messageBuffer.flip();
-                remainingMessages--;
                 key.interestOps(SelectionKey.OP_READ);
             }
-        }
-
-        if (remainingMessages <= 0) {
-            key.cancel();
         }
     }
 }

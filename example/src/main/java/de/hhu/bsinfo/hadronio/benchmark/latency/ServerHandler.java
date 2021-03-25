@@ -9,32 +9,35 @@ import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
 
-public class ServerHandler implements Runnable {
+public class ServerHandler implements Handler {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ServerHandler.class);
 
     private final SocketChannel socket;
     private final SelectionKey key;
     private final ByteBuffer messageBuffer;
-    private final LatencyResult result;
 
-    private int remainingMessages;
+    private boolean finished;
 
-    public ServerHandler(final SocketChannel socket, final SelectionKey key, final ByteBuffer messageBuffer, final int messageCount, final LatencyResult result) {
+    public ServerHandler(final SocketChannel socket, final SelectionKey key, final ByteBuffer messageBuffer) {
         this.socket = socket;
         this.key = key;
         this.messageBuffer = messageBuffer;
-        this.result = result;
-        remainingMessages = messageCount;
+        key.interestOps(SelectionKey.OP_WRITE);
+    }
+
+    public void reset() {
+        finished = false;
+        key.interestOps(SelectionKey.OP_WRITE);
+    }
+
+    public boolean isFinished() {
+        return finished;
     }
 
     @Override
     public void run() {
         if (key.isWritable()) {
-            if (messageBuffer.position() == 0) {
-                result.startSingleMeasurement();
-            }
-
             try {
                 socket.write(messageBuffer);
             } catch (IOException e) {
@@ -53,15 +56,10 @@ public class ServerHandler implements Runnable {
             }
 
             if (!messageBuffer.hasRemaining()) {
-                result.stopSingleMeasurement();
+                finished = true;
                 messageBuffer.flip();
-                remainingMessages--;
                 key.interestOps(SelectionKey.OP_WRITE);
             }
-        }
-
-        if (remainingMessages <= 0) {
-            key.cancel();
         }
     }
 }

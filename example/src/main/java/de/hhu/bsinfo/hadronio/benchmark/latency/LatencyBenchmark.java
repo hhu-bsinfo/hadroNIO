@@ -75,10 +75,10 @@ public class LatencyBenchmark implements Runnable {
 
         bindAddress = isServer ? bindAddress : new InetSocketAddress(bindAddress.getAddress(), 0);
         messageBuffer = ByteBuffer.allocateDirect(messageSize);
+        result = new LatencyResult(messageCount, messageSize);
 
         try {
             if (isServer) {
-                result = new LatencyResult(messageCount, messageSize);
                 final ServerSocketChannel serverSocket = ServerSocketChannel.open();
                 serverSocket.configureBlocking(true);
                 serverSocket.bind(bindAddress);
@@ -153,30 +153,40 @@ public class LatencyBenchmark implements Runnable {
         socket.configureBlocking(false);
 
         final Selector selector = Selector.open();
+        final SelectionKey key;
+        final Handler handler;
+
         if (isServer) {
-            final SelectionKey key = socket.register(selector, SelectionKey.OP_WRITE);
-            key.attach(new ServerHandler(socket, key, messageBuffer, messageCount, result));
+            key = socket.register(selector, 0);
+            handler = new ServerHandler(socket, key, messageBuffer);
+            key.attach(handler);
         } else {
-            final SelectionKey key = socket.register(selector, SelectionKey.OP_READ);
-            key.attach(new ClientHandler(socket, key, messageBuffer, messageCount));
+            key = socket.register(selector, 0);
+            handler = new ClientHandler(socket, key, messageBuffer);
+            key.attach(handler);
         }
 
         final long startTime = System.nanoTime();
 
-        while (!selector.keys().isEmpty()) {
-            selector.selectNow();
+        for (int i = 0; i < messageCount; i++) {
+            result.startSingleMeasurement();
 
-            for (final SelectionKey key : selector.selectedKeys()) {
-                ((Runnable) key.attachment()).run();
+            handler.reset();
+            while (!handler.isFinished()) {
+                selector.selectNow();
+
+                for (final SelectionKey currentKey : selector.selectedKeys()) {
+                    ((Handler) currentKey.attachment()).run();
+                }
+
+                selector.selectedKeys().clear();
             }
 
-            selector.selectedKeys().clear();
+            result.stopSingleMeasurement();
         }
 
-        if (isServer) {
-            result.finishMeasuring(System.nanoTime() - startTime);
-        }
-
+        key.cancel();
         closeSignal.exchange();
+        result.finishMeasuring(System.nanoTime() - startTime);
     }
 }
