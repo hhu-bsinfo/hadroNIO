@@ -1,7 +1,6 @@
 package de.hhu.bsinfo.hadronio;
 
 import de.hhu.bsinfo.hadronio.generated.BuildConfig;
-import org.agrona.BitUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,79 +22,23 @@ public class HadronioProvider extends SelectorProvider {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(HadronioProvider.class);
 
-    private static final String DEFAULT_PROVIDER_CLASS = "de.hhu.bsinfo.hadronio.jucx.JucxProvider";
-
-    private static final int MIN_SEND_BUFFER_LENGTH = 128;
-    private static final int MIN_RECEIVE_BUFFER_LENGTH = 128;
-    private static final int MIN_BUFFER_SLICE_LENGTH = 32;
-    private static final int MIN_FLUSH_INTERVAL_SIZE = 128;
-
-    private static final int DEFAULT_SEND_BUFFER_LENGTH = 4 * 1024 * 1024;
-    private static final int DEFAULT_RECEIVE_BUFFER_LENGTH = 4 * 1024 * 1024;
-    private static final int DEFAULT_BUFFER_SLICE_LENGTH = 32 * 1024;
-    private static final int DEFAULT_FLUSH_INTERVAL_SIZE = 1024;
-
-    private final int sendBufferLength = Integer.parseInt(System.getProperty("de.hhu.bsinfo.hadronio.SEND_BUFFER_LENGTH", String.valueOf(DEFAULT_SEND_BUFFER_LENGTH)));
-    private final int receiveBufferLength = Integer.parseInt(System.getProperty("de.hhu.bsinfo.hadronio.RECEIVE_BUFFER_LENGTH", String.valueOf(DEFAULT_RECEIVE_BUFFER_LENGTH)));
-    private final int bufferSliceLength = Integer.parseInt(System.getProperty("de.hhu.bsinfo.hadronio.BUFFER_SLICE_LENGTH", String.valueOf(DEFAULT_BUFFER_SLICE_LENGTH)));
-    private final int flushIntervalSize = Integer.parseInt(System.getProperty("de.hhu.bsinfo.hadronio.FLUSH_INTERVAL_SIZE", String.valueOf(DEFAULT_FLUSH_INTERVAL_SIZE)));
-
+    private final Configuration configuration;
     private final UcxProvider provider;
 
     public HadronioProvider() {
-        checkConfiguration();
-
-        final String providerClass = System.getProperty("de.hhu.bsinfo.hadronio.PROVIDER_CLASS", DEFAULT_PROVIDER_CLASS);
-        LOGGER.info("Using [{}] as provider implementation", providerClass);
-
-        try {
-            provider = (UcxProvider) Class.forName(providerClass).getConstructor().newInstance();
-        } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException | ClassNotFoundException e) {
-            throw new IllegalArgumentException("Unable to instantiate class '" + providerClass + "'!", e);
-        }
-    }
-
-    private void checkConfiguration() {
         if (System.getProperty("java.nio.channels.spi.SelectorProvider").equals("de.hhu.bsinfo.hadronio.HadronioProvider")) {
             LOGGER.info("de.hhu.bsinfo.hadronio.HadronioProvider is set as default SelectorProvider -> hadroNIO is active");
         } else {
             throw new IllegalStateException("de.hhu.bsinfo.hadronio.HadronioProvider is not set as default SelectorProvider -> hadroNIO is not active");
         }
 
-        if (sendBufferLength < MIN_SEND_BUFFER_LENGTH) {
-            throw new IllegalArgumentException("SEND_BUFFER_LENGTH must be a at least " + MIN_SEND_BUFFER_LENGTH + " byte!");
-        }
+        configuration = Configuration.getInstance();
+        LOGGER.info("hadroNIO configuration: [{}]", configuration);
 
-        if (receiveBufferLength < MIN_RECEIVE_BUFFER_LENGTH) {
-            throw new IllegalArgumentException("RECEIVE_BUFFER_LENGTH must be a at least " + MIN_RECEIVE_BUFFER_LENGTH + " byte!");
-        }
-
-        if (bufferSliceLength < MIN_BUFFER_SLICE_LENGTH) {
-            throw new IllegalArgumentException("BUFFER_SLICE_LENGTH must be a at least " + MIN_BUFFER_SLICE_LENGTH + " byte!");
-        }
-
-        if (flushIntervalSize < MIN_FLUSH_INTERVAL_SIZE) {
-            throw new IllegalArgumentException("FLUSH_INTERVAL_SIZE must be a at least " + MIN_FLUSH_INTERVAL_SIZE + "!");
-        }
-
-        if (!BitUtil.isPowerOfTwo(bufferSliceLength)) {
-            throw new IllegalArgumentException("BUFFER_SLICE_LENGTH must be a power of 2");
-        }
-
-        if (!BitUtil.isPowerOfTwo(sendBufferLength)) {
-            throw new IllegalArgumentException("SEND_BUFFER_LENGTH must be a power of 2");
-        }
-
-        if (!BitUtil.isPowerOfTwo(receiveBufferLength)) {
-            throw new IllegalArgumentException("RECEIVE_BUFFER_LENGTH must be a power of 2");
-        }
-
-        if (sendBufferLength < 2 * bufferSliceLength) {
-            throw new IllegalArgumentException("SEND_BUFFER_LENGTH must be a at least twice as high as BUFFER_SLICE_LENGTH!");
-        }
-
-        if (receiveBufferLength < 2 * bufferSliceLength) {
-            throw new IllegalArgumentException("SEND_BUFFER_LENGTH must be a at least twice as high as RECEIVE_BUFFER_LENGTH!");
+        try {
+            provider = (UcxProvider) Class.forName(configuration.getProviderClass()).getConstructor().newInstance();
+        } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException | ClassNotFoundException e) {
+            throw new IllegalArgumentException("Unable to instantiate class '" + configuration.getProviderClass() + "'!", e);
         }
     }
 
@@ -126,7 +69,7 @@ public class HadronioProvider extends SelectorProvider {
         LOGGER.info("Creating new UcxServerSocketChannel");
 
         final UcxServerSocketChannel serverSocketChannel = provider.createServerSocketChannel();
-        return new HadronioServerSocketChannel(this, serverSocketChannel, sendBufferLength, receiveBufferLength, bufferSliceLength + HadronioSocketChannel.HEADER_LENGTH, flushIntervalSize);
+        return new HadronioServerSocketChannel(this, serverSocketChannel, configuration);
     }
 
     @Override
@@ -134,7 +77,7 @@ public class HadronioProvider extends SelectorProvider {
         LOGGER.info("Creating new UcxSocketChannel");
 
         final UcxSocketChannel socketChannel = provider.createSocketChannel();
-        return new HadronioSocketChannel(this, socketChannel, sendBufferLength, receiveBufferLength, bufferSliceLength + HadronioSocketChannel.HEADER_LENGTH, flushIntervalSize);
+        return new HadronioSocketChannel(this, socketChannel, configuration);
     }
 
     public static void printBanner() {

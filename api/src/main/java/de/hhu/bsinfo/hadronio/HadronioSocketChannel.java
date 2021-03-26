@@ -55,14 +55,14 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
     private boolean outputClosed = false;
     private boolean channelClosed = false;
 
-    public HadronioSocketChannel(final SelectorProvider provider, final UcxSocketChannel socketChannel, final int sendBufferLength, final int receiveBufferLength, final int bufferSliceLength, final int flushIntervalSize) {
+    public HadronioSocketChannel(final SelectorProvider provider, final UcxSocketChannel socketChannel, final Configuration configuration) {
         super(provider);
 
         this.socketChannel = socketChannel;
-        sendBuffer = new RingBuffer(sendBufferLength);
-        receiveBuffer = new RingBuffer(receiveBufferLength);
-        this.bufferSliceLength = bufferSliceLength;
-        this.flushIntervalSize = flushIntervalSize;
+        sendBuffer = new RingBuffer(configuration.getSendBufferLength());
+        receiveBuffer = new RingBuffer(configuration.getReceiveBufferLength());
+        this.bufferSliceLength = configuration.getBufferSliceLength();
+        this.flushIntervalSize = configuration.getFlushIntervalSize();
 
         if (socketChannel.isConnected()) {
             onConnection(true);

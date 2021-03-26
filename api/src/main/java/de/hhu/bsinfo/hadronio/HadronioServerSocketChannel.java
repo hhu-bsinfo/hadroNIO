@@ -19,24 +19,17 @@ public class HadronioServerSocketChannel extends ServerSocketChannel implements 
 
     private static final Logger LOGGER = LoggerFactory.getLogger(HadronioServerSocketChannel.class);
     private static final int DEFAULT_SERVER_PORT = 2998;
-    private final UcxServerSocketChannel serverSocketChannel;
 
-    private final int sendBufferLength;
-    private final int receiveBufferLength;
-    private final int bufferSliceLength;
-    private final int flushIntervalSize;
+    private final UcxServerSocketChannel serverSocketChannel;
+    private final Configuration configuration;
 
     private InetSocketAddress localAddress;
-
     private boolean channelClosed = false;
 
-    public HadronioServerSocketChannel(final SelectorProvider provider, final UcxServerSocketChannel serverSocketChannel, final int sendBufferLength, final int receiveBufferLength, final int bufferSliceLength, final int flushIntervalSize) {
+    public HadronioServerSocketChannel(final SelectorProvider provider, final UcxServerSocketChannel serverSocketChannel, final Configuration configuration) {
         super(provider);
         this.serverSocketChannel = serverSocketChannel;
-        this.sendBufferLength = sendBufferLength;
-        this.receiveBufferLength = receiveBufferLength;
-        this.bufferSliceLength = bufferSliceLength;
-        this.flushIntervalSize = flushIntervalSize;
+        this.configuration = configuration;
     }
 
     @Override
@@ -104,7 +97,7 @@ public class HadronioServerSocketChannel extends ServerSocketChannel implements 
         }
 
         final UcxSocketChannel socketChannel = serverSocketChannel.accept();
-        return socketChannel == null ? null : new HadronioSocketChannel(provider(), socketChannel, sendBufferLength, receiveBufferLength, bufferSliceLength, flushIntervalSize);
+        return socketChannel == null ? null : new HadronioSocketChannel(provider(), socketChannel, configuration);
     }
 
     @Override

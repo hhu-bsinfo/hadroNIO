@@ -2,7 +2,6 @@ package de.hhu.bsinfo.hadronio.jucx;
 
 import de.hhu.bsinfo.hadronio.UcxCallback;
 import de.hhu.bsinfo.hadronio.UcxSocketChannel;
-import de.hhu.bsinfo.hadronio.util.ResourceHandler;
 import org.openucx.jucx.ucp.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
