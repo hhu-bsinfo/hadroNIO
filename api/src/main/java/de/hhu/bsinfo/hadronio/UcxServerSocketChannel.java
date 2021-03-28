@@ -4,7 +4,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 
-public interface UcxServerSocketChannel extends UcxSelectableChannel,Closeable {
+public interface UcxServerSocketChannel extends UcxSelectableChannel {
 
     void bind(InetSocketAddress socketAddress, int backlog) throws IOException;
 

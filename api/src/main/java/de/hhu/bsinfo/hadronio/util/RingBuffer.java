@@ -5,6 +5,9 @@ import org.agrona.UnsafeAccess;
 import org.agrona.concurrent.AtomicBuffer;
 import org.agrona.concurrent.MessageHandler;
 
+import java.io.Closeable;
+import java.io.IOException;
+
 import static org.agrona.BitUtil.align;
 import static org.agrona.concurrent.broadcast.RecordDescriptor.PADDING_MSG_TYPE_ID;
 import static org.agrona.concurrent.ringbuffer.RecordDescriptor.*;
@@ -15,7 +18,7 @@ import static org.agrona.concurrent.ringbuffer.RingBufferDescriptor.*;
  * A ring buffer used for storing requests.
  * This implementation is a modified version of {@link org.agrona.concurrent.ringbuffer.OneToOneRingBuffer}.
  */
-public class RingBuffer {
+public class RingBuffer implements Closeable {
 
     private static final int REQUEST_MESSAGE_ID = 1;
 
@@ -285,5 +288,10 @@ public class RingBuffer {
         }
 
         throw new IllegalStateException("Claimed space previously " + (PADDING_MSG_TYPE_ID == buffer.getInt(typeOffset(recordIndex)) ? "aborted" : "committed" + "!"));
+    }
+
+    @Override
+    public void close() throws IOException {
+        MemoryUtil.free(buffer);
     }
 }

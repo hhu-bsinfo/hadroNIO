@@ -26,8 +26,8 @@ class MemoryUtil {
         return new UnsafeBuffer(BufferUtil.allocateDirectAligned(size, alignment.value()));
     }
 
-    public static AtomicBuffer wrap(long address, int size) {
-        return new UnsafeBuffer(address, size);
+    public static void free(AtomicBuffer buffer) {
+        BufferUtil.free(buffer);
     }
 }
 

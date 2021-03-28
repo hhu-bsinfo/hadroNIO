@@ -4,7 +4,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 
-public interface UcxSocketChannel extends UcxSelectableChannel, Closeable {
+public interface UcxSocketChannel extends UcxSelectableChannel {
 
     boolean isConnected();
 
