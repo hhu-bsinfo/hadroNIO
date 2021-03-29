@@ -353,7 +353,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
 
                 sendBuffer.commitWrite(index);
 
-                final boolean completed = socketChannel.sendTaggedMessage(sendBuffer.memoryAddress() + index, length, MESSAGE_TAG, true, isBlocking());
+                final boolean completed = socketChannel.sendTaggedMessage(sendBuffer.memoryAddress() + index, length, MESSAGE_TAG, true, isBlocking() && !buffer.hasRemaining());
                 LOGGER.debug("Send request completed instantly: [{}]", completed);
 
                 if (++sendCounter % flushIntervalSize == 0 && !isBlocking()) {
