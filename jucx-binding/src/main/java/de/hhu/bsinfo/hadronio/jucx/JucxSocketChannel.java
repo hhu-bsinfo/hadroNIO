@@ -83,14 +83,9 @@ public class JucxSocketChannel extends JucxSelectableChannel implements UcxSocke
         while (blocking && !request.isCompleted()) {
             try {
                 getWorker().progressRequest(request);
-                request.close();
             } catch (Exception e) {
                 throw new IOException(e);
             }
-        }
-
-        if (!useCallback && request.isCompleted()) {
-            request.close();
         }
 
         return request.isCompleted();
@@ -105,10 +100,6 @@ public class JucxSocketChannel extends JucxSelectableChannel implements UcxSocke
             } catch (Exception e) {
                 throw new IOException(e);
             }
-        }
-
-        if (!useCallback && request.isCompleted()) {
-            request.close();
         }
 
         return request.isCompleted();
