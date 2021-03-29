@@ -332,6 +332,10 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
                 final int length = Math.min(Math.min(buffer.remaining() + HEADER_LENGTH, sendBuffer.maxMessageLength()), bufferSliceLength);
                 if (length <= HEADER_LENGTH) {
                     LOGGER.debug("Unable to claim space in the send buffer (Error: [{}])", INSUFFICIENT_CAPACITY);
+                    if (isBlocking()) {
+                        socketChannel.pollWorker(true);
+                        continue;
+                    }
                     return written;
                 }
 
@@ -339,6 +343,10 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
 
                 if (index < 0) {
                     LOGGER.debug("Unable to claim space in the send buffer (Error: [{}])", index);
+                    if (isBlocking()) {
+                        socketChannel.pollWorker(true);
+                        continue;
+                    }
                     return written;
                 }
 
