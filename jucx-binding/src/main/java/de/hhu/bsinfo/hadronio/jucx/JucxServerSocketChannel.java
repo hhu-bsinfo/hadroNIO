@@ -19,8 +19,8 @@ public class JucxServerSocketChannel extends JucxSelectableChannel implements Uc
     private final UcpContext context;
     private UcpListener listener;
 
-    JucxServerSocketChannel(final UcpContext context) {
-        super(context.newWorker(new UcpWorkerParams().requestThreadSafety()));
+    JucxServerSocketChannel(final UcpContext context, final UcpWorker worker) {
+        super(worker);
         this.context = context;
     }
 

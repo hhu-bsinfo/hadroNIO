@@ -24,8 +24,8 @@ public class JucxSocketChannel extends JucxSelectableChannel implements UcxSocke
 
     private boolean connected = false;
 
-    JucxSocketChannel(final UcpContext context) {
-        super(context.newWorker(new UcpWorkerParams().requestThreadSafety()));
+    JucxSocketChannel(final UcpContext context, final UcpWorker worker) {
+        super(worker);
     }
 
     JucxSocketChannel(final UcpContext context, final UcpConnectionRequest connectionRequest) throws IOException {
