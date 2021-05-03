@@ -25,6 +25,7 @@ public class HadronioServerSocketChannel extends ServerSocketChannel implements 
 
     private InetSocketAddress localAddress;
     private boolean channelClosed = false;
+    private int readyOps;
 
     public HadronioServerSocketChannel(final SelectorProvider provider, final UcxServerSocketChannel serverSocketChannel, final Configuration configuration) {
         super(provider);
@@ -118,12 +119,12 @@ public class HadronioServerSocketChannel extends ServerSocketChannel implements 
     }
 
     @Override
-    public int readyOps() {
-        return serverSocketChannel.hasPendingConnections() ? OP_ACCEPT : 0;
+    public void select() throws IOException {
+        readyOps = serverSocketChannel.hasPendingConnections() ? OP_ACCEPT : 0;
     }
 
     @Override
-    public void select() throws IOException {
-        serverSocketChannel.pollWorker(false);
+    public int readyOps() {
+        return readyOps;
     }
 }

@@ -61,7 +61,7 @@ public class HadronioProvider extends SelectorProvider {
     public AbstractSelector openSelector() throws IOException {
         LOGGER.info("Creating new UcxSelector");
 
-        return new HadronioSelector(this);
+        return new HadronioSelector(this, provider.getWorker());
     }
 
     @Override

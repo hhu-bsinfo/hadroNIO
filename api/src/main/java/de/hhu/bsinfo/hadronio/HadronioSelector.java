@@ -16,14 +16,16 @@ class HadronioSelector extends AbstractSelector {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(HadronioSelector.class);
 
+    private final UcxWorker worker;
     private final Set<SelectionKey> keys = new HashSet<>();
     private final UngrowableSelectionKeySet selectedKeys = new UngrowableSelectionKeySet();
+    private final Object wakeupLock = new Object();
 
     private boolean selectorClosed = false;
-    private boolean wakeup = false;
 
-    HadronioSelector(final SelectorProvider provider) {
-        super(provider);
+    HadronioSelector(final SelectorProvider selectorProvider, final UcxWorker worker) {
+        super(selectorProvider);
+        this.worker = worker;
     }
 
     @Override
@@ -35,6 +37,7 @@ class HadronioSelector extends AbstractSelector {
             synchronized (keys) {
                 synchronized (selectedKeys) {
                     synchronized (cancelledKeys()) {
+                        wakeup();
 
                         for (SelectionKey key : keys) {
                             key.cancel();
@@ -84,6 +87,29 @@ class HadronioSelector extends AbstractSelector {
 
     @Override
     public int selectNow() throws IOException {
+        return select(false, 0);
+    }
+
+    @Override
+    public int select(final long timeout) throws IOException {
+        return select(true, timeout);
+    }
+
+    @Override
+    public int select() throws IOException {
+        return select(true, 0);
+    }
+
+    @Override
+    public Selector wakeup() {
+        synchronized (wakeupLock) {
+            worker.interrupt();
+        }
+
+        return this;
+    }
+
+    private int select(final boolean blocking, final long timeout) throws IOException {
         if (selectorClosed) {
             throw new ClosedSelectorException();
         }
@@ -91,8 +117,9 @@ class HadronioSelector extends AbstractSelector {
         synchronized (this) {
             synchronized (keys) {
                 synchronized (selectedKeys) {
-                    int ret = 0;
+                    pollWorker(blocking, timeout);
 
+                    int ret = 0;
                     synchronized (cancelledKeys()) {
                         if (!cancelledKeys().isEmpty()) {
                             keys.removeAll(cancelledKeys());
@@ -123,22 +150,15 @@ class HadronioSelector extends AbstractSelector {
         }
     }
 
-    @Override
-    public int select(final long timeout) throws IOException {
-        final long endTime = System.nanoTime() + timeout;
-        int ret = 0;
-
-        while (selectedKeys.isEmpty() && (System.nanoTime() < endTime || timeout == 0) && !Thread.interrupted() && !wakeup) {
-            ret += selectNow();
+    private boolean pollWorker(final boolean blocking, final long timeout) {
+        // TODO: Implement timeout
+        try {
+            return worker.poll(blocking);
+        } catch (IOException e) {
+            LOGGER.error("Failed to poll worker", e);
         }
 
-        wakeup = false;
-        return ret;
-    }
-
-    @Override
-    public int select() throws IOException {
-        return select(0);
+        return false;
     }
 
     private boolean selectKey(final HadronioSelectionKey key) {
@@ -155,12 +175,6 @@ class HadronioSelector extends AbstractSelector {
         }
 
         return oldReadyOps != key.readyOps();
-    }
-
-    @Override
-    public Selector wakeup() {
-        wakeup = true;
-        return this;
     }
 
     private static final class UngrowableSelectionKeySet extends HashSet<SelectionKey> {

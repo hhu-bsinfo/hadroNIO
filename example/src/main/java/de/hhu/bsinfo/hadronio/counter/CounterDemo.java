@@ -93,8 +93,6 @@ public class CounterDemo implements Runnable {
 
         final Handler handler = new Handler(null, socket, count);
         handler.runBlocking();
-
-        socket.close();
     }
 
     private void runNonBlocking() throws IOException {
@@ -138,11 +136,6 @@ public class CounterDemo implements Runnable {
 
         if (serverSocket != null) {
             serverSocket.close();
-        }
-
-        for (final SelectionKey key : selector.keys()) {
-            key.cancel();
-            key.channel().close();
         }
 
         selector.close();

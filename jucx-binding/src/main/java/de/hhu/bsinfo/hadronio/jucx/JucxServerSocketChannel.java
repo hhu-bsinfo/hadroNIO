@@ -16,12 +16,10 @@ public class JucxServerSocketChannel extends JucxSelectableChannel implements Uc
     private static final Logger LOGGER = LoggerFactory.getLogger(JucxServerSocketChannel.class);
 
     private final Stack<UcpConnectionRequest> pendingConnections = new Stack<>();
-    private final UcpContext context;
     private UcpListener listener;
 
-    JucxServerSocketChannel(final UcpContext context, final UcpWorker worker) {
+    JucxServerSocketChannel(final JucxWorker worker) {
         super(worker);
-        this.context = context;
     }
 
     @Override
@@ -38,7 +36,7 @@ public class JucxServerSocketChannel extends JucxSelectableChannel implements Uc
                 });
 
         try {
-            listener = getWorker().newListener(listenerParams);
+            listener = getWorker().getWorker().newListener(listenerParams);
         } catch (UcxException e) {
             throw new IOException("Failed to bind server socket channel to " + localAddress + "!", e);
         }
@@ -53,7 +51,7 @@ public class JucxServerSocketChannel extends JucxSelectableChannel implements Uc
         }
 
         LOGGER.info("Creating new UcxSocketChannel");
-        final UcxSocketChannel socket = new JucxSocketChannel(context, pendingConnections.pop());
+        final UcxSocketChannel socket = new JucxSocketChannel(getWorker(), pendingConnections.pop());
         LOGGER.info("Accepted incoming connection");
 
         return socket;
@@ -67,6 +65,5 @@ public class JucxServerSocketChannel extends JucxSelectableChannel implements Uc
     @Override
     public void close() throws IOException {
         listener.close();
-        super.close();
     }
 }

@@ -1,11 +1,12 @@
 package de.hhu.bsinfo.hadronio;
 
-import java.nio.channels.ServerSocketChannel;
-import java.nio.channels.SocketChannel;
+import java.io.Closeable;
 
-public interface UcxProvider {
+public interface UcxProvider extends Closeable {
 
     UcxServerSocketChannel createServerSocketChannel();
 
     UcxSocketChannel createSocketChannel();
+
+    UcxWorker getWorker();
 }

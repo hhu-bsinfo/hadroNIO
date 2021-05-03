@@ -1,5 +1,6 @@
 package de.hhu.bsinfo.hadronio.counter;
 
+import de.hhu.bsinfo.hadronio.util.CloseSignal;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -14,6 +15,7 @@ public class Handler implements Runnable {
 
     private final SelectionKey key;
     private final SocketChannel socket;
+    private final CloseSignal closeSignal;
     private final int counterLimit;
 
     private final ByteBuffer sendBuffer = ByteBuffer.allocateDirect(Integer.BYTES);
@@ -26,6 +28,7 @@ public class Handler implements Runnable {
         this.key = key;
         this.socket = socket;
         this.counterLimit = counterLimit;
+        closeSignal = new CloseSignal(socket);
     }
 
     public void runBlocking() {
@@ -40,9 +43,10 @@ public class Handler implements Runnable {
         }
 
         try {
-            Thread.sleep(1000);
-        } catch (InterruptedException e) {
-            LOGGER.error("Thread interrupted unexpectedly", e);
+            closeSignal.exchange();
+            socket.close();
+        } catch (IOException e) {
+            LOGGER.error("Failed to exchange close signal", e);
         }
     }
 
@@ -70,6 +74,12 @@ public class Handler implements Runnable {
 
         if (sendCounter >= counterLimit && receiveCounter >= counterLimit) {
             key.cancel();
+            try {
+                closeSignal.exchange();
+                socket.close();
+            } catch (IOException e) {
+                LOGGER.error("Failed to close socket channel", e);
+            }
         }
     }
 

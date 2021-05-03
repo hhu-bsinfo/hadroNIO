@@ -1,6 +1,5 @@
 package de.hhu.bsinfo.hadronio;
 
-import java.io.Closeable;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 

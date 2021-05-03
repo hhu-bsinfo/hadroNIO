@@ -105,7 +105,7 @@ class Configuration {
                 ",receiveBufferSize=" + receiveBufferLength +
                 ",bufferSliceLength=" + bufferSliceLength +
                 ",flushIntervalSize=" + flushIntervalSize +
-                ",providerClass='" + providerClass +
+                ",providerClass=" + providerClass +
                 ")";
     }
 }

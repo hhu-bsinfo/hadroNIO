@@ -47,7 +47,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
     private final AtomicBuffer flushBuffer = new UnsafeBuffer(ByteBuffer.allocateDirect(8));
     private final AtomicBoolean isFlushing = new AtomicBoolean();
     private final AtomicInteger readableMessages = new AtomicInteger();
-    private int sendCounter = 0;
+    private int sendCounter;
 
     private boolean connectionPending = false;
     private boolean connectionFailed = false;
@@ -55,6 +55,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
     private boolean inputClosed = false;
     private boolean outputClosed = false;
     private boolean channelClosed = false;
+    private int readyOps;
 
     public HadronioSocketChannel(final SelectorProvider provider, final UcxSocketChannel socketChannel, final Configuration configuration) {
         super(provider);
@@ -424,31 +425,28 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
     }
 
     @Override
-    public int readyOps() {
-        int readyOps = 0;
-
-        if (connectable) {
-            readyOps |= SelectionKey.OP_CONNECT;
-        }
-
-        if (socketChannel.isConnected() && !outputClosed && !isFlushing.get() && sendBuffer.maxMessageLength() > HEADER_LENGTH) {
-            readyOps |= SelectionKey.OP_WRITE;
-        }
-
-        if (!inputClosed && readableMessages.get() > 0) {
-            readyOps |= SelectionKey.OP_READ;
-        }
-
-        return readyOps;
-    }
-
-    @Override
     public void select() throws IOException {
         if (socketChannel.isConnected()) {
             fillReceiveBuffer();
         }
 
-        socketChannel.pollWorker(false);
+        int readyOps = 0;
+        if (connectable) {
+            readyOps |= SelectionKey.OP_CONNECT;
+        }
+        if (socketChannel.isConnected() && !outputClosed && !isFlushing.get() && sendBuffer.maxMessageLength() > HEADER_LENGTH) {
+            readyOps |= SelectionKey.OP_WRITE;
+        }
+        if (!inputClosed && readableMessages.get() > 0) {
+            readyOps |= SelectionKey.OP_READ;
+        }
+
+        this.readyOps = readyOps;
+    }
+
+    @Override
+    public int readyOps() {
+        return readyOps;
     }
 
     private void flush() throws IOException {
