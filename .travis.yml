@@ -25,6 +25,6 @@ deploy:
   cleanup: false
   overwrite: true
   on:
-    repo: hhu-bsinfo/ucx-nio
+    repo: hhu-bsinfo/hadronio
     branch: master
     tags: true

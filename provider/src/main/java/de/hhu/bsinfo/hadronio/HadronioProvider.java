@@ -4,10 +4,7 @@ import de.hhu.bsinfo.hadronio.generated.BuildConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.lang.reflect.InvocationTargetException;
 import java.net.ProtocolFamily;
 import java.nio.channels.DatagramChannel;
@@ -18,12 +15,12 @@ import java.nio.channels.spi.AbstractSelector;
 import java.nio.channels.spi.SelectorProvider;
 import java.util.stream.Collectors;
 
-public class HadronioProvider extends SelectorProvider {
+public class HadronioProvider extends SelectorProvider implements Closeable {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(HadronioProvider.class);
 
-    private final Configuration configuration;
     private final UcxProvider provider;
+    private final WorkerPollThread workerPollThread;
 
     public HadronioProvider() {
         if (System.getProperty("java.nio.channels.spi.SelectorProvider").equals("de.hhu.bsinfo.hadronio.HadronioProvider")) {
@@ -32,13 +29,18 @@ public class HadronioProvider extends SelectorProvider {
             throw new IllegalStateException("de.hhu.bsinfo.hadronio.HadronioProvider is not set as default SelectorProvider -> hadroNIO is not active");
         }
 
-        configuration = Configuration.getInstance();
+        final Configuration configuration = Configuration.getInstance();
         LOGGER.info("hadroNIO configuration: [{}]", configuration);
 
         try {
             provider = (UcxProvider) Class.forName(configuration.getProviderClass()).getConstructor().newInstance();
+            workerPollThread = new WorkerPollThread(provider.getWorker());
         } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException | ClassNotFoundException e) {
             throw new IllegalArgumentException("Unable to instantiate class '" + configuration.getProviderClass() + "'!", e);
+        }
+
+        if (configuration.useWorkerPollThread()) {
+            workerPollThread.start();
         }
     }
 
@@ -69,7 +71,7 @@ public class HadronioProvider extends SelectorProvider {
         LOGGER.info("Creating new UcxServerSocketChannel");
 
         final UcxServerSocketChannel serverSocketChannel = provider.createServerSocketChannel();
-        return new HadronioServerSocketChannel(this, serverSocketChannel, provider.getWorker(), configuration);
+        return new HadronioServerSocketChannel(this, serverSocketChannel, provider.getWorker());
     }
 
     @Override
@@ -77,7 +79,7 @@ public class HadronioProvider extends SelectorProvider {
         LOGGER.info("Creating new UcxSocketChannel");
 
         final UcxSocketChannel socketChannel = provider.createSocketChannel();
-        return new HadronioSocketChannel(this, socketChannel, provider.getWorker(), configuration);
+        return new HadronioSocketChannel(this, socketChannel, provider.getWorker());
     }
 
     public static void printBanner() {
@@ -93,5 +95,11 @@ public class HadronioProvider extends SelectorProvider {
         System.out.print("\n");
         System.out.printf(banner, BuildConfig.VERSION, BuildConfig.BUILD_DATE, BuildConfig.GIT_BRANCH, BuildConfig.GIT_COMMIT);
         System.out.print("\n\n");
+    }
+
+    @Override
+    public void close() throws IOException {
+        workerPollThread.close();
+        provider.close();
     }
 }

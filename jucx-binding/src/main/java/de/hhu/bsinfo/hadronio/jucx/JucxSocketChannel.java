@@ -23,7 +23,7 @@ public class JucxSocketChannel implements UcxSocketChannel {
     private org.openucx.jucx.UcxCallback sendCallback;
     private org.openucx.jucx.UcxCallback receiveCallback;
 
-    private boolean connected = false;
+    private volatile boolean connected = false;
 
     JucxSocketChannel(final JucxWorker worker) {
         this.worker = worker;

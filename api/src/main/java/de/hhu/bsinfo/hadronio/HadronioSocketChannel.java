@@ -39,11 +39,10 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
 
     private final UcxSocketChannel socketChannel;
     private final UcxWorker worker;
+    private final Configuration configuration;
 
     private final RingBuffer sendBuffer;
     private final RingBuffer receiveBuffer;
-    private final int bufferSliceLength;
-    private final int flushIntervalSize;
 
     private final AtomicBuffer flushBuffer = new UnsafeBuffer(ByteBuffer.allocateDirect(8));
     private final AtomicBoolean isFlushing = new AtomicBoolean();
@@ -58,15 +57,14 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
     private boolean channelClosed = false;
     private int readyOps;
 
-    public HadronioSocketChannel(final SelectorProvider provider, final UcxSocketChannel socketChannel, final UcxWorker worker, final Configuration configuration) {
+    public HadronioSocketChannel(final SelectorProvider provider, final UcxSocketChannel socketChannel, final UcxWorker worker) {
         super(provider);
 
         this.socketChannel = socketChannel;
         this.worker = worker;
+        configuration = Configuration.getInstance();
         sendBuffer = new RingBuffer(configuration.getSendBufferLength());
         receiveBuffer = new RingBuffer(configuration.getReceiveBufferLength());
-        bufferSliceLength = configuration.getBufferSliceLength();
-        flushIntervalSize = configuration.getFlushIntervalSize();
 
         if (socketChannel.isConnected()) {
             onConnection(true);
@@ -332,7 +330,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
             int written = 0;
 
             do {
-                final int length = Math.min(Math.min(buffer.remaining() + HEADER_LENGTH, sendBuffer.maxMessageLength()), bufferSliceLength);
+                final int length = Math.min(Math.min(buffer.remaining() + HEADER_LENGTH, sendBuffer.maxMessageLength()), configuration.getBufferSliceLength());
                 if (length <= HEADER_LENGTH) {
                     LOGGER.debug("Unable to claim space in the send buffer (Error: [{}])", INSUFFICIENT_CAPACITY);
                     if (isBlocking()) {
@@ -364,10 +362,11 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
 
                 sendBuffer.commitWrite(index);
 
-                final boolean completed = socketChannel.sendTaggedMessage(sendBuffer.memoryAddress() + index, length, MESSAGE_TAG, true, isBlocking() && !buffer.hasRemaining());
+                final boolean blocking = !configuration.useWorkerPollThread() && isBlocking() && !buffer.hasRemaining();
+                final boolean completed = socketChannel.sendTaggedMessage(sendBuffer.memoryAddress() + index, length, MESSAGE_TAG, true, blocking);
                 LOGGER.debug("Send request completed instantly: [{}]", completed);
 
-                if (++sendCounter % flushIntervalSize == 0 && !isBlocking()) {
+                if (!isBlocking() && ++sendCounter % configuration.getFlushIntervalSize() == 0) {
                     flush();
                 }
 
@@ -423,6 +422,10 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
 
     @Override
     protected void implConfigureBlocking(final boolean blocking) throws IOException {
+        if (!blocking && Configuration.getInstance().useWorkerPollThread()) {
+            throw new IllegalArgumentException("Non-blocking socket channels are not supported when using the worker poll thread!");
+        }
+
         LOGGER.info("Socket channel is now configured to be [{}]", blocking ? "BLOCKING" : "NON-BLOCKING");
     }
 
@@ -460,7 +463,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
     public void onConnection(final boolean success) {
         if (success) {
             socketChannel.setSendCallback(new SendCallback(this, sendBuffer));
-            socketChannel.setReceiveCallback(new ReceiveCallback(this, readableMessages, isFlushing, flushIntervalSize));
+            socketChannel.setReceiveCallback(new ReceiveCallback(this, readableMessages, isFlushing, configuration.getFlushIntervalSize()));
 
             try {
                 fillReceiveBuffer();
@@ -477,16 +480,16 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
     }
 
     private void fillReceiveBuffer() throws IOException {
-        int index = receiveBuffer.tryClaim(bufferSliceLength);
+        int index = receiveBuffer.tryClaim(configuration.getBufferSliceLength());
 
         while (index >= 0) {
-            LOGGER.debug("Claimed part of the receive buffer (Index: [{}], Length: [{}])", index, bufferSliceLength);
+            LOGGER.debug("Claimed part of the receive buffer (Index: [{}], Length: [{}])", index, configuration.getBufferSliceLength());
 
             receiveBuffer.commitWrite(index);
-            final boolean completed = socketChannel.receiveTaggedMessage(receiveBuffer.memoryAddress() + index, bufferSliceLength, MESSAGE_TAG, TAG_MASK, true, false);
+            final boolean completed = socketChannel.receiveTaggedMessage(receiveBuffer.memoryAddress() + index, configuration.getBufferSliceLength(), MESSAGE_TAG, TAG_MASK, true, false);
             LOGGER.debug("Receive request completed instantly: [{}]", completed);
 
-            index = receiveBuffer.tryClaim(bufferSliceLength);
+            index = receiveBuffer.tryClaim(configuration.getBufferSliceLength());
         }
     }
 

@@ -28,11 +28,11 @@ public class HadronioServerSocketChannel extends ServerSocketChannel implements 
     private boolean channelClosed = false;
     private int readyOps;
 
-    public HadronioServerSocketChannel(final SelectorProvider provider, final UcxServerSocketChannel serverSocketChannel, final UcxWorker worker, final Configuration configuration) {
+    public HadronioServerSocketChannel(final SelectorProvider provider, final UcxServerSocketChannel serverSocketChannel, final UcxWorker worker) {
         super(provider);
         this.serverSocketChannel = serverSocketChannel;
         this.worker = worker;
-        this.configuration = configuration;
+        configuration = Configuration.getInstance();
     }
 
     @Override
@@ -100,7 +100,7 @@ public class HadronioServerSocketChannel extends ServerSocketChannel implements 
         }
 
         final UcxSocketChannel socketChannel = serverSocketChannel.accept();
-        return socketChannel == null ? null : new HadronioSocketChannel(provider(), socketChannel, worker, configuration);
+        return socketChannel == null ? null : new HadronioSocketChannel(provider(), socketChannel, worker);
     }
 
     @Override

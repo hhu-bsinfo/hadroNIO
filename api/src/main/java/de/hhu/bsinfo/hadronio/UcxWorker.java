@@ -12,6 +12,10 @@ public interface UcxWorker extends Closeable {
     void interrupt();
 
     default boolean poll(final boolean blocking) throws IOException {
+        if (Configuration.getInstance().useWorkerPollThread()) {
+            return true;
+        }
+
         boolean eventsPolled = progress();
         if (blocking && !eventsPolled) {
             waitForEvents();

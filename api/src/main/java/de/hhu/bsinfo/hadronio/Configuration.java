@@ -4,6 +4,8 @@ import org.agrona.BitUtil;
 
 class Configuration {
 
+    private static final Configuration instance = getInstance();
+
     private static final int MIN_SEND_BUFFER_LENGTH = 128;
     private static final int MIN_RECEIVE_BUFFER_LENGTH = 128;
     private static final int MIN_BUFFER_SLICE_LENGTH = 32;
@@ -13,23 +15,30 @@ class Configuration {
     private static final int DEFAULT_RECEIVE_BUFFER_LENGTH = 4 * 1024 * 1024;
     private static final int DEFAULT_BUFFER_SLICE_LENGTH = 32 * 1024;
     private static final int DEFAULT_FLUSH_INTERVAL_SIZE = 1024;
+    private static final boolean DEFAULT_USE_WORKER_POLL_THREAD = false;
     private static final String DEFAULT_PROVIDER_CLASS = "de.hhu.bsinfo.hadronio.jucx.JucxProvider";
 
     private final int sendBufferLength;
     private final int receiveBufferLength;
     private final int bufferSliceLength;
     private final int flushIntervalSize;
+    private final boolean useWorkerPollThread;
     private final String providerClass;
 
-    public static Configuration getInstance() throws IllegalArgumentException {
+    static Configuration getInstance() throws IllegalArgumentException {
+        if (instance != null) {
+            return instance;
+        }
+
         final int sendBufferLength = Integer.parseInt(System.getProperty("de.hhu.bsinfo.hadronio.Configuration.SEND_BUFFER_LENGTH", String.valueOf(DEFAULT_SEND_BUFFER_LENGTH)));
         final int receiveBufferLength = Integer.parseInt(System.getProperty("de.hhu.bsinfo.hadronio.Configuration.RECEIVE_BUFFER_LENGTH", String.valueOf(DEFAULT_RECEIVE_BUFFER_LENGTH)));
         final int bufferSliceLength = Integer.parseInt(System.getProperty("de.hhu.bsinfo.hadronio.Configuration.BUFFER_SLICE_LENGTH", String.valueOf(DEFAULT_BUFFER_SLICE_LENGTH)));
         final int flushIntervalSize = Integer.parseInt(System.getProperty("de.hhu.bsinfo.hadronio.Configuration.FLUSH_INTERVAL_SIZE", String.valueOf(DEFAULT_FLUSH_INTERVAL_SIZE)));
+        final boolean useWorkerPollThread = Boolean.parseBoolean(System.getProperty("de.hhu.bsinfo.hadronio.Configuration.USE_WORKER_POLL_THREAD", String.valueOf(DEFAULT_USE_WORKER_POLL_THREAD)));
         final String providerClass = System.getProperty("de.hhu.bsinfo.hadronio.Configuration.PROVIDER_CLASS", DEFAULT_PROVIDER_CLASS);
 
         checkConfiguration(sendBufferLength, receiveBufferLength, bufferSliceLength, flushIntervalSize, providerClass);
-        return new Configuration(sendBufferLength, receiveBufferLength, bufferSliceLength + HadronioSocketChannel.HEADER_LENGTH, flushIntervalSize, providerClass);
+        return new Configuration(sendBufferLength, receiveBufferLength, bufferSliceLength + HadronioSocketChannel.HEADER_LENGTH, flushIntervalSize, useWorkerPollThread, providerClass);
     }
 
     private static void checkConfiguration(final int sendBufferLength, final int receiveBufferLength, final int bufferSliceLength, final int flushIntervalSize, final String providerClass) throws IllegalArgumentException {
@@ -68,13 +77,20 @@ class Configuration {
         if (receiveBufferLength < 2 * bufferSliceLength) {
             throw new IllegalArgumentException("SEND_BUFFER_LENGTH must be a at least twice as high as RECEIVE_BUFFER_LENGTH!");
         }
+
+        try {
+            Class.forName(providerClass);
+        } catch (ClassNotFoundException e) {
+            throw new IllegalArgumentException("Class '" + providerClass + "' does not exist!");
+        }
     }
 
-    private Configuration(final int sendBufferLength, final int receiveBufferLength, final int bufferSliceLength, final int flushIntervalSize, final String providerClass) {
+    private Configuration(final int sendBufferLength, final int receiveBufferLength, final int bufferSliceLength, final int flushIntervalSize, final boolean useWorkerPollThread, final String providerClass) {
         this.sendBufferLength = sendBufferLength;
         this.receiveBufferLength = receiveBufferLength;
         this.bufferSliceLength = bufferSliceLength;
         this.flushIntervalSize = flushIntervalSize;
+        this.useWorkerPollThread = useWorkerPollThread;
         this.providerClass = providerClass;
     }
 
@@ -94,6 +110,10 @@ class Configuration {
         return flushIntervalSize;
     }
 
+    boolean useWorkerPollThread() {
+        return useWorkerPollThread;
+    }
+
     String getProviderClass() {
         return providerClass;
     }
@@ -105,6 +125,7 @@ class Configuration {
                 ",receiveBufferSize=" + receiveBufferLength +
                 ",bufferSliceLength=" + bufferSliceLength +
                 ",flushIntervalSize=" + flushIntervalSize +
+                ",useWorkerPollThread=" + useWorkerPollThread +
                 ",providerClass=" + providerClass +
                 ")";
     }
