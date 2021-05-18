@@ -117,32 +117,42 @@ class HadronioSelector extends AbstractSelector {
         synchronized (this) {
             synchronized (keys) {
                 synchronized (selectedKeys) {
-                    pollWorker(blocking, timeout);
+                    pollWorker(false, 0);
 
                     int ret = 0;
-                    synchronized (cancelledKeys()) {
-                        if (!cancelledKeys().isEmpty()) {
-                            keys.removeAll(cancelledKeys());
-                            selectedKeys.removeAll(cancelledKeys());
-                            cancelledKeys().clear();
+                    do {
+                        synchronized (cancelledKeys()) {
+                            if (!cancelledKeys().isEmpty()) {
+                                keys.removeAll(cancelledKeys());
+                                selectedKeys.removeAll(cancelledKeys());
+                                cancelledKeys().clear();
+                            }
                         }
-                    }
 
-                    for (SelectionKey key : Collections.unmodifiableSet(keys)) {
-                        ((HadronioSelectableChannel) key.channel()).select();
+                        for (SelectionKey key : Collections.unmodifiableSet(keys)) {
+                            ((HadronioSelectableChannel) key.channel()).select();
 
-                        if (selectKey((HadronioSelectionKey) key)) {
-                            ret++;
+                            if (selectKey((HadronioSelectionKey) key)) {
+                                ret++;
+                            }
                         }
-                    }
 
-                    synchronized (cancelledKeys()) {
-                        if (!cancelledKeys().isEmpty()) {
-                            keys.removeAll(cancelledKeys());
-                            selectedKeys.removeAll(cancelledKeys());
-                            cancelledKeys().clear();
+                        synchronized (cancelledKeys()) {
+                            if (!cancelledKeys().isEmpty()) {
+                                keys.removeAll(cancelledKeys());
+                                selectedKeys.removeAll(cancelledKeys());
+                                cancelledKeys().clear();
+                            }
                         }
-                    }
+
+                        if (blocking && keys.size() > 0 && selectedKeys.size() == 0) {
+                            boolean eventsPolled = pollWorker(true, timeout);
+                            if (!eventsPolled) {
+                                // Worker has been interrupted by wakeup()
+                                break;
+                            }
+                        }
+                    } while (blocking && keys.size() > 0 && selectedKeys.size() == 0);
 
                     return ret;
                 }

@@ -173,7 +173,7 @@ public class LatencyBenchmark implements Runnable {
 
             handler.reset();
             while (!handler.isFinished()) {
-                selector.selectNow();
+                selector.select();
 
                 for (final SelectionKey currentKey : selector.selectedKeys()) {
                     ((Handler) currentKey.attachment()).run();

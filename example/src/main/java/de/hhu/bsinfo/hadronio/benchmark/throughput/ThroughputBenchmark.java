@@ -156,7 +156,7 @@ public class ThroughputBenchmark implements Runnable {
         final long startTime = System.nanoTime();
 
         while (!selector.keys().isEmpty()) {
-            selector.selectNow();
+            selector.select();
 
             for (final SelectionKey key : selector.selectedKeys()) {
                 ((Runnable) key.attachment()).run();

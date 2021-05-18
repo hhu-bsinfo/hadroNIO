@@ -122,7 +122,7 @@ public class CounterDemo implements Runnable {
         }));
 
         while(isRunning && !selector.keys().isEmpty()) {
-            selector.selectNow();
+            selector.select();
 
             for (final SelectionKey key : selector.selectedKeys()) {
                 final Runnable runnable = (Runnable) key.attachment();
