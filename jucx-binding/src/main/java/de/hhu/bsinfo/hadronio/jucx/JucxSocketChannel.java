@@ -10,7 +10,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 
-public class JucxSocketChannel extends JucxSelectableChannel implements UcxSocketChannel {
+public class JucxSocketChannel implements UcxSocketChannel {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(JucxSocketChannel.class);
 
@@ -18,6 +18,7 @@ public class JucxSocketChannel extends JucxSelectableChannel implements UcxSocke
     static final long CONNECTION_TAG = 0;
     static final long TAG_MASK = 0xffffffffffffffffL;
 
+    private final JucxWorker worker;
     private UcpEndpoint endpoint;
     private org.openucx.jucx.UcxCallback sendCallback;
     private org.openucx.jucx.UcxCallback receiveCallback;
@@ -25,11 +26,11 @@ public class JucxSocketChannel extends JucxSelectableChannel implements UcxSocke
     private boolean connected = false;
 
     JucxSocketChannel(final JucxWorker worker) {
-        super(worker);
+        this.worker = worker;
     }
 
     JucxSocketChannel(final JucxWorker worker, final UcpConnectionRequest connectionRequest) throws IOException {
-        super(worker);
+        this.worker = worker;
         endpoint = worker.getWorker().newEndpoint(new UcpEndpointParams().setConnectionRequest(connectionRequest).setPeerErrorHandlingMode());
         LOGGER.info("Endpoint created: [{}]", endpoint);
 
@@ -57,7 +58,7 @@ public class JucxSocketChannel extends JucxSelectableChannel implements UcxSocke
     @Override
     public void connect(final InetSocketAddress remoteAddress, final UcxCallback callback) {
         final UcpEndpointParams endpointParams = new UcpEndpointParams().setSocketAddress(remoteAddress).setPeerErrorHandlingMode();
-        endpoint = getWorker().getWorker().newEndpoint(endpointParams);
+        endpoint = worker.getWorker().newEndpoint(endpointParams);
 
         LOGGER.info("Endpoint created: [{}]", endpoint);
         establishConnection(callback);
@@ -74,7 +75,7 @@ public class JucxSocketChannel extends JucxSelectableChannel implements UcxSocke
 
         LOGGER.info("Exchanging small message to establish connection");
         endpoint.sendTaggedNonBlocking(sendBuffer, CONNECTION_TAG, connectionCallback);
-        getWorker().getWorker().recvTaggedNonBlocking(receiveBuffer, CONNECTION_TAG, TAG_MASK, connectionCallback);
+        worker.getWorker().recvTaggedNonBlocking(receiveBuffer, CONNECTION_TAG, TAG_MASK, connectionCallback);
     }
 
     @Override
@@ -82,7 +83,7 @@ public class JucxSocketChannel extends JucxSelectableChannel implements UcxSocke
         final UcpRequest request = endpoint.sendTaggedNonBlocking(address, size, tag, useCallback ? sendCallback : null);
         while (blocking && !request.isCompleted()) {
             try {
-                getWorker().getWorker().progressRequest(request);
+                worker.getWorker().progressRequest(request);
             } catch (Exception e) {
                 throw new IOException(e);
             }
@@ -93,10 +94,10 @@ public class JucxSocketChannel extends JucxSelectableChannel implements UcxSocke
 
     @Override
     public boolean receiveTaggedMessage(final long address, final long size, final long tag, final long tagMask, final boolean useCallback, final boolean blocking) throws IOException {
-        final UcpRequest request = getWorker().getWorker().recvTaggedNonBlocking(address, size, tag, tagMask, useCallback ? receiveCallback : null);
+        final UcpRequest request = worker.getWorker().recvTaggedNonBlocking(address, size, tag, tagMask, useCallback ? receiveCallback : null);
         while (blocking && !request.isCompleted()) {
             try {
-                getWorker().getWorker().progressRequest(request);
+                worker.getWorker().progressRequest(request);
             } catch (Exception e) {
                 throw new IOException(e);
             }

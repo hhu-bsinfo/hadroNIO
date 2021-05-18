@@ -21,15 +21,17 @@ public class HadronioServerSocketChannel extends ServerSocketChannel implements 
     private static final int DEFAULT_SERVER_PORT = 2998;
 
     private final UcxServerSocketChannel serverSocketChannel;
+    private final UcxWorker worker;
     private final Configuration configuration;
 
     private InetSocketAddress localAddress;
     private boolean channelClosed = false;
     private int readyOps;
 
-    public HadronioServerSocketChannel(final SelectorProvider provider, final UcxServerSocketChannel serverSocketChannel, final Configuration configuration) {
+    public HadronioServerSocketChannel(final SelectorProvider provider, final UcxServerSocketChannel serverSocketChannel, final UcxWorker worker, final Configuration configuration) {
         super(provider);
         this.serverSocketChannel = serverSocketChannel;
+        this.worker = worker;
         this.configuration = configuration;
     }
 
@@ -94,11 +96,11 @@ public class HadronioServerSocketChannel extends ServerSocketChannel implements 
         }
 
         while (isBlocking() && !serverSocketChannel.hasPendingConnections()) {
-            serverSocketChannel.pollWorker(true);
+            worker.poll(true);
         }
 
         final UcxSocketChannel socketChannel = serverSocketChannel.accept();
-        return socketChannel == null ? null : new HadronioSocketChannel(provider(), socketChannel, configuration);
+        return socketChannel == null ? null : new HadronioSocketChannel(provider(), socketChannel, worker, configuration);
     }
 
     @Override

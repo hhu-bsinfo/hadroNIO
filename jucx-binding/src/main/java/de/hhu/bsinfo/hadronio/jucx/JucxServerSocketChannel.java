@@ -11,15 +11,16 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.Stack;
 
-public class JucxServerSocketChannel extends JucxSelectableChannel implements UcxServerSocketChannel {
+public class JucxServerSocketChannel implements UcxServerSocketChannel {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(JucxServerSocketChannel.class);
 
+    private final JucxWorker worker;
     private final Stack<UcpConnectionRequest> pendingConnections = new Stack<>();
     private UcpListener listener;
 
     JucxServerSocketChannel(final JucxWorker worker) {
-        super(worker);
+        this.worker = worker;
     }
 
     @Override
@@ -36,7 +37,7 @@ public class JucxServerSocketChannel extends JucxSelectableChannel implements Uc
                 });
 
         try {
-            listener = getWorker().getWorker().newListener(listenerParams);
+            listener = worker.getWorker().newListener(listenerParams);
         } catch (UcxException e) {
             throw new IOException("Failed to bind server socket channel to " + localAddress + "!", e);
         }
@@ -51,7 +52,7 @@ public class JucxServerSocketChannel extends JucxSelectableChannel implements Uc
         }
 
         LOGGER.info("Creating new UcxSocketChannel");
-        final UcxSocketChannel socket = new JucxSocketChannel(getWorker(), pendingConnections.pop());
+        final UcxSocketChannel socket = new JucxSocketChannel(worker, pendingConnections.pop());
         LOGGER.info("Accepted incoming connection");
 
         return socket;

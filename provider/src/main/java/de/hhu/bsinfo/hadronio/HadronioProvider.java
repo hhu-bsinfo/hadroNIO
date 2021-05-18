@@ -69,7 +69,7 @@ public class HadronioProvider extends SelectorProvider {
         LOGGER.info("Creating new UcxServerSocketChannel");
 
         final UcxServerSocketChannel serverSocketChannel = provider.createServerSocketChannel();
-        return new HadronioServerSocketChannel(this, serverSocketChannel, configuration);
+        return new HadronioServerSocketChannel(this, serverSocketChannel, provider.getWorker(), configuration);
     }
 
     @Override
@@ -77,7 +77,7 @@ public class HadronioProvider extends SelectorProvider {
         LOGGER.info("Creating new UcxSocketChannel");
 
         final UcxSocketChannel socketChannel = provider.createSocketChannel();
-        return new HadronioSocketChannel(this, socketChannel, configuration);
+        return new HadronioSocketChannel(this, socketChannel, provider.getWorker(), configuration);
     }
 
     public static void printBanner() {

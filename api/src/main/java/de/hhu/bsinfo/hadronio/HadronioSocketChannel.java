@@ -38,6 +38,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
     static final int HEADER_OFFSET_MESSAGE_DATA = Integer.BYTES * 2;
 
     private final UcxSocketChannel socketChannel;
+    private final UcxWorker worker;
 
     private final RingBuffer sendBuffer;
     private final RingBuffer receiveBuffer;
@@ -57,14 +58,15 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
     private boolean channelClosed = false;
     private int readyOps;
 
-    public HadronioSocketChannel(final SelectorProvider provider, final UcxSocketChannel socketChannel, final Configuration configuration) {
+    public HadronioSocketChannel(final SelectorProvider provider, final UcxSocketChannel socketChannel, final UcxWorker worker, final Configuration configuration) {
         super(provider);
 
         this.socketChannel = socketChannel;
+        this.worker = worker;
         sendBuffer = new RingBuffer(configuration.getSendBufferLength());
         receiveBuffer = new RingBuffer(configuration.getReceiveBufferLength());
-        this.bufferSliceLength = configuration.getBufferSliceLength();
-        this.flushIntervalSize = configuration.getFlushIntervalSize();
+        bufferSliceLength = configuration.getBufferSliceLength();
+        flushIntervalSize = configuration.getFlushIntervalSize();
 
         if (socketChannel.isConnected()) {
             onConnection(true);
@@ -195,7 +197,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
 
         if (isBlocking()) {
             while (!socketChannel.isConnected()) {
-                socketChannel.pollWorker(true);
+                worker.poll(true);
             }
         }
 
@@ -237,7 +239,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
             if (isBlocking()) {
                 while (readableMessages.get() <= 0) {
                     fillReceiveBuffer();
-                    socketChannel.pollWorker(false);
+                    worker.poll(false);
                 }
             }
 
@@ -334,7 +336,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
                 if (length <= HEADER_LENGTH) {
                     LOGGER.debug("Unable to claim space in the send buffer (Error: [{}])", INSUFFICIENT_CAPACITY);
                     if (isBlocking()) {
-                        socketChannel.pollWorker(true);
+                        worker.poll(true);
                         continue;
                     }
                     return written;
@@ -345,7 +347,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
                 if (index < 0) {
                     LOGGER.debug("Unable to claim space in the send buffer (Error: [{}])", index);
                     if (isBlocking()) {
-                        socketChannel.pollWorker(true);
+                        worker.poll(true);
                         continue;
                     }
                     return written;
