@@ -122,7 +122,12 @@ public class Handler implements Runnable {
 
         if (counter != receiveCounter + 1) {
             LOGGER.warn("Counter jump from [{}] to [{}] detected!", receiveCounter, counter);
-            System.exit(1);
+            key.cancel();
+            try {
+                socket.close();
+            } catch (IOException e) {
+                LOGGER.error("Failed to close socket channel", e);
+            }
         }
 
         receiveCounter = counter;
