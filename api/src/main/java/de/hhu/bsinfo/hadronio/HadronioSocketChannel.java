@@ -25,9 +25,10 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
 
     private static final Logger LOGGER = LoggerFactory.getLogger(HadronioSocketChannel.class);
 
-    static final long MESSAGE_TAG = 1;
-    static final long FLUSH_TAG = 2;
-    static final long TAG_MASK = 0xffffffffffffffffL;
+    static final long TAG_TYPE_MESSAGE = 0x0000000100000000L;
+    static final long TAG_TYPE_FLUSH = 0x0000000200000000L;
+    static final long TAG_MASK_TARGET = 0x00000000ffffffffL;
+    static final long TAG_MASK_TYPE = 0xffffffff00000000L;
 
     static final long FLUSH_ANSWER = 0xDEADBEEFDEAFBEEFL;
 
@@ -43,10 +44,12 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
     private final RingBuffer sendBuffer;
     private final RingBuffer receiveBuffer;
 
-    private final AtomicBuffer flushBuffer = new UnsafeBuffer(ByteBuffer.allocateDirect(8));
+    private final AtomicBuffer flushBuffer = new UnsafeBuffer(ByteBuffer.allocateDirect(Long.BYTES));
     private final AtomicBoolean isFlushing = new AtomicBoolean();
     private final AtomicInteger readableMessages = new AtomicInteger();
     private int sendCounter;
+    private long localTag;
+    private long remoteTag;
 
     private boolean connectionPending = false;
     private boolean connectionFailed = false;
@@ -64,10 +67,6 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
         configuration = Configuration.getInstance();
         sendBuffer = new RingBuffer(configuration.getSendBufferLength());
         receiveBuffer = new RingBuffer(configuration.getReceiveBufferLength());
-
-        if (socketChannel.isConnected()) {
-            onConnection(true);
-        }
     }
 
     @Override
@@ -361,11 +360,12 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
 
                 sendBuffer.commitWrite(index);
 
+                final long tag = remoteTag | TAG_TYPE_MESSAGE;
                 final boolean blocking = !configuration.useWorkerPollThread() && isBlocking() && !buffer.hasRemaining();
-                final boolean completed = socketChannel.sendTaggedMessage(sendBuffer.memoryAddress() + index, length, MESSAGE_TAG, true, blocking);
+                final boolean completed = socketChannel.sendTaggedMessage(sendBuffer.memoryAddress() + index, length, tag, true, blocking);
                 LOGGER.debug("Send request completed instantly: [{}]", completed);
 
-                if (!isBlocking() && ++sendCounter % configuration.getFlushIntervalSize() == 0) {
+                if (++sendCounter % configuration.getFlushIntervalSize() == 0) {
                     flush();
                 }
 
@@ -454,15 +454,20 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
     }
 
     private void flush() throws IOException {
+        final long tag = localTag | TAG_TYPE_FLUSH;
         isFlushing.set(true);
         flushBuffer.putLong(0, 0);
-        socketChannel.receiveTaggedMessage(flushBuffer.addressOffset(), flushBuffer.capacity(), FLUSH_TAG, TAG_MASK,true, false);
+        socketChannel.receiveTaggedMessage(flushBuffer.addressOffset(), flushBuffer.capacity(), tag, TAG_MASK_TARGET | TAG_MASK_TYPE,true, false);
     }
 
-    public void onConnection(final boolean success) {
+    public void onConnection(final boolean success, long localTag, long remoteTag) {
         if (success) {
+            this.localTag = localTag;
+            this.remoteTag = remoteTag;
             socketChannel.setSendCallback(new SendCallback(this, sendBuffer));
             socketChannel.setReceiveCallback(new ReceiveCallback(this, readableMessages, isFlushing, configuration.getFlushIntervalSize()));
+
+            LOGGER.info("SocketChannel connected successfully (localTag: [0x{}], remoteTag: [0x{}])", Long.toHexString(localTag), Long.toHexString(remoteTag));
 
             try {
                 fillReceiveBuffer();
@@ -479,17 +484,26 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
     }
 
     private void fillReceiveBuffer() throws IOException {
+        final long tag = localTag | TAG_TYPE_MESSAGE;
         int index = receiveBuffer.tryClaim(configuration.getBufferSliceLength());
 
         while (index >= 0) {
             LOGGER.debug("Claimed part of the receive buffer (Index: [{}], Length: [{}])", index, configuration.getBufferSliceLength());
 
             receiveBuffer.commitWrite(index);
-            final boolean completed = socketChannel.receiveTaggedMessage(receiveBuffer.memoryAddress() + index, configuration.getBufferSliceLength(), MESSAGE_TAG, TAG_MASK, true, false);
+            final boolean completed = socketChannel.receiveTaggedMessage(receiveBuffer.memoryAddress() + index, configuration.getBufferSliceLength(), tag, TAG_MASK_TARGET | TAG_MASK_TYPE, true, false);
             LOGGER.debug("Receive request completed instantly: [{}]", completed);
 
             index = receiveBuffer.tryClaim(configuration.getBufferSliceLength());
         }
+    }
+
+    long getLocalTag() {
+        return localTag;
+    }
+
+    long getRemoteTag() {
+        return remoteTag;
     }
 
     UcxSocketChannel getSocketChannelImplementation() {

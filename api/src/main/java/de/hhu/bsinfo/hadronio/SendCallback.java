@@ -20,7 +20,7 @@ class SendCallback implements UcxCallback {
     }
 
     @Override
-    public void onSuccess(long tag) {
+    public void onSuccess(long localTag, long remoteTag) {
         final AtomicBoolean padding = new AtomicBoolean(true);
         int readFromBuffer;
 

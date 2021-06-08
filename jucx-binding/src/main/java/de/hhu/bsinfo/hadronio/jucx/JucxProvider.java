@@ -13,7 +13,7 @@ public class JucxProvider implements UcxProvider {
     private final JucxWorker worker;
 
     public JucxProvider() {
-        context = new UcpContext(new UcpParams().requestWakeupFeature().requestTagFeature());
+        context = new UcpContext(new UcpParams().requestWakeupFeature().requestTagFeature().requestStreamFeature());
         worker = new JucxWorker(context.newWorker(new UcpWorkerParams().requestThreadSafety()));
     }
 

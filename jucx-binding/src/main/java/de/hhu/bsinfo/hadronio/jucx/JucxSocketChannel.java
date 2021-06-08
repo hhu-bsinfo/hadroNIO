@@ -2,6 +2,7 @@ package de.hhu.bsinfo.hadronio.jucx;
 
 import de.hhu.bsinfo.hadronio.UcxCallback;
 import de.hhu.bsinfo.hadronio.UcxSocketChannel;
+import de.hhu.bsinfo.hadronio.util.TagGenerator;
 import org.openucx.jucx.ucp.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,26 +16,25 @@ public class JucxSocketChannel implements UcxSocketChannel {
     private static final Logger LOGGER = LoggerFactory.getLogger(JucxSocketChannel.class);
 
     static final long CONNECTION_MAGIC_NUMBER = 0xC0FFEE00ADD1C7EDL;
-    static final long CONNECTION_TAG = 0;
-    static final long TAG_MASK = 0xffffffffffffffffL;
 
     private final JucxWorker worker;
     private UcpEndpoint endpoint;
     private org.openucx.jucx.UcxCallback sendCallback;
     private org.openucx.jucx.UcxCallback receiveCallback;
 
+    private long localTag;
     private volatile boolean connected = false;
 
     JucxSocketChannel(final JucxWorker worker) {
         this.worker = worker;
     }
 
-    JucxSocketChannel(final JucxWorker worker, final UcpConnectionRequest connectionRequest) throws IOException {
+    JucxSocketChannel(final JucxWorker worker, final UcpConnectionRequest connectionRequest, UcxCallback callback) throws IOException {
         this.worker = worker;
         endpoint = worker.getWorker().newEndpoint(new UcpEndpointParams().setConnectionRequest(connectionRequest).setPeerErrorHandlingMode());
         LOGGER.info("Endpoint created: [{}]", endpoint);
 
-        establishConnection(null);
+        establishConnection(callback);
         while (!connected) {
             worker.poll(true);
         }
@@ -42,12 +42,12 @@ public class JucxSocketChannel implements UcxSocketChannel {
 
     @Override
     public void setSendCallback(final UcxCallback sendCallback) {
-        this.sendCallback = new SendCallback(sendCallback);
+        this.sendCallback = new SendCallback(sendCallback, localTag);
     }
 
     @Override
     public void setReceiveCallback(final UcxCallback receiveCallback) {
-        this.receiveCallback = new ReceiveCallback(receiveCallback);
+        this.receiveCallback = new ReceiveCallback(receiveCallback, localTag);
     }
 
     @Override
@@ -65,17 +65,19 @@ public class JucxSocketChannel implements UcxSocketChannel {
     }
 
     private void establishConnection(final UcxCallback callback) {
-        final ByteBuffer sendBuffer = ByteBuffer.allocateDirect(8);
-        final ByteBuffer receiveBuffer = ByteBuffer.allocateDirect(8);
+        final ByteBuffer sendBuffer = ByteBuffer.allocateDirect(2 * Long.BYTES);
+        final ByteBuffer receiveBuffer = ByteBuffer.allocateDirect(2 * Long.BYTES);
 
+        final int localTag = TagGenerator.generateTag();
         sendBuffer.putLong(CONNECTION_MAGIC_NUMBER);
+        sendBuffer.putLong(localTag);
         sendBuffer.rewind();
 
-        final ConnectionCallback connectionCallback = new ConnectionCallback(this, receiveBuffer, callback);
+        final ConnectionCallback connectionCallback = new ConnectionCallback(this, receiveBuffer, callback, localTag);
 
         LOGGER.info("Exchanging small message to establish connection");
-        endpoint.sendTaggedNonBlocking(sendBuffer, CONNECTION_TAG, connectionCallback);
-        worker.getWorker().recvTaggedNonBlocking(receiveBuffer, CONNECTION_TAG, TAG_MASK, connectionCallback);
+        endpoint.sendStreamNonBlocking(sendBuffer, connectionCallback);
+        endpoint.recvStreamNonBlocking(receiveBuffer, 0, connectionCallback);
     }
 
     @Override

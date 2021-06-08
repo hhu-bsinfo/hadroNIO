@@ -28,22 +28,24 @@ class ReceiveCallback implements UcxCallback {
         this.isFlushing = isFlushing;
         this.flushIntervalSize = flushIntervalSize;
 
-        flushBuffer = new UnsafeBuffer(ByteBuffer.allocateDirect(8));
+        flushBuffer = new UnsafeBuffer(ByteBuffer.allocateDirect(Long.BYTES));
         flushBuffer.putLong(0, HadronioSocketChannel.FLUSH_ANSWER);
     }
 
     @Override
-    public void onSuccess(long tag) {
-        if (tag == HadronioSocketChannel.FLUSH_TAG) {
+    public void onSuccess(long localTag, long remoteTag) {
+        final long tagType = remoteTag & HadronioSocketChannel.TAG_MASK_TYPE;
+        if (tagType == HadronioSocketChannel.TAG_TYPE_FLUSH) {
             LOGGER.debug("Received flush answer");
             isFlushing.set(false);
             return;
         }
 
-        if (++receiveCounter % flushIntervalSize == 0 && !socket.isBlocking()) {
+        if (++receiveCounter % flushIntervalSize == 0) {
             try {
                 LOGGER.debug("Sending flush answer");
-                socket.getSocketChannelImplementation().sendTaggedMessage(flushBuffer.addressOffset(), flushBuffer.capacity(), HadronioSocketChannel.FLUSH_TAG, false, true);
+                final long tag = socket.getRemoteTag() | HadronioSocketChannel.TAG_TYPE_FLUSH;
+                socket.getSocketChannelImplementation().sendTaggedMessage(flushBuffer.addressOffset(), flushBuffer.capacity(), tag, false, true);
             } catch (IOException e) {
                 LOGGER.error("Failed to send flush message", e);
             }
@@ -55,7 +57,7 @@ class ReceiveCallback implements UcxCallback {
 
     @Override
     public void onError() {
-        LOGGER.error("Closing socket channel!");
+        LOGGER.error("Closing socket channel! {}", receiveCounter);
 
         try {
             socket.close();

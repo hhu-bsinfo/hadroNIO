@@ -18,11 +18,13 @@ public class ConnectionCallback extends org.openucx.jucx.UcxCallback {
     private final ByteBuffer receiveBuffer;
     private final UcxCallback callback;
     private final AtomicInteger successCounter = new AtomicInteger(0);
+    final long localTag;
 
-    ConnectionCallback(final JucxSocketChannel socket, final ByteBuffer receiveBuffer, final UcxCallback callback) {
+    ConnectionCallback(final JucxSocketChannel socket, final ByteBuffer receiveBuffer, final UcxCallback callback, final long localTag) {
         this.socket = socket;
         this.receiveBuffer = receiveBuffer;
-        this.callback = callback == null ? new UcxCallback() {} : callback;
+        this.callback = callback == null ? (tag, remoteTag) -> {} : callback;
+        this.localTag = localTag;
     }
 
     public void onSuccess(final UcpRequest request) {
@@ -32,12 +34,12 @@ public class ConnectionCallback extends org.openucx.jucx.UcxCallback {
 
             if (count == 2) {
                 final long magic = receiveBuffer.getLong();
+                final long remoteTag = receiveBuffer.getLong();
 
                 if (magic == CONNECTION_MAGIC_NUMBER) {
-                    LOGGER.info("Connection has been established successfully");
                     successCounter.set(0);
                     socket.onConnection(true);
-                    callback.onSuccess(0);
+                    callback.onSuccess(localTag, remoteTag);
                 } else {
                     LOGGER.error("Connection callback has been called, but magic number is wrong! Expected: [{}], Received: [{}] -> Discarding connection", Long.toHexString(CONNECTION_MAGIC_NUMBER), Long.toHexString(magic));
                     socket.onConnection(false);

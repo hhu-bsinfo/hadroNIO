@@ -8,7 +8,7 @@ public interface UcxServerSocketChannel extends Closeable {
 
     void bind(InetSocketAddress socketAddress, int backlog) throws IOException;
 
-    UcxSocketChannel accept() throws IOException;
+    UcxSocketChannel accept(UcxCallback callback) throws IOException;
 
     boolean hasPendingConnections();
 }

@@ -9,12 +9,12 @@ class ConnectionCallback implements UcxCallback {
     }
 
     @Override
-    public void onSuccess(long tag) {
-        socket.onConnection(true);
+    public void onSuccess(long localTag, long remoteTag) {
+        socket.onConnection(true, localTag, remoteTag);
     }
 
     @Override
     public void onError() {
-        socket.onConnection(false);
+        socket.onConnection(false, 0, 0);
     }
 }

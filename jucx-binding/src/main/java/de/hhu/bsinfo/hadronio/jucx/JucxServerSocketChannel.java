@@ -1,5 +1,6 @@
 package de.hhu.bsinfo.hadronio.jucx;
 
+import de.hhu.bsinfo.hadronio.UcxCallback;
 import de.hhu.bsinfo.hadronio.UcxServerSocketChannel;
 import de.hhu.bsinfo.hadronio.UcxSocketChannel;
 import org.openucx.jucx.UcxException;
@@ -46,13 +47,13 @@ public class JucxServerSocketChannel implements UcxServerSocketChannel {
     }
 
     @Override
-    public UcxSocketChannel accept() throws IOException {
+    public UcxSocketChannel accept(UcxCallback callback) throws IOException {
         if (pendingConnections.empty()) {
             return null;
         }
 
         LOGGER.info("Creating new UcxSocketChannel");
-        final UcxSocketChannel socket = new JucxSocketChannel(worker, pendingConnections.pop());
+        final UcxSocketChannel socket = new JucxSocketChannel(worker, pendingConnections.pop(), callback);
         LOGGER.info("Accepted incoming connection");
 
         return socket;

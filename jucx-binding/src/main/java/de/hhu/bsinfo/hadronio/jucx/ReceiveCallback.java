@@ -9,9 +9,11 @@ public class ReceiveCallback extends org.openucx.jucx.UcxCallback {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ReceiveCallback.class);
 
+    private final long localTag;
     private final UcxCallback callback;
 
-    public ReceiveCallback(final UcxCallback callback) {
+    public ReceiveCallback(final UcxCallback callback, final long localTag) {
+        this.localTag = localTag;
         this.callback = callback;
     }
 
@@ -19,7 +21,7 @@ public class ReceiveCallback extends org.openucx.jucx.UcxCallback {
     public void onSuccess(final UcpRequest request) {
         LOGGER.debug("ReceiveCallback called (Completed: [{}], Size: [{}])", request.isCompleted(), request.getRecvSize());
         if (request.isCompleted()) {
-            callback.onSuccess(request.getSenderTag());
+            callback.onSuccess(localTag, request.getSenderTag());
         }
     }
 

@@ -10,16 +10,18 @@ public class SendCallback extends org.openucx.jucx.UcxCallback {
     private static final Logger LOGGER = LoggerFactory.getLogger(SendCallback.class);
 
     private final UcxCallback callback;
+    private final long localTag;
 
-    public SendCallback(final UcxCallback callback) {
+    public SendCallback(final UcxCallback callback, final long localTag) {
         this.callback = callback;
+        this.localTag = localTag;
     }
 
     @Override
     public void onSuccess(final UcpRequest request) {
         LOGGER.debug("SendCallback called (Completed: [{}])", request.isCompleted());
         if (request.isCompleted()) {
-            callback.onSuccess(0);
+            callback.onSuccess(localTag, 0);
         }
     }
 

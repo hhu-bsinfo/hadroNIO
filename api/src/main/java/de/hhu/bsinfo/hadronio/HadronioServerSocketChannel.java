@@ -22,7 +22,6 @@ public class HadronioServerSocketChannel extends ServerSocketChannel implements 
 
     private final UcxServerSocketChannel serverSocketChannel;
     private final UcxWorker worker;
-    private final Configuration configuration;
 
     private InetSocketAddress localAddress;
     private boolean channelClosed = false;
@@ -32,7 +31,6 @@ public class HadronioServerSocketChannel extends ServerSocketChannel implements 
         super(provider);
         this.serverSocketChannel = serverSocketChannel;
         this.worker = worker;
-        configuration = Configuration.getInstance();
     }
 
     @Override
@@ -99,8 +97,18 @@ public class HadronioServerSocketChannel extends ServerSocketChannel implements 
             worker.poll(true);
         }
 
-        final UcxSocketChannel socketChannel = serverSocketChannel.accept();
-        return socketChannel == null ? null : new HadronioSocketChannel(provider(), socketChannel, worker);
+        final long[] tags = new long[2];
+
+        final UcxCallback connectionCallback = (localTag, remoteTag) -> {
+            tags[0] = localTag;
+            tags[1] = remoteTag;
+        };
+
+        final UcxSocketChannel socketChannel = serverSocketChannel.accept(connectionCallback);
+        final HadronioSocketChannel ret = new HadronioSocketChannel(provider(), socketChannel, worker);
+        ret.onConnection(true, tags[0], tags[1]);
+
+        return ret;
     }
 
     @Override
