@@ -1,6 +1,6 @@
 package de.hhu.bsinfo.hadronio.jucx;
 
-import de.hhu.bsinfo.hadronio.UcxCallback;
+import de.hhu.bsinfo.hadronio.UcxConnectionCallback;
 import de.hhu.bsinfo.hadronio.UcxServerSocketChannel;
 import de.hhu.bsinfo.hadronio.UcxSocketChannel;
 import org.openucx.jucx.UcxException;
@@ -47,7 +47,7 @@ public class JucxServerSocketChannel implements UcxServerSocketChannel {
     }
 
     @Override
-    public UcxSocketChannel accept(UcxCallback callback) throws IOException {
+    public UcxSocketChannel accept(UcxConnectionCallback callback) throws IOException {
         if (pendingConnections.empty()) {
             return null;
         }

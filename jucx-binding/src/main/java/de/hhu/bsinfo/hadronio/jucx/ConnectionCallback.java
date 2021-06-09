@@ -1,6 +1,6 @@
 package de.hhu.bsinfo.hadronio.jucx;
 
-import de.hhu.bsinfo.hadronio.UcxCallback;
+import de.hhu.bsinfo.hadronio.UcxConnectionCallback;
 import org.openucx.jucx.ucp.UcpRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,11 +16,11 @@ public class ConnectionCallback extends org.openucx.jucx.UcxCallback {
 
     private final JucxSocketChannel socket;
     private final ByteBuffer receiveBuffer;
-    private final UcxCallback callback;
+    private final UcxConnectionCallback callback;
     private final AtomicInteger successCounter = new AtomicInteger(0);
-    final long localTag;
+    private final long localTag;
 
-    ConnectionCallback(final JucxSocketChannel socket, final ByteBuffer receiveBuffer, final UcxCallback callback, final long localTag) {
+    ConnectionCallback(final JucxSocketChannel socket, final ByteBuffer receiveBuffer, final UcxConnectionCallback callback, final long localTag) {
         this.socket = socket;
         this.receiveBuffer = receiveBuffer;
         this.callback = callback == null ? (tag, remoteTag) -> {} : callback;

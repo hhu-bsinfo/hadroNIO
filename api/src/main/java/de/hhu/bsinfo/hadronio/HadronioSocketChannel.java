@@ -1,6 +1,7 @@
 package de.hhu.bsinfo.hadronio;
 
 import de.hhu.bsinfo.hadronio.util.RingBuffer;
+import de.hhu.bsinfo.hadronio.util.TagUtil;
 import org.agrona.concurrent.AtomicBuffer;
 import org.agrona.concurrent.UnsafeBuffer;
 import org.slf4j.Logger;
@@ -24,11 +25,6 @@ import static org.agrona.concurrent.ringbuffer.RingBuffer.INSUFFICIENT_CAPACITY;
 public class HadronioSocketChannel extends SocketChannel implements HadronioSelectableChannel {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(HadronioSocketChannel.class);
-
-    static final long TAG_TYPE_MESSAGE = 0x0000000100000000L;
-    static final long TAG_TYPE_FLUSH = 0x0000000200000000L;
-    static final long TAG_MASK_TARGET = 0x00000000ffffffffL;
-    static final long TAG_MASK_TYPE = 0xffffffff00000000L;
 
     static final long FLUSH_ANSWER = 0xDEADBEEFDEAFBEEFL;
 
@@ -360,7 +356,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
 
                 sendBuffer.commitWrite(index);
 
-                final long tag = remoteTag | TAG_TYPE_MESSAGE;
+                final long tag = TagUtil.setMessageType(remoteTag, TagUtil.MessageType.DEFAULT);
                 final boolean blocking = !configuration.useWorkerPollThread() && isBlocking() && !buffer.hasRemaining();
                 final boolean completed = socketChannel.sendTaggedMessage(sendBuffer.memoryAddress() + index, length, tag, true, blocking);
                 LOGGER.debug("Send request completed instantly: [{}]", completed);
@@ -454,10 +450,10 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
     }
 
     private void flush() throws IOException {
-        final long tag = localTag | TAG_TYPE_FLUSH;
+        final long tag = TagUtil.setMessageType(localTag, TagUtil.MessageType.FLUSH);
         isFlushing.set(true);
         flushBuffer.putLong(0, 0);
-        socketChannel.receiveTaggedMessage(flushBuffer.addressOffset(), flushBuffer.capacity(), tag, TAG_MASK_TARGET | TAG_MASK_TYPE,true, false);
+        socketChannel.receiveTaggedMessage(flushBuffer.addressOffset(), flushBuffer.capacity(), tag, TagUtil.TAG_MASK_FULL,true, false);
     }
 
     public void onConnection(final boolean success, long localTag, long remoteTag) {
@@ -484,14 +480,14 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
     }
 
     private void fillReceiveBuffer() throws IOException {
-        final long tag = localTag | TAG_TYPE_MESSAGE;
+        final long tag = TagUtil.setMessageType(localTag, TagUtil.MessageType.DEFAULT);
         int index = receiveBuffer.tryClaim(configuration.getBufferSliceLength());
 
         while (index >= 0) {
             LOGGER.debug("Claimed part of the receive buffer (Index: [{}], Length: [{}])", index, configuration.getBufferSliceLength());
 
             receiveBuffer.commitWrite(index);
-            final boolean completed = socketChannel.receiveTaggedMessage(receiveBuffer.memoryAddress() + index, configuration.getBufferSliceLength(), tag, TAG_MASK_TARGET | TAG_MASK_TYPE, true, false);
+            final boolean completed = socketChannel.receiveTaggedMessage(receiveBuffer.memoryAddress() + index, configuration.getBufferSliceLength(), tag, TagUtil.TAG_MASK_FULL, true, false);
             LOGGER.debug("Receive request completed instantly: [{}]", completed);
 
             index = receiveBuffer.tryClaim(configuration.getBufferSliceLength());

@@ -1,6 +1,6 @@
 package de.hhu.bsinfo.hadronio;
 
-public interface UcxCallback {
+public interface UcxConnectionCallback {
 
     void onSuccess(long localTag, long remoteTag);
 

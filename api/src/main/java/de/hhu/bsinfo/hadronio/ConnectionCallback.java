@@ -1,6 +1,6 @@
 package de.hhu.bsinfo.hadronio;
 
-class ConnectionCallback implements UcxCallback {
+class ConnectionCallback implements UcxConnectionCallback {
 
     private final HadronioSocketChannel socket;
 
@@ -15,6 +15,6 @@ class ConnectionCallback implements UcxCallback {
 
     @Override
     public void onError() {
-        socket.onConnection(false, 0, 0);
+        socket.onConnection(false, -1, -1);
     }
 }

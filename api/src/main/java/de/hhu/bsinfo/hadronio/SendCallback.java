@@ -1,13 +1,14 @@
 package de.hhu.bsinfo.hadronio;
 
 import de.hhu.bsinfo.hadronio.util.RingBuffer;
+import de.hhu.bsinfo.hadronio.util.TagUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-class SendCallback implements UcxCallback {
+class SendCallback implements UcxSendCallback {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SendCallback.class);
 
@@ -20,7 +21,8 @@ class SendCallback implements UcxCallback {
     }
 
     @Override
-    public void onSuccess(long localTag, long remoteTag) {
+    public void onSuccess() {
+        LOGGER.debug("hadroNIO SendCallback called");
         final AtomicBoolean padding = new AtomicBoolean(true);
         int readFromBuffer;
 

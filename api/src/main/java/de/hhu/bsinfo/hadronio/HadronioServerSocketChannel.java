@@ -99,7 +99,7 @@ public class HadronioServerSocketChannel extends ServerSocketChannel implements 
 
         final long[] tags = new long[2];
 
-        final UcxCallback connectionCallback = (localTag, remoteTag) -> {
+        final UcxConnectionCallback connectionCallback = (localTag, remoteTag) -> {
             tags[0] = localTag;
             tags[1] = remoteTag;
         };

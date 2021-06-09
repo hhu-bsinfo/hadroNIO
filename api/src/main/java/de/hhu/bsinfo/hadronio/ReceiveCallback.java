@@ -1,5 +1,6 @@
 package de.hhu.bsinfo.hadronio;
 
+import de.hhu.bsinfo.hadronio.util.TagUtil;
 import org.agrona.concurrent.AtomicBuffer;
 import org.agrona.concurrent.UnsafeBuffer;
 import org.slf4j.Logger;
@@ -10,7 +11,7 @@ import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
-class ReceiveCallback implements UcxCallback {
+class ReceiveCallback implements UcxReceiveCallback {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ReceiveCallback.class);
 
@@ -33,9 +34,12 @@ class ReceiveCallback implements UcxCallback {
     }
 
     @Override
-    public void onSuccess(long localTag, long remoteTag) {
-        final long tagType = remoteTag & HadronioSocketChannel.TAG_MASK_TYPE;
-        if (tagType == HadronioSocketChannel.TAG_TYPE_FLUSH) {
+    public void onSuccess(long tag) {
+        final long id = TagUtil.getTargetId(tag);
+        final TagUtil.MessageType messageType = TagUtil.getMessageType(tag);
+        LOGGER.debug("hadroNIO ReceiveCallback called (id: [0x{}], messageType: [{}])", Long.toHexString(id), messageType);
+
+        if (messageType == TagUtil.MessageType.FLUSH) {
             LOGGER.debug("Received flush answer");
             isFlushing.set(false);
             return;
@@ -44,8 +48,8 @@ class ReceiveCallback implements UcxCallback {
         if (++receiveCounter % flushIntervalSize == 0) {
             try {
                 LOGGER.debug("Sending flush answer");
-                final long tag = socket.getRemoteTag() | HadronioSocketChannel.TAG_TYPE_FLUSH;
-                socket.getSocketChannelImplementation().sendTaggedMessage(flushBuffer.addressOffset(), flushBuffer.capacity(), tag, false, true);
+                final long flushTag = TagUtil.setMessageType(socket.getRemoteTag(), TagUtil.MessageType.FLUSH);
+                socket.getSocketChannelImplementation().sendTaggedMessage(flushBuffer.addressOffset(), flushBuffer.capacity(), flushTag, false, true);
             } catch (IOException e) {
                 LOGGER.error("Failed to send flush message", e);
             }

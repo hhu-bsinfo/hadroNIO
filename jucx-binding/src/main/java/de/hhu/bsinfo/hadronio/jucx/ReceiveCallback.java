@@ -1,6 +1,7 @@
 package de.hhu.bsinfo.hadronio.jucx;
 
-import de.hhu.bsinfo.hadronio.UcxCallback;
+import de.hhu.bsinfo.hadronio.UcxReceiveCallback;
+import de.hhu.bsinfo.hadronio.util.TagUtil;
 import org.openucx.jucx.ucp.UcpRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -9,19 +10,17 @@ public class ReceiveCallback extends org.openucx.jucx.UcxCallback {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ReceiveCallback.class);
 
-    private final long localTag;
-    private final UcxCallback callback;
+    private final UcxReceiveCallback callback;
 
-    public ReceiveCallback(final UcxCallback callback, final long localTag) {
-        this.localTag = localTag;
+    public ReceiveCallback(final UcxReceiveCallback callback) {
         this.callback = callback;
     }
 
     @Override
     public void onSuccess(final UcpRequest request) {
-        LOGGER.debug("ReceiveCallback called (Completed: [{}], Size: [{}])", request.isCompleted(), request.getRecvSize());
+        LOGGER.debug("JUCX ReceiveCallback called (Completed: [{}], Size: [{}], Tag: [0x{}])", request.isCompleted(), request.getRecvSize(), Long.toHexString(request.getSenderTag()));
         if (request.isCompleted()) {
-            callback.onSuccess(localTag, request.getSenderTag());
+            callback.onSuccess(request.getSenderTag());
         }
     }
 
