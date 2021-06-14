@@ -1,5 +1,6 @@
 package de.hhu.bsinfo.hadronio;
 
+import de.hhu.bsinfo.hadronio.util.MessageUtil;
 import org.agrona.BitUtil;
 
 class Configuration {
@@ -38,7 +39,7 @@ class Configuration {
         final String providerClass = System.getProperty("de.hhu.bsinfo.hadronio.Configuration.PROVIDER_CLASS", DEFAULT_PROVIDER_CLASS);
 
         checkConfiguration(sendBufferLength, receiveBufferLength, bufferSliceLength, flushIntervalSize, providerClass);
-        return new Configuration(sendBufferLength, receiveBufferLength, bufferSliceLength + HadronioSocketChannel.HEADER_LENGTH, flushIntervalSize, useWorkerPollThread, providerClass);
+        return new Configuration(sendBufferLength, receiveBufferLength, bufferSliceLength + MessageUtil.HEADER_LENGTH, flushIntervalSize, useWorkerPollThread, providerClass);
     }
 
     private static void checkConfiguration(final int sendBufferLength, final int receiveBufferLength, final int bufferSliceLength, final int flushIntervalSize, final String providerClass) throws IllegalArgumentException {

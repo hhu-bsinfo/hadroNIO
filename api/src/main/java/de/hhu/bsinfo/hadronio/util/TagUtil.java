@@ -32,8 +32,9 @@ public class TagUtil {
     }
 
     public static final long TAG_MASK_FULL = 0xffffffffffffffffL;
-    public static final long TAG_MASK_TARGET_ID = 0x00ffffffffffffffL;
-    public static final long TAG_MASK_MESSAGE_TYPE = 0xff00000000000000L;
+
+    private static final long TAG_MASK_TARGET_ID = 0x00ffffffffffffffL;
+    private static final long TAG_MASK_MESSAGE_TYPE = 0xff00000000000000L;
 
     private static final PrimitiveIterator.OfLong tagIterator = new Random().longs(0, TAG_MASK_TARGET_ID).distinct().iterator();
 
@@ -43,7 +44,7 @@ public class TagUtil {
         return tagIterator.nextLong();
     }
 
-    public static long getTargetId(long tag) {
+    public static long getTargetId(final long tag) {
         return tag & TAG_MASK_TARGET_ID;
     }
 
@@ -51,11 +52,11 @@ public class TagUtil {
         return MessageType.fromByte((byte) ((tag & TAG_MASK_MESSAGE_TYPE) >> 56));
     }
 
-    public static long setTargetId(long tag, long targetId) {
+    public static long setTargetId(final long tag, final long targetId) {
         return (tag & ~TAG_MASK_TARGET_ID) | targetId;
     }
 
-    public static long setMessageType(long tag, MessageType messageType) {
+    public static long setMessageType(final long tag, final MessageType messageType) {
         return (tag & ~TAG_MASK_MESSAGE_TYPE) | ((long) messageType.value << 56);
     }
 }
