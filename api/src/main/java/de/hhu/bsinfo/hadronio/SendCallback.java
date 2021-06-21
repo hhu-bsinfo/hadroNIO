@@ -43,11 +43,13 @@ class SendCallback implements UcxSendCallback {
 
     @Override
     public void onError() {
-        LOGGER.error("Closing socket channel");
+        LOGGER.error("hadroNIO SendCallback error handler called (Closing socket channel)");
+
         try {
             socket.close();
         } catch (IOException e) {
-            LOGGER.error("Failed to close socket channel", e);
+            LOGGER.error("Failed to poll worker (Message: [{}])", e.getMessage());
+            LOGGER.debug("Stack trace:", e);
         }
     }
 }

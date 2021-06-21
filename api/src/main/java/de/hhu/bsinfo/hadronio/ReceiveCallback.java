@@ -51,7 +51,8 @@ class ReceiveCallback implements UcxReceiveCallback {
                 final long flushTag = TagUtil.setMessageType(socket.getRemoteTag(), TagUtil.MessageType.FLUSH);
                 socket.getSocketChannelImplementation().sendTaggedMessage(flushBuffer.addressOffset(), flushBuffer.capacity(), flushTag, false, true);
             } catch (IOException e) {
-                LOGGER.error("Failed to send flush message", e);
+                LOGGER.error("Failed to send flush message (Message: [{}])", e.getMessage());
+                LOGGER.debug("Stack trace:", e);
             }
         }
 
@@ -61,12 +62,13 @@ class ReceiveCallback implements UcxReceiveCallback {
 
     @Override
     public void onError() {
-        LOGGER.error("Closing socket channel! {}", receiveCounter);
+        LOGGER.error("hadroNIO ReceiveCallback error handler called (Closing socket channel)");
 
         try {
             socket.close();
         } catch (IOException e) {
-            LOGGER.error("Failed to close socket channel", e);
+            LOGGER.error("Failed to close socket channel (Message: [{}])", e.getMessage());
+            LOGGER.debug("Stack trace:", e);
         }
     }
 }

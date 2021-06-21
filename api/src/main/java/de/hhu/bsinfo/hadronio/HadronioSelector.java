@@ -165,7 +165,8 @@ class HadronioSelector extends AbstractSelector {
         try {
             return worker.poll(blocking);
         } catch (IOException e) {
-            LOGGER.error("Failed to poll worker", e);
+            LOGGER.error("Failed to poll worker (Message: [{}])", e.getMessage());
+            LOGGER.debug("Stack trace:", e);
         }
 
         return false;

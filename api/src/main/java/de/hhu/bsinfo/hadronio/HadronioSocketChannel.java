@@ -204,9 +204,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
             throw new ClosedChannelException();
         }
 
-        LOGGER.warn("Trying to get remote address, which is not supported");
-
-        return new InetSocketAddress(0);
+        throw new IOException("Trying to get remote address, which is not supported");
     }
 
     @Override
@@ -380,8 +378,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
             throw new ClosedChannelException();
         }
 
-        LOGGER.warn("Trying to get local address, which is not supported");
-        return new InetSocketAddress(0);
+        throw new IOException("Trying to get local address, which is not supported");
     }
 
     @Override
@@ -446,7 +443,8 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
             try {
                 fillReceiveBuffer();
             } catch (IOException e) {
-                LOGGER.error("Failed to fill receive buffer", e);
+                LOGGER.error("Failed to fill receive buffer (Message: [{}])", e.getMessage());
+                LOGGER.debug("Stack trace:", e);
             }
         } else {
             connectionFailed = true;
