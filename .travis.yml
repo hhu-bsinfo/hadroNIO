@@ -4,13 +4,18 @@ language: java
 
 stages:
   - name: build
+  - name: release
+    if: tag IS present
 
 jobs:
   include:
     - stage: build
       script:
-        - ./gradlew distZip
-        - ./gradlew provider:shadowJar
+        - ./gradlew build
+    - stage: release
+      script:
+        - ./gradlew provider:shadowJar provider:distZip
+        - ./gradlew publish -Dgpr.user=${GPR_USER} -Dgpr.token=${GPR_TOKEN} -Drelease=true
 
 before_deploy:
   - export LIB_JAR_FILE=$(ls build/provider/libs/*all.jar)
