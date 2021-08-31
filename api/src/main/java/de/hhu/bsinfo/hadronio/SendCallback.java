@@ -1,7 +1,6 @@
 package de.hhu.bsinfo.hadronio;
 
 import de.hhu.bsinfo.hadronio.util.RingBuffer;
-import de.hhu.bsinfo.hadronio.util.TagUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -1,6 +1,7 @@
 package de.hhu.bsinfo.hadronio.jucx;
 
 import de.hhu.bsinfo.hadronio.UcxConnectionCallback;
+import org.openucx.jucx.UcxCallback;
 import org.openucx.jucx.ucp.UcpRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,7 +11,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static de.hhu.bsinfo.hadronio.jucx.JucxSocketChannel.CONNECTION_MAGIC_NUMBER;
 
-public class ConnectionCallback extends org.openucx.jucx.UcxCallback {
+public class ConnectionCallback extends UcxCallback {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ConnectionCallback.class);
 

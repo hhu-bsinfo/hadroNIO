@@ -1,8 +1,9 @@
 plugins {
     id 'java-library'
+    id 'maven-publish'
     id 'de.fuerstenau.buildconfig' version '1.1.8'
-    id 'com.palantir.git-version' version '0.12.3'
-    id "com.github.johnrengelman.shadow" version "6.1.0"
+    id 'com.palantir.git-version' version '0.12.2'
+    id "com.github.johnrengelman.shadow" version "7.0.0"
 }
 
 group 'de.hhu.bsinfo'
@@ -21,15 +22,44 @@ repositories {
 dependencies {
     implementation project(':api')
     implementation project(':jucx-binding')
-    implementation 'org.agrona:agrona:1.10.0'
-    implementation 'org.slf4j:slf4j-api:1.7.31'
+    implementation 'org.agrona:agrona:1.12.0'
+    implementation 'org.slf4j:slf4j-api:1.7.32'
 
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.7.2'
-    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.7.2'
 }
 
 test {
     useJUnitPlatform()
+}
+
+def projects = [ ':api', ':jucx-binding', ':provider' ]
+
+javadoc {
+    source projects.collect { project(it).sourceSets.main.allJava }
+    classpath = files(projects.collect { project(it).sourceSets.main.compileClasspath }) + files(buildDir.toString() + '/gen/buildconfig/classes/main')
+}
+
+javadoc.dependsOn('compileBuildConfig')
+
+task sourcesJar(type: Jar, dependsOn: classes) {
+    archiveClassifier.set('sources')
+    from projects.collect { project(it).sourceSets.main.allJava }
+}
+
+task javadocJar(type: Jar, dependsOn: javadoc) {
+    archiveClassifier.set('javadoc')
+    from javadoc.destinationDir
+}
+
+artifacts {
+    archives sourcesJar
+    archives javadocJar
+}
+
+jar {
+    from project(':api').buildDir.toString() + '/classes/java/main'
+    from project(':jucx-binding').buildDir.toString() + '/classes/java/main'
 }
 
 shadowJar {
@@ -51,3 +81,10 @@ buildConfig {
     buildConfigField 'String', 'GIT_COMMIT', gitVersion.gitHash
     buildConfigField 'String', 'GIT_BRANCH', gitVersion.branchName
 }
+
+// Workaround for 'Configuration <compile> not found', caused by de.fuerstenau.buildconfig with Gradle 7+
+configurations {
+    create("compile")
+}
+
+apply from: 'publish.gradle'

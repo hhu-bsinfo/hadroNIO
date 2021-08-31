@@ -30,7 +30,7 @@ This is a research project by the [Operating Systems group](https://www.cs.hhu.d
 
 ## Build instructions
 
-hadroNIO is compatible with all Java version, starting from Java 8. To build hadroNIO, **UCX 1.10.1** needs to be installed on your system. See the [OpenUCX GitHub Repository](https://github.com/openucx/ucx) for information on how to build and install UCX.
+hadroNIO is compatible with all Java version, starting from Java 8.
 
 Execute the following commands to clone this repository and build a portable JAR-file, containing hadroNIO and all its dependencies:
 
@@ -44,10 +44,11 @@ The JAR-file should now be located at `build/provider/libs/hadronio-0.1.0-SNAPSH
 
 ### Known issues
 
- - It is currently not possible to build hadroNIO with Java versions newer than Java 15, due to to Gradle 6 not supporting Java 16 or higher. This issue will be dealt with in the future, by upgrading to a newer Gradle version, once the Gradle plugin [com.palantir.git-version](https://plugins.gradle.org/plugin/com.palantir.git-version) supports [Gradle 7](https://github.com/palantir/gradle-git-version/issues/353).
  - Building hadroNIO with a Java version higher than 8, but then running it with Java 8 JVM results in a `java.lang.NoSuchMethodError`, regarding the class `java.nio.ByteBuffer`. This happens, because the `ByteBuffer` overrides methode of its super class `Buffer` in Java 9+, while it relies on the implementations provided by `Buffer` in Java 8. If you come across this error, make sure to both build an run hadroNIO using Java 8, or use a newer version of Java altogether.
 
 ## Run instructions
+
+To run hadroNIO, **UCX 1.11.0** needs to be installed on your system. See the [OpenUCX GitHub Repository](https://github.com/openucx/ucx) for information on how to build and install UCX.
 
 To accelerate an existing Java application (e.g. `application.jar`), the hadroNIO JAR-file needs to be included in the classpath. Additionally, the property `java.nio.channels.spi.SelectorProvider` must be set to `de.hhu.bsinfo.hadronio.HadronioProvider`:
 ```shell
@@ -125,6 +126,38 @@ The following properties are supported:
 - `de.hhu.bsinfo.hadronio.Configuration.BUFFER_SLICE_LENGTH`: Set the size of the buffer slices used for sending/receiving data (Default: `32768`). This value can have a huge performance impact, since it determines the maximum amount of data, that is send/received at once per channel.
 - `de.hhu.bsinfo.hadronio.Configuration.FLUSH_INTERVAL_SIZE`: Set the interval in which channels should be flushed (Default: `1024`). Every time, the set amount of messages has been sent, the channel will stop signalling `OP_WRITE`, until it has received an automatic acknowledgment message from the receiving side. This is done to prevent a receiver from being overloaded by too many messages. The default value did work fine in our tests, and there should be no need to alter it.
 - `de.hhu.bsinfo.hadronio.Configuration.USE_WORKER_POLL_THREAD`: Use a separate thread to poll the UCX worker (Default: `false`). Enabling this feature should improve throughput at the cost of higher latencies, when using blocking socket channels. It is still *highly experimental* and should not be activated at the moment.
+
+## Include in other projects
+
+It is possible to use hadroNIO in other Gradle projects. The latest releases are available from the GitHub Package Registry.
+To include hadroNIO into your project, use the following code in your `build.gradle`:
+
+```
+repositories {
+    maven {
+        name = "GitHubPackages hadroNIO"
+        url = "https://maven.pkg.github.com/hhu-bsinfo/hadronio"
+        credentials {
+            username = project.findProperty("gpr.user")
+            password = project.findProperty("gpr.token")
+        }
+    }
+}
+
+dependencies {
+    implementation 'de.hhu.bsinfo:hadronio:0.1.0'
+}
+```
+
+Use a file called `gradle.properties` to set `gpr.user` to your GitHub username and `gpr.token` to a Personal Access Token with `read:packages` enabled. See the [GitHub Docs](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-gradle-registry) for more information on the GitHub Package Registry.
+
+To enable hadroNIO from within your application, use the following code:
+
+```
+System.setProperty("java.nio.channels.spi.SelectorProvider", "de.hhu.bsinfo.hadronio.HadronioProvider");
+```
+
+The configuration values can be set with similary calls. This way, hadroNIO will be included in your project and properties do not have to be set manually, each time the application is started.
 
 ## Architecture
 

@@ -1,12 +1,12 @@
 package de.hhu.bsinfo.hadronio.jucx;
 
 import de.hhu.bsinfo.hadronio.UcxReceiveCallback;
-import de.hhu.bsinfo.hadronio.util.TagUtil;
 import org.openucx.jucx.ucp.UcpRequest;
+import org.openucx.jucx.UcxCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class ReceiveCallback extends org.openucx.jucx.UcxCallback {
+public class ReceiveCallback extends UcxCallback {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ReceiveCallback.class);
 

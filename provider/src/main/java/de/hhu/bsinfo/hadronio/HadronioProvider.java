@@ -93,7 +93,7 @@ public class HadronioProvider extends SelectorProvider implements Closeable {
         final String banner = reader.lines().collect(Collectors.joining(System.lineSeparator()));
 
         System.out.print("\n");
-        System.out.printf(banner, Configuration.getInstance().getProviderClass(), BuildConfig.VERSION, BuildConfig.BUILD_DATE, BuildConfig.GIT_BRANCH, BuildConfig.GIT_COMMIT);
+        System.out.printf(banner, BuildConfig.VERSION, BuildConfig.BUILD_DATE, BuildConfig.GIT_BRANCH, BuildConfig.GIT_COMMIT, Configuration.getInstance().getProviderClass());
         System.out.print("\n\n");
     }
 

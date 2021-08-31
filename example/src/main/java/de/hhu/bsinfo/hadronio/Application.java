@@ -1,7 +1,6 @@
 package de.hhu.bsinfo.hadronio;
 
 import de.hhu.bsinfo.hadronio.benchmark.Benchmark;
-import de.hhu.bsinfo.hadronio.benchmark.throughput.ThroughputBenchmark;
 import de.hhu.bsinfo.hadronio.counter.CounterDemo;
 import de.hhu.bsinfo.hadronio.util.InetSocketAddressConverter;
 import picocli.CommandLine;

@@ -1,6 +1,5 @@
 package de.hhu.bsinfo.hadronio.benchmark.latency;
 
-import de.hhu.bsinfo.hadronio.util.LatencyResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

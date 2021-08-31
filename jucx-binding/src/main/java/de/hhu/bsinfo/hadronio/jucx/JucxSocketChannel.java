@@ -80,7 +80,7 @@ public class JucxSocketChannel implements UcxSocketChannel {
 
         LOGGER.info("Exchanging small message to establish connection");
         endpoint.sendStreamNonBlocking(sendBuffer, connectionCallback);
-        endpoint.recvStreamNonBlocking(receiveBuffer, 0, connectionCallback);
+        endpoint.recvStreamNonBlocking(receiveBuffer, UcpConstants.UCP_STREAM_RECV_FLAG_WAITALL, connectionCallback);
     }
 
     @Override
