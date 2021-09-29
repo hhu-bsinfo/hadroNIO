@@ -7,8 +7,8 @@ Transparent acceleration for Java NIO applications via [UCX](https://openucx.org
 </p>
 
 <p align="center">
-  <a href="https://travis-ci.com/hhu-bsinfo/hadroNIO"><img src="https://www.travis-ci.com/hhu-bsinfo/hadroNIO.svg?branch=main"></a>
-  <a href="https://openjdk.java.net/projects/jdk8/"><img src="https://img.shields.io/badge/java-8-blue.svg"></a>
+  <a href="https://travis-ci.com/github/hhu-bsinfo/hadroNIO"><img src="https://www.travis-ci.com/hhu-bsinfo/hadroNIO.svg?branch=main"></a>
+  <a href="https://openjdk.java.net/"><img src="https://img.shields.io/badge/java-8+-blue.svg"></a>
   <a href="https://github.com/hhu-bsinfo/hadroNIO/blob/master/LICENSE"><img src="https://img.shields.io/badge/license-GPLv3-orange.svg"></a>
 </p>
 
@@ -286,4 +286,4 @@ With 16 to 19 μs, IPoIB's latency results in that range are more than 3 times a
 
 ## Publications
 
-- *hadroNIO: Accelerating Java NIO via UCX*, Fabian Ruhland, Filip Krakowski, Michael Schöttner; to appear in: Proceedings of the IEEE International Symposium on Parallel and Distributed Computing ([ISPDC](https://ispdc2021.utcluj.ro/)), Cluj-Napoca, Romania, 2021.
+- *hadroNIO: Accelerating Java NIO via UCX*, Fabian Ruhland, Filip Krakowski, Michael Schöttner; appeared in: Proceedings of the IEEE International Symposium on Parallel and Distributed Computing ([ISPDC](https://ispdc2021.utcluj.ro/), [IEEE Xplore](https://ieeexplore.ieee.org/document/9521601)), Cluj-Napoca, Romania, 2021.

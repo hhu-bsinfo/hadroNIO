@@ -25,6 +25,7 @@ public class HadronioServerSocketChannel extends ServerSocketChannel implements 
 
     private InetSocketAddress localAddress;
     private boolean channelClosed = false;
+    private boolean channelBound = false;
     private int readyOps;
 
     public HadronioServerSocketChannel(final SelectorProvider provider, final UcxServerSocketChannel serverSocketChannel, final UcxWorker worker) {
@@ -51,7 +52,14 @@ public class HadronioServerSocketChannel extends ServerSocketChannel implements 
             localAddress = (InetSocketAddress) socketAddress;
         }
 
-        serverSocketChannel.bind(localAddress, backlog);
+        try {
+            serverSocketChannel.bind(localAddress, backlog);
+            channelBound = true;
+        } catch (IOException e){
+            channelBound = false;
+            throw e;
+        }
+
         return this;
     }
 
@@ -80,7 +88,11 @@ public class HadronioServerSocketChannel extends ServerSocketChannel implements 
 
     @Override
     public ServerSocket socket() {
-        throw new UnsupportedOperationException("Direct socket access is not supported!");
+        try {
+            return new WrappingServerSocket(this);
+        } catch (IOException e) {
+            throw new IllegalStateException("Unable to create wrapping server socket!");
+        }
     }
 
     @Override
@@ -136,5 +148,9 @@ public class HadronioServerSocketChannel extends ServerSocketChannel implements 
     @Override
     public int readyOps() {
         return readyOps;
+    }
+
+    boolean isBound() {
+        return channelBound;
     }
 }
