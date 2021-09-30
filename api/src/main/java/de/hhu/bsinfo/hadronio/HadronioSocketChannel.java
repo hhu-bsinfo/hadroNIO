@@ -131,7 +131,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
 
     @Override
     public Socket socket() {
-        throw new UnsupportedOperationException("Direct socket access is not supported!");
+        return new WrappingSocket(this);
     }
 
     @Override
@@ -476,6 +476,14 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
 
     long getRemoteTag() {
         return remoteTag;
+    }
+
+    boolean isInputClosed() {
+        return inputClosed;
+    }
+
+    boolean isOutputClosed() {
+        return outputClosed;
     }
 
     UcxSocketChannel getSocketChannelImplementation() {
