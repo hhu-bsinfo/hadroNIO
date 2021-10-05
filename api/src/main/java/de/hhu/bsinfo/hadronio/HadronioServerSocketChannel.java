@@ -110,7 +110,6 @@ public class HadronioServerSocketChannel extends ServerSocketChannel implements 
         }
 
         final long[] tags = new long[2];
-
         final UcxConnectionCallback connectionCallback = (localTag, remoteTag) -> {
             tags[0] = localTag;
             tags[1] = remoteTag;
@@ -119,6 +118,7 @@ public class HadronioServerSocketChannel extends ServerSocketChannel implements 
         final UcxSocketChannel socketChannel = serverSocketChannel.accept(connectionCallback);
         final HadronioSocketChannel ret = new HadronioSocketChannel(provider(), socketChannel, worker);
         ret.onConnection(true, tags[0], tags[1]);
+        ret.setConnected();
 
         return ret;
     }

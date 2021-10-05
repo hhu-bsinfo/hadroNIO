@@ -45,6 +45,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
 
     private boolean connectionPending = false;
     private boolean connectionFailed = false;
+    private boolean connected = false;
     private boolean connectable = false;
     private boolean inputClosed = false;
     private boolean outputClosed = false;
@@ -136,7 +137,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
 
     @Override
     public boolean isConnected() {
-        return socketChannel.isConnected();
+        return connected;
     }
 
     @Override
@@ -170,7 +171,8 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
             finishConnect();
         }
 
-        return socketChannel.isConnected();
+        connected = socketChannel.isConnected();
+        return connected;
     }
 
     @Override
@@ -191,6 +193,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
 
         if (socketChannel.isConnected()) {
             connectable = false;
+            connected = true;
         } else if (connectionFailed) {
             throw new IOException("Failed to connect socket channel!");
         }
@@ -440,6 +443,10 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
 
             LOGGER.info("SocketChannel connected successfully (localTag: [0x{}], remoteTag: [0x{}])", Long.toHexString(localTag), Long.toHexString(remoteTag));
 
+            if (isBlocking()) {
+                connected = true;
+            }
+
             try {
                 fillReceiveBuffer();
             } catch (IOException e) {
@@ -468,6 +475,10 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
 
             index = receiveBuffer.tryClaim(configuration.getBufferSliceLength());
         }
+    }
+
+    void setConnected() {
+        this.connected = true;
     }
 
     long getLocalTag() {
