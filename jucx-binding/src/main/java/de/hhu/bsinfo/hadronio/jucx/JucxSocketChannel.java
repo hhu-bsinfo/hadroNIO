@@ -21,20 +21,27 @@ public class JucxSocketChannel implements UcxSocketChannel {
     static final long CONNECTION_MAGIC_NUMBER = 0xC0FFEE00ADD1C7EDL;
 
     private final JucxWorker worker;
+    private final JucxErrorHandler errorHandler;
     private UcpEndpoint endpoint;
     private UcxCallback sendCallback;
     private UcxCallback receiveCallback;
 
-    private long localId;
-    private volatile boolean connected = false;
+    private boolean connected = false;
 
     JucxSocketChannel(final JucxWorker worker) {
         this.worker = worker;
+        errorHandler = new JucxErrorHandler(this);
     }
 
     JucxSocketChannel(final JucxWorker worker, final UcpConnectionRequest connectionRequest, UcxConnectionCallback callback) throws IOException {
         this.worker = worker;
-        endpoint = worker.getWorker().newEndpoint(new UcpEndpointParams().setConnectionRequest(connectionRequest).setPeerErrorHandlingMode());
+        errorHandler = new JucxErrorHandler(this);
+        endpoint = worker.getWorker().newEndpoint(
+            new UcpEndpointParams().
+            setConnectionRequest(connectionRequest).
+            setPeerErrorHandlingMode().
+            setErrorHandler(errorHandler));
+
         LOGGER.info("Endpoint created: [{}]", endpoint);
 
         establishConnection(callback);
@@ -60,8 +67,11 @@ public class JucxSocketChannel implements UcxSocketChannel {
 
     @Override
     public void connect(final InetSocketAddress remoteAddress, final UcxConnectionCallback callback) {
-        final UcpEndpointParams endpointParams = new UcpEndpointParams().setSocketAddress(remoteAddress).setPeerErrorHandlingMode();
-        endpoint = worker.getWorker().newEndpoint(endpointParams);
+        endpoint = worker.getWorker().newEndpoint(
+            new UcpEndpointParams().
+            setSocketAddress(remoteAddress).
+            setPeerErrorHandlingMode().
+            setErrorHandler(errorHandler));
 
         LOGGER.info("Endpoint created: [{}]", endpoint);
         establishConnection(callback);
@@ -71,7 +81,7 @@ public class JucxSocketChannel implements UcxSocketChannel {
         final ByteBuffer sendBuffer = ByteBuffer.allocateDirect(2 * Long.BYTES);
         final ByteBuffer receiveBuffer = ByteBuffer.allocateDirect(2 * Long.BYTES);
 
-        localId = TagUtil.generateId();
+        final long localId = TagUtil.generateId();
         sendBuffer.putLong(CONNECTION_MAGIC_NUMBER);
         sendBuffer.putLong(localId);
         sendBuffer.rewind();
@@ -117,6 +127,7 @@ public class JucxSocketChannel implements UcxSocketChannel {
 
     @Override
     public void close() throws IOException {
+        connected = false;
         endpoint.close();
     }
 }

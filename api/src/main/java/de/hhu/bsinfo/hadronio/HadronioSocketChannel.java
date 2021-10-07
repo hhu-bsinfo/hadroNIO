@@ -100,10 +100,10 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
 
     @Override
     public SocketChannel shutdownInput() throws IOException {
-        if (!socketChannel.isConnected()) {
+        if (!isConnected()) {
             throw new NotYetConnectedException();
         }
-        
+
         if (channelClosed) {
             throw new ClosedChannelException();
         }
@@ -116,7 +116,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
 
     @Override
     public SocketChannel shutdownOutput() throws IOException {
-        if (!socketChannel.isConnected()) {
+        if (!isConnected()) {
             throw new NotYetConnectedException();
         }
 
@@ -151,7 +151,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
             throw new ClosedChannelException();
         }
 
-        if (socketChannel.isConnected()) {
+        if (isConnected()) {
             throw new AlreadyConnectedException();
         }
 
@@ -216,11 +216,15 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
             throw new ClosedChannelException();
         }
 
-        if (!socketChannel.isConnected()) {
+        if (!isConnected()) {
             throw new NotYetConnectedException();
         }
 
         if (inputClosed) {
+            return -1;
+        }
+
+        if (isConnected() && !socketChannel.isConnected()) {
             return -1;
         }
 
@@ -274,11 +278,15 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
             throw new ClosedChannelException();
         }
 
-        if (!socketChannel.isConnected()) {
+        if (!isConnected()) {
             throw new NotYetConnectedException();
         }
 
         if (inputClosed) {
+            return -1;
+        }
+
+        if (isConnected() && !socketChannel.isConnected()) {
             return -1;
         }
 
@@ -298,12 +306,16 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
 
     @Override
     public int write(final ByteBuffer buffer) throws IOException {
-        if (outputClosed || channelClosed) {
+        if (channelClosed) {
             throw new ClosedChannelException();
         }
 
-        if (!socketChannel.isConnected()) {
+        if (!isConnected()) {
             throw new NotYetConnectedException();
+        }
+
+        if (outputClosed) {
+            return 0;
         }
 
         synchronized (sendBuffer) {
@@ -353,12 +365,16 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
 
     @Override
     public long write(final ByteBuffer[] buffers, final int offset, final int length) throws IOException {
-        if (outputClosed || channelClosed) {
+        if (channelClosed) {
             throw new ClosedChannelException();
         }
 
-        if (!socketChannel.isConnected()) {
+        if (!isConnected()) {
             throw new NotYetConnectedException();
+        }
+
+        if (outputClosed) {
+            return 0;
         }
 
         synchronized (sendBuffer) {
@@ -388,6 +404,10 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
     protected void implCloseSelectableChannel() throws IOException {
         LOGGER.info("Closing socket channel");
         channelClosed = true;
+        inputClosed = true;
+        outputClosed = true;
+        connected = false;
+
         socketChannel.close();
         sendBuffer.close();
         receiveBuffer.close();
@@ -404,7 +424,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
 
     @Override
     public void select() throws IOException {
-        if (socketChannel.isConnected()) {
+        if (isConnected()) {
             fillReceiveBuffer();
         }
 
@@ -412,10 +432,13 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
         if (connectable) {
             readyOps |= SelectionKey.OP_CONNECT;
         }
-        if (socketChannel.isConnected() && !outputClosed && !isFlushing.get() && sendBuffer.maxMessageLength() > MessageUtil.HEADER_LENGTH) {
+        if (isConnected() && !outputClosed && !isFlushing.get() && sendBuffer.maxMessageLength() > MessageUtil.HEADER_LENGTH) {
             readyOps |= SelectionKey.OP_WRITE;
         }
         if (!inputClosed && readableMessages.get() > 0) {
+            readyOps |= SelectionKey.OP_READ;
+        }
+        if (isConnected() && !socketChannel.isConnected()) {
             readyOps |= SelectionKey.OP_READ;
         }
 
@@ -479,10 +502,6 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
 
     void setConnected() {
         this.connected = true;
-    }
-
-    long getLocalTag() {
-        return localTag;
     }
 
     long getRemoteTag() {

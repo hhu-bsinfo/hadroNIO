@@ -14,7 +14,7 @@ import java.nio.channels.SocketChannel;
 
 @CommandLine.Command(
         name = "counter",
-        description = "Examples application, that sends an increasing counter and receives the other sides counter.",
+        description = "Example application, that sends an increasing counter and receives the other sides counter.",
         showDefaultValues = true,
         separator = " ")
 public class CounterDemo implements Runnable {
@@ -46,7 +46,6 @@ public class CounterDemo implements Runnable {
             names = {"-b", "--blocking"},
             description = "Use blocking channels.")
     private boolean blocking = false;
-
 
     @CommandLine.Option(
         names = {"-c", "--count"},

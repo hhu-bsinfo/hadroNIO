@@ -1,6 +1,7 @@
 package de.hhu.bsinfo.hadronio.jucx;
 
 import de.hhu.bsinfo.hadronio.UcxWorker;
+import org.openucx.jucx.UcxException;
 import org.openucx.jucx.ucp.UcpWorker;
 
 import java.io.IOException;
@@ -22,7 +23,7 @@ public class JucxWorker implements UcxWorker {
         try {
             return worker.progress() != 0;
         } catch (Exception e) {
-            throw new IOException("Failed to progress worker!", e);
+            throw new IOException(e);
         }
     }
 

@@ -62,7 +62,7 @@ class HadronioSelector extends AbstractSelector {
         key.interestOps(interestOps);
         key.attach(attachment);
 
-        LOGGER.info("Registering new channel with selection key [{}]", key);
+        LOGGER.info("Registering channel with selection key [{}]", key);
         keys.add(key);
         return key;
     }
@@ -165,8 +165,8 @@ class HadronioSelector extends AbstractSelector {
         try {
             return worker.poll(blocking);
         } catch (IOException e) {
-            LOGGER.error("Failed to poll worker (Message: [{}])", e.getMessage());
-            LOGGER.debug("Stack trace:", e);
+            LOGGER.error("Failed to poll worker (Message: [{}])", e.getMessage(), e);
+
         }
 
         return false;
