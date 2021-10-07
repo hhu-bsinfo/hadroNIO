@@ -124,7 +124,7 @@ public class HadronioServerSocketChannel extends ServerSocketChannel implements 
     }
 
     @Override
-    public SocketAddress getLocalAddress() throws IOException {
+    public SocketAddress getLocalAddress() {
         return localAddress;
     }
 
@@ -136,12 +136,12 @@ public class HadronioServerSocketChannel extends ServerSocketChannel implements 
     }
 
     @Override
-    protected void implConfigureBlocking(boolean blocking) throws IOException {
+    protected void implConfigureBlocking(boolean blocking) {
         LOGGER.info("Server socket channel is now configured to be [{}]", blocking ? "BLOCKING" : "NON-BLOCKING");
     }
 
     @Override
-    public void select() throws IOException {
+    public void select() {
         readyOps = serverSocketChannel.hasPendingConnections() ? OP_ACCEPT : 0;
     }
 

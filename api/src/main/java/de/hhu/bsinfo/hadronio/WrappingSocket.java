@@ -18,8 +18,8 @@ public class WrappingSocket extends Socket {
     }
 
     @Override
-    public void bind(SocketAddress bindpoint) throws IOException {
-        channel.bind(bindpoint);
+    public void bind(SocketAddress endpoint) throws IOException {
+        channel.bind(endpoint);
     }
 
     @Override

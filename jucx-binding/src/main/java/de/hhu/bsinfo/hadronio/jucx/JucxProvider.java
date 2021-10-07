@@ -5,8 +5,6 @@ import org.openucx.jucx.ucp.UcpContext;
 import org.openucx.jucx.ucp.UcpParams;
 import org.openucx.jucx.ucp.UcpWorkerParams;
 
-import java.io.IOException;
-
 public class JucxProvider implements UcxProvider {
 
     private final UcpContext context;
@@ -33,7 +31,7 @@ public class JucxProvider implements UcxProvider {
     }
 
     @Override
-    public void close() throws IOException {
+    public void close() {
         worker.close();
         context.close();
     }

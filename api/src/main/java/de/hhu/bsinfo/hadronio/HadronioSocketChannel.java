@@ -124,7 +124,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
             throw new ClosedChannelException();
         }
         
-        LOGGER.info("Closing connection for input -> This socket channel will no longer be writeable");
+        LOGGER.info("Closing connection for input -> This socket channel will no longer be writable");
 
         outputClosed = true;
         return this;
@@ -212,19 +212,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
 
     @Override
     public int read(final ByteBuffer buffer) throws IOException {
-        if (channelClosed) {
-            throw new ClosedChannelException();
-        }
-
-        if (!isConnected()) {
-            throw new NotYetConnectedException();
-        }
-
-        if (inputClosed) {
-            return -1;
-        }
-
-        if (isConnected() && !socketChannel.isConnected()) {
+        if (isNotReadable()) {
             return -1;
         }
 
@@ -274,19 +262,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
 
     @Override
     public long read(final ByteBuffer[] buffers, final int offset, final int length) throws IOException {
-        if (channelClosed) {
-            throw new ClosedChannelException();
-        }
-
-        if (!isConnected()) {
-            throw new NotYetConnectedException();
-        }
-
-        if (inputClosed) {
-            return -1;
-        }
-
-        if (isConnected() && !socketChannel.isConnected()) {
+        if (isNotReadable()) {
             return -1;
         }
 
@@ -306,15 +282,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
 
     @Override
     public int write(final ByteBuffer buffer) throws IOException {
-        if (channelClosed) {
-            throw new ClosedChannelException();
-        }
-
-        if (!isConnected()) {
-            throw new NotYetConnectedException();
-        }
-
-        if (outputClosed) {
+        if (isNotWriteable()) {
             return 0;
         }
 
@@ -365,15 +333,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
 
     @Override
     public long write(final ByteBuffer[] buffers, final int offset, final int length) throws IOException {
-        if (channelClosed) {
-            throw new ClosedChannelException();
-        }
-
-        if (!isConnected()) {
-            throw new NotYetConnectedException();
-        }
-
-        if (outputClosed) {
+        if (isNotWriteable()) {
             return 0;
         }
 
@@ -414,7 +374,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
     }
 
     @Override
-    protected void implConfigureBlocking(final boolean blocking) throws IOException {
+    protected void implConfigureBlocking(final boolean blocking) {
         if (!blocking && Configuration.getInstance().useWorkerPollThread()) {
             throw new IllegalArgumentException("Non-blocking socket channels are not supported when using the worker poll thread!");
         }
@@ -518,5 +478,33 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
 
     UcxSocketChannel getSocketChannelImplementation() {
         return socketChannel;
+    }
+
+    private boolean isNotReadable() throws ClosedChannelException {
+        if (channelClosed) {
+            throw new ClosedChannelException();
+        }
+
+        if (!isConnected()) {
+            throw new NotYetConnectedException();
+        }
+
+        if (inputClosed) {
+            return true;
+        }
+
+        return isConnected() && !socketChannel.isConnected();
+    }
+
+    private boolean isNotWriteable() throws ClosedChannelException {
+        if (channelClosed) {
+            throw new ClosedChannelException();
+        }
+
+        if (!isConnected()) {
+            throw new NotYetConnectedException();
+        }
+
+        return outputClosed;
     }
 }

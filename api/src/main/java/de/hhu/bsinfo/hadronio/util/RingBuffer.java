@@ -6,7 +6,6 @@ import org.agrona.concurrent.AtomicBuffer;
 import org.agrona.concurrent.MessageHandler;
 
 import java.io.Closeable;
-import java.io.IOException;
 
 import static org.agrona.BitUtil.align;
 import static org.agrona.concurrent.broadcast.RecordDescriptor.PADDING_MSG_TYPE_ID;
@@ -159,9 +158,6 @@ public class RingBuffer implements Closeable {
         // This buffer's capacity
         final int total = capacity;
 
-        // The index at which the tail position is stored
-        final int tailPosition = tailPositionIndex;
-
         // The index at which the cached head position is stored
         final int headCachePosition = headCachePositionIndex;
 
@@ -169,7 +165,7 @@ public class RingBuffer implements Closeable {
         final int mask = indexMask;
 
         long head = buffer.getLongVolatile(headCachePosition);
-        final long tail = buffer.getLongVolatile(tailPosition);
+        final long tail = buffer.getLongVolatile(tailPositionIndex);
         final int available = total - (int) (tail - head);
 
         if (required > available) { // If the required size is less than the cached available space left
@@ -291,7 +287,7 @@ public class RingBuffer implements Closeable {
     }
 
     @Override
-    public void close() throws IOException {
+    public void close() {
         MemoryUtil.free(buffer);
     }
 }

@@ -45,29 +45,29 @@ public class HadronioProvider extends SelectorProvider implements Closeable {
     }
 
     @Override
-    public DatagramChannel openDatagramChannel() throws IOException {
+    public DatagramChannel openDatagramChannel() {
         throw new UnsupportedOperationException("Operation not supported!");
     }
 
     @Override
-    public DatagramChannel openDatagramChannel(ProtocolFamily protocolFamily) throws IOException {
+    public DatagramChannel openDatagramChannel(ProtocolFamily protocolFamily) {
         throw new UnsupportedOperationException("Operation not supported!");
     }
 
     @Override
-    public Pipe openPipe() throws IOException {
+    public Pipe openPipe() {
         throw new UnsupportedOperationException("Operation not supported!");
     }
 
     @Override
-    public AbstractSelector openSelector() throws IOException {
+    public AbstractSelector openSelector() {
         LOGGER.info("Creating new HadronioSelector");
 
         return new HadronioSelector(this, provider.getWorker());
     }
 
     @Override
-    public ServerSocketChannel openServerSocketChannel() throws IOException {
+    public ServerSocketChannel openServerSocketChannel() {
         LOGGER.info("Creating new HadronioServerSocketChannel");
 
         final UcxServerSocketChannel serverSocketChannel = provider.createServerSocketChannel();
@@ -75,7 +75,7 @@ public class HadronioProvider extends SelectorProvider implements Closeable {
     }
 
     @Override
-    public SocketChannel openSocketChannel() throws IOException {
+    public SocketChannel openSocketChannel() {
         LOGGER.info("Creating new HadronioSocketChannel");
 
         final UcxSocketChannel socketChannel = provider.createSocketChannel();

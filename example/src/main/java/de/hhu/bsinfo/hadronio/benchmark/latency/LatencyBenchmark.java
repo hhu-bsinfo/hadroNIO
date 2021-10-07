@@ -152,19 +152,10 @@ public class LatencyBenchmark implements Runnable {
         socket.configureBlocking(false);
 
         final Selector selector = Selector.open();
-        final SelectionKey key;
-        final Handler handler;
+        final SelectionKey key = socket.register(selector, 0);
+        final Handler handler = isServer ? new ServerHandler(socket, key, messageBuffer) : new ClientHandler(socket, key, messageBuffer);
 
-        if (isServer) {
-            key = socket.register(selector, 0);
-            handler = new ServerHandler(socket, key, messageBuffer);
-            key.attach(handler);
-        } else {
-            key = socket.register(selector, 0);
-            handler = new ClientHandler(socket, key, messageBuffer);
-            key.attach(handler);
-        }
-
+        key.attach(handler);
         final long startTime = System.nanoTime();
 
         for (int i = 0; i < messageCount; i++) {

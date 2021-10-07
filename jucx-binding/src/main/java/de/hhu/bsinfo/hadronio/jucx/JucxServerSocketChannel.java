@@ -65,7 +65,7 @@ public class JucxServerSocketChannel implements UcxServerSocketChannel {
     }
 
     @Override
-    public void close() throws IOException {
+    public void close() {
         listener.close();
     }
 }

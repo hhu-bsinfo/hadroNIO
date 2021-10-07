@@ -1,7 +1,6 @@
 package de.hhu.bsinfo.hadronio.jucx;
 
 import de.hhu.bsinfo.hadronio.UcxWorker;
-import org.openucx.jucx.UcxException;
 import org.openucx.jucx.ucp.UcpWorker;
 
 import java.io.IOException;
@@ -38,7 +37,7 @@ public class JucxWorker implements UcxWorker {
     }
 
     @Override
-    public void close() throws IOException {
+    public void close() {
         worker.close();
     }
 }

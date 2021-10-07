@@ -40,7 +40,7 @@ cd hadroNIO/
 ./gradlew shadowJar
 ```
 
-The JAR-file should now be located at `build/provider/libs/hadronio-0.1.0-SNAPSHOT-all.jar`.
+The JAR-file should now be located at `build/provider/libs/hadronio-0.1.1-SNAPSHOT-all.jar`.
 
 ### Known issues
 
@@ -48,11 +48,11 @@ The JAR-file should now be located at `build/provider/libs/hadronio-0.1.0-SNAPSH
 
 ## Run instructions
 
-To run hadroNIO, **UCX 1.11.0** needs to be installed on your system. See the [OpenUCX GitHub Repository](https://github.com/openucx/ucx) for information on how to build and install UCX.
+To run hadroNIO, **UCX 1.11.2** needs to be installed on your system. See the [OpenUCX GitHub Repository](https://github.com/openucx/ucx) for information on how to build and install UCX.
 
 To accelerate an existing Java application (e.g. `application.jar`), the hadroNIO JAR-file needs to be included in the classpath. Additionally, the property `java.nio.channels.spi.SelectorProvider` must be set to `de.hhu.bsinfo.hadronio.HadronioProvider`:
 ```shell
-java -cp path/to/hadronio-0.1.0-SNAPSHOT-all.jar -Djava.nio.channels.spi.SelectorProvider=de.hhu.bsinfo.hadronio.HadronioProvider -jar application.jar
+java -cp path/to/hadronio-0.1.1-SNAPSHOT-all.jar -Djava.nio.channels.spi.SelectorProvider=de.hhu.bsinfo.hadronio.HadronioProvider -jar application.jar
 ```
 
 ### Enable logging
@@ -145,7 +145,7 @@ repositories {
 }
 
 dependencies {
-    implementation 'de.hhu.bsinfo:hadronio:0.1.0'
+    implementation 'de.hhu.bsinfo:hadronio:0.1.1'
 }
 ```
 

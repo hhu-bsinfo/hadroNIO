@@ -18,7 +18,7 @@ class HadronioSelector extends AbstractSelector {
 
     private final UcxWorker worker;
     private final Set<SelectionKey> keys = new HashSet<>();
-    private final UngrowableSelectionKeySet selectedKeys = new UngrowableSelectionKeySet();
+    private final FixedSelectionKeySet selectedKeys = new FixedSelectionKeySet();
     private final Object wakeupLock = new Object();
 
     private boolean selectorClosed = false;
@@ -29,7 +29,7 @@ class HadronioSelector extends AbstractSelector {
     }
 
     @Override
-    protected void implCloseSelector() throws IOException {
+    protected void implCloseSelector() {
         LOGGER.info("Closing selector");
         selectorClosed = true;
 
@@ -188,20 +188,20 @@ class HadronioSelector extends AbstractSelector {
         return oldReadyOps != key.readyOps();
     }
 
-    private static final class UngrowableSelectionKeySet extends HashSet<SelectionKey> {
+    private static final class FixedSelectionKeySet extends HashSet<SelectionKey> {
 
-        public UngrowableSelectionKeySet() {
+        public FixedSelectionKeySet() {
             super();
         }
 
         @Override
         public boolean add(final SelectionKey key) {
-            throw new UnsupportedOperationException("Trying to add a key to an ungrowable set!");
+            throw new UnsupportedOperationException("Trying to add a key to a fixed set!");
         }
 
         @Override
         public boolean addAll(final Collection<? extends SelectionKey> keys) {
-            throw new UnsupportedOperationException("Trying to add a key to an ungrowable set!");
+            throw new UnsupportedOperationException("Trying to add a key to a fixed set!");
         }
 
         private void addKey(final SelectionKey key) {

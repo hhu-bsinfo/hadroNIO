@@ -38,29 +38,17 @@ public class WrappingServerSocket extends ServerSocket {
 
     @Override
     public InetAddress getInetAddress() {
-        try {
-            return ((InetSocketAddress) channel.getLocalAddress()).getAddress();
-        } catch (IOException e) {
-            throw new IllegalStateException(e);
-        }
+        return ((InetSocketAddress) channel.getLocalAddress()).getAddress();
     }
 
     @Override
     public int getLocalPort() {
-        try {
-            return ((InetSocketAddress) channel.getLocalAddress()).getPort();
-        } catch (IOException e) {
-            throw new IllegalStateException(e);
-        }
+        return ((InetSocketAddress) channel.getLocalAddress()).getPort();
     }
 
     @Override
     public SocketAddress getLocalSocketAddress() {
-        try {
-            return channel.getLocalAddress();
-        } catch (IOException e) {
-            throw new IllegalStateException(e);
-        }
+        return channel.getLocalAddress();
     }
 
     @Override

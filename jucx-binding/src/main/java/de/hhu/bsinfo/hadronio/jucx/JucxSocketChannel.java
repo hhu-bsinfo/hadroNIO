@@ -126,7 +126,7 @@ public class JucxSocketChannel implements UcxSocketChannel {
     }
 
     @Override
-    public void close() throws IOException {
+    public void close() {
         connected = false;
         endpoint.close();
     }

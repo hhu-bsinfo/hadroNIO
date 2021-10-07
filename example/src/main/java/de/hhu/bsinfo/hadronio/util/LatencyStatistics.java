@@ -6,10 +6,9 @@ import java.util.Arrays;
  * Statistics class to measure latency.
  *
  * @author Stefan Nothaas, HHU
- * @date 2018
  */
 class LatencyStatistics {
-    private long[] times;
+    private final long[] times;
     private int pos;
 
     private long tmpTime;
