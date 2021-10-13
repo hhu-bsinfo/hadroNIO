@@ -123,8 +123,8 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
         if (channelClosed) {
             throw new ClosedChannelException();
         }
-        
-        LOGGER.info("Closing connection for input -> This socket channel will no longer be writable");
+
+        LOGGER.info("Closing connection for output -> This socket channel will no longer be writable");
 
         outputClosed = true;
         return this;
@@ -198,7 +198,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
             throw new IOException("Failed to connect socket channel!");
         }
 
-        return socketChannel.isConnected();
+        return connected;
     }
 
     @Override

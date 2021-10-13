@@ -25,10 +25,9 @@ class WorkerPollThread extends Thread implements Closeable {
 
         while (isRunning) {
             try {
-                boolean eventsPolled = worker.progress();
-                if (!eventsPolled) {
-                    worker.waitForEvents();
-                }
+                worker.progress();
+                worker.waitForEvents();
+                worker.progress();
             } catch (IOException e) {
                 LOGGER.error("Failed to poll worker (Message: [{}])", e.getMessage());
                 LOGGER.debug("Stack trace:", e);

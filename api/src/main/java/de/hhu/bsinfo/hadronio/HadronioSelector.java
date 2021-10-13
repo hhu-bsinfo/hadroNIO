@@ -21,6 +21,7 @@ class HadronioSelector extends AbstractSelector {
     private final FixedSelectionKeySet selectedKeys = new FixedSelectionKeySet();
     private final Object wakeupLock = new Object();
 
+    private boolean wakeupStatus = true;
     private boolean selectorClosed = false;
 
     HadronioSelector(final SelectorProvider selectorProvider, final UcxWorker worker) {
@@ -102,7 +103,9 @@ class HadronioSelector extends AbstractSelector {
 
     @Override
     public Selector wakeup() {
+        LOGGER.debug("Waking up worker");
         synchronized (wakeupLock) {
+            wakeupStatus = true;
             worker.interrupt();
         }
 
@@ -114,67 +117,56 @@ class HadronioSelector extends AbstractSelector {
             throw new ClosedSelectorException();
         }
 
+        LOGGER.debug("Starting select operation (blocking: [{}], timeout: [{}])", blocking, timeout);
+
         synchronized (this) {
             synchronized (keys) {
                 synchronized (selectedKeys) {
-                    pollWorker(false, timeout);
+                    pollWorker(false, 0);
 
-                    int ret = 0;
+                    int updatedKeys = 0;
                     do {
-                        synchronized (cancelledKeys()) {
-                            if (!cancelledKeys().isEmpty()) {
-                                keys.removeAll(cancelledKeys());
-                                selectedKeys.removeAll(cancelledKeys());
-                                cancelledKeys().clear();
-                            }
-                        }
+                        removeCancelledKeys();
+                        updatedKeys += performSelectOperation();
+                        removeCancelledKeys();
 
-                        for (SelectionKey key : Collections.unmodifiableSet(keys)) {
-                            ((HadronioSelectableChannel) key.channel()).select();
-
-                            if (selectKey((HadronioSelectionKey) key)) {
-                                ret++;
-                            }
-                        }
-
-                        synchronized (cancelledKeys()) {
-                            if (!cancelledKeys().isEmpty()) {
-                                keys.removeAll(cancelledKeys());
-                                selectedKeys.removeAll(cancelledKeys());
-                                cancelledKeys().clear();
-                            }
-                        }
+                        LOGGER.debug("Finished select iteration (blocking: [{}], keys: [{}], selectedKeys: [{}])", blocking, keys.size(), selectedKeys.size());
 
                         if (blocking && keys.size() > 0 && selectedKeys.size() == 0) {
-                            boolean eventsPolled = pollWorker(true, timeout);
-                            if (!eventsPolled) {
-                                // Worker has been interrupted by wakeup()
+                            pollWorker(true, timeout);
+
+                            if (wakeupStatus) {
+                                LOGGER.debug("Selector has been interrupted by wakeup");
+                                wakeupStatus = false;
+
                                 break;
                             }
                         }
                     } while (blocking && keys.size() > 0 && selectedKeys.size() == 0);
 
-                    return ret;
+                    LOGGER.debug("Finished select operation (blocking: [{}], timeout: [{}], updatedKeys: [{}])", blocking, timeout, updatedKeys);
+                    return updatedKeys;
                 }
             }
         }
     }
 
-    private boolean pollWorker(final boolean blocking, final long timeout) {
+    private void pollWorker(final boolean blocking, final long timeout) {
         // TODO: Implement timeout
         try {
-            return worker.poll(blocking);
+            LOGGER.debug("Polling worker (blocking: [{}], timeout: [{}])", blocking, timeout);
+            worker.poll(blocking);
+            LOGGER.debug("Finished polling worker (blocking: [{}], timeout: [{}])", blocking, timeout);
         } catch (IOException e) {
             LOGGER.error("Failed to poll worker (Message: [{}])", e.getMessage(), e);
-
         }
-
-        return false;
     }
 
     private boolean selectKey(final HadronioSelectionKey key) {
-        final int oldReadyOps = key.readyOps();
-        final int readyOps = ((HadronioSelectableChannel) key.channel()).readyOps() & key.interestOps();
+        LOGGER.debug("Selecting key: [{}]", key);
+        final int channelReadyOps = ((HadronioSelectableChannel) key.channel()).readyOps();
+        final int readyOps = channelReadyOps & key.interestOps();
+        LOGGER.debug("Selected channel (channelReadyOps: [{}], readyOps: [{}])", channelReadyOps, readyOps);
 
         if (readyOps != 0) {
             if (selectedKeys.contains(key)) {
@@ -183,9 +175,38 @@ class HadronioSelector extends AbstractSelector {
                 selectedKeys.addKey(key);
                 key.readyOps(readyOps);
             }
+
+            return true;
         }
 
-        return oldReadyOps != key.readyOps();
+        return false;
+    }
+
+    private void removeCancelledKeys() {
+        synchronized (cancelledKeys()) {
+            if (!cancelledKeys().isEmpty()) {
+                LOGGER.debug("Removing [{}] cancelled {}", cancelledKeys().size(), cancelledKeys().size() == 1 ? "key" : "keys");
+                keys.removeAll(cancelledKeys());
+                selectedKeys.removeAll(cancelledKeys());
+                cancelledKeys().clear();
+            }
+        }
+    }
+
+    private int performSelectOperation() throws IOException {
+        LOGGER.debug("Selecting [{}] {}", keys.size(), keys.size() == 1 ? "key" : "keys");
+        int updatedKeys = 0;
+
+        for (SelectionKey key : Collections.unmodifiableSet(keys)) {
+            ((HadronioSelectableChannel) key.channel()).select();
+
+            if (selectKey((HadronioSelectionKey) key)) {
+                updatedKeys++;
+            }
+        }
+
+        LOGGER.debug("Finished selecting (updatedKeys: [{}])", updatedKeys);
+        return updatedKeys;
     }
 
     private static final class FixedSelectionKeySet extends HashSet<SelectionKey> {

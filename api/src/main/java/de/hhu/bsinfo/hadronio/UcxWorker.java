@@ -5,23 +5,22 @@ import java.io.IOException;
 
 public interface UcxWorker extends Closeable {
 
-    boolean progress() throws IOException;
+    void progress() throws IOException;
 
     void waitForEvents();
 
     void interrupt();
 
-    default boolean poll(final boolean blocking) throws IOException {
+    default void poll(final boolean blocking) throws IOException {
         if (Configuration.getInstance().useWorkerPollThread()) {
-            return true;
+            return;
         }
 
-        boolean eventsPolled = progress();
-        if (blocking && !eventsPolled) {
+        progress();
+
+        if (blocking) {
             waitForEvents();
-            eventsPolled = progress();
+            progress();
         }
-
-        return eventsPolled;
     }
 }

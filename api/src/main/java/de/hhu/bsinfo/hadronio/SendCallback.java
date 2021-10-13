@@ -47,7 +47,7 @@ class SendCallback implements UcxSendCallback {
         try {
             socket.close();
         } catch (IOException e) {
-            LOGGER.error("Failed to poll worker (Message: [{}])", e.getMessage());
+            LOGGER.error("Failed to close socket channel (Message: [{}])", e.getMessage());
             LOGGER.debug("Stack trace:", e);
         }
     }

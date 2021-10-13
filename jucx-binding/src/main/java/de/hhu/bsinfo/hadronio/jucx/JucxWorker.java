@@ -8,6 +8,7 @@ import java.io.IOException;
 public class JucxWorker implements UcxWorker {
 
     private final UcpWorker worker;
+    private final Object progressLock = new Object();
 
     public JucxWorker(UcpWorker worker) {
         this.worker = worker;
@@ -18,9 +19,11 @@ public class JucxWorker implements UcxWorker {
     }
 
     @Override
-    public boolean progress() throws IOException {
+    public void progress() throws IOException {
         try {
-            return worker.progress() != 0;
+            synchronized (progressLock) {
+                worker.progress();
+            }
         } catch (Exception e) {
             throw new IOException(e);
         }
