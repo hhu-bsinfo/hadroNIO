@@ -59,13 +59,18 @@ class HadronioSelector extends AbstractSelector {
         }
 
         final HadronioSelectionKey key = new HadronioSelectionKey(channel, this);
-
         key.interestOps(interestOps);
         key.attach(attachment);
-
         LOGGER.info("Registering channel with selection key [{}]", key);
-        keys.add(key);
-        return key;
+
+        synchronized (keys) {
+            synchronized (wakeupLock) {
+                keys.add(key);
+                wakeupLock.notifyAll();
+
+                return key;
+            }
+        }
     }
 
     @Override
@@ -107,6 +112,7 @@ class HadronioSelector extends AbstractSelector {
         synchronized (wakeupLock) {
             wakeupStatus = true;
             worker.interrupt();
+            wakeupLock.notifyAll();
         }
 
         return this;
@@ -118,6 +124,11 @@ class HadronioSelector extends AbstractSelector {
         }
 
         LOGGER.debug("Starting select operation (blocking: [{}], timeout: [{}])", blocking, timeout);
+
+        boolean keysAvailable = checkKeys(blocking, timeout);
+        if (!keysAvailable) {
+            return 0;
+        }
 
         synchronized (this) {
             synchronized (keys) {
@@ -135,11 +146,13 @@ class HadronioSelector extends AbstractSelector {
                         if (blocking && keys.size() > 0 && selectedKeys.size() == 0) {
                             pollWorker(true, timeout);
 
-                            if (wakeupStatus) {
-                                LOGGER.debug("Selector has been interrupted by wakeup");
-                                wakeupStatus = false;
+                            synchronized (wakeupLock) {
+                                if (wakeupStatus) {
+                                    LOGGER.debug("Selector has been interrupted by wakeup");
+                                    wakeupStatus = false;
 
-                                break;
+                                    break;
+                                }
                             }
                         }
                     } while (blocking && keys.size() > 0 && selectedKeys.size() == 0);
@@ -180,6 +193,40 @@ class HadronioSelector extends AbstractSelector {
         }
 
         return false;
+    }
+
+    private boolean checkKeys(final boolean blocking, final long timeout) {
+        if (!keys.isEmpty()) {
+            return true;
+        }
+
+        LOGGER.debug("No keys are registered");
+        if (!blocking) {
+            return false;
+        }
+
+        synchronized (wakeupLock) {
+            try {
+                LOGGER.debug("Waiting for new keys (timeout: [{}])", timeout);
+                wakeupLock.wait(timeout);
+            } catch (InterruptedException e) {
+                LOGGER.warn("Thread has been interrupted while waiting for keys to be registered");
+                return false;
+            }
+
+            if (wakeupStatus) {
+                LOGGER.debug("Selector has been interrupted by wakeup");
+                wakeupStatus = false;
+                return false;
+            }
+        }
+
+        if (keys.isEmpty()) {
+            LOGGER.debug("There are still no keys registered after wait() has returned");
+            return false;
+        }
+
+        return true;
     }
 
     private void removeCancelledKeys() {
