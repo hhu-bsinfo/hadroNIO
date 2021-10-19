@@ -20,7 +20,7 @@ repositories {
 }
 
 dependencies {
-    implementation project(':api')
+    implementation project(':core')
     implementation project(':jucx-binding')
     implementation 'org.agrona:agrona:1.12.0'
     implementation 'org.slf4j:slf4j-api:1.7.32'
@@ -33,7 +33,7 @@ test {
     useJUnitPlatform()
 }
 
-def projects = [ ':api', ':jucx-binding', ':provider' ]
+def projects = [ ':core', ':jucx-binding', ':provider' ]
 
 javadoc {
     source projects.collect { project(it).sourceSets.main.allJava }
@@ -58,7 +58,7 @@ artifacts {
 }
 
 jar {
-    from project(':api').buildDir.toString() + '/classes/java/main'
+    from project(':core').buildDir.toString() + '/classes/java/main'
     from project(':jucx-binding').buildDir.toString() + '/classes/java/main'
 }
 

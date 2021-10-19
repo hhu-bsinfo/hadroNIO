@@ -1,6 +1,6 @@
 rootProject.name = 'hadronio'
 
-include 'api'
+include 'core'
 include 'provider'
 include 'jucx-binding'
 include 'example'
