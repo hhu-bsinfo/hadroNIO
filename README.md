@@ -40,7 +40,7 @@ cd hadroNIO/
 ./gradlew shadowJar
 ```
 
-The JAR-file should now be located at `build/provider/libs/hadronio-0.1.1-SNAPSHOT-all.jar`.
+The JAR-file should now be located at `build/provider/libs/hadronio-0.1.2-SNAPSHOT-all.jar`.
 
 ### Known issues
 
@@ -52,7 +52,7 @@ To run hadroNIO, **UCX 1.11.2** needs to be installed on your system. See the [O
 
 To accelerate an existing Java application (e.g. `application.jar`), the hadroNIO JAR-file needs to be included in the classpath. Additionally, the property `java.nio.channels.spi.SelectorProvider` must be set to `de.hhu.bsinfo.hadronio.HadronioProvider`:
 ```shell
-java -cp path/to/hadronio-0.1.1-SNAPSHOT-all.jar -Djava.nio.channels.spi.SelectorProvider=de.hhu.bsinfo.hadronio.HadronioProvider -jar application.jar
+java -cp path/to/hadronio-0.1.2-SNAPSHOT-all.jar -Djava.nio.channels.spi.SelectorProvider=de.hhu.bsinfo.hadronio.HadronioProvider -jar application.jar
 ```
 
 ### Enable logging
@@ -67,10 +67,39 @@ dependencies {
 }
 ```
 
+Additionally, you need to configure SLF4J to enable logging output for `de.hhu.bsinfo`. This can be achieved, by including a file called `log4j2.xml` in your project's resources. Our recommended configuration looks like this:
+
+```xml
+<Configuration status="warn">
+  <Appenders>
+    <Console name="Console" target="SYSTEM_OUT">
+      <PatternLayout pattern="%highlight{[%d{HH:mm:ss.SSS}][%t{4}][%level{WARN=WRN, DEBUG=DBG, ERROR=ERR, TRACE=TRC, INFO=INF, FATAL=FAT}][%c{1}] %msg%n}{FATAL=red, ERROR=red, WARN=yellow, INFO=blue, DEBUG=green, TRACE=white}"/>
+    </Console>
+    
+    <Async name="ConsoleAsync" bufferSize="500">
+      <AppenderRef ref="Console"/>
+    </Async>
+  </Appenders>
+  
+  <Loggers>
+    <Root level="error">
+      <AppenderRef ref="ConsoleAsync"/>
+    </Root>
+    
+    <Logger name="de.hhu.bsinfo" level="info" additivity="false">
+      <AppenderRef ref="ConsoleAsync" />
+    </Logger>
+  </Loggers>
+</Configuration>
+```
+
 You should now see log output from hadroNIO in your terminal. If everything is configured correctly, the first line of log output should look like the following:
-```text
+```console
 [13:55:19.021][main][INF][HadronioProvider] de.hhu.bsinfo.hadronio.HadronioProvider is set as default SelectorProvider -> hadroNIO is active
 ```
+
+To enable more detailed log messages, just set the log level to `debug`. However, this will drastically decrease performance and is not recommended for normal usage.
+
 ## Test instructions
 
 This repository contains a test application with several commands, which includes hadroNIO as dependency and is automatically accelerated, without passing parameters to the `java` command. Run the following command inside the hadroNIO project directory, to build this application:
@@ -132,7 +161,7 @@ The following properties are supported:
 It is possible to use hadroNIO in other Gradle projects. The latest releases are available from the GitHub Package Registry.
 To include hadroNIO into your project, use the following code in your `build.gradle`:
 
-```
+```groovy
 repositories {
     maven {
         name = "GitHubPackages hadroNIO"
@@ -145,7 +174,7 @@ repositories {
 }
 
 dependencies {
-    implementation 'de.hhu.bsinfo:hadronio:0.1.1'
+    implementation 'de.hhu.bsinfo:hadronio:0.1.2'
 }
 ```
 
@@ -153,7 +182,7 @@ Use a file called `gradle.properties` to set `gpr.user` to your GitHub username 
 
 To enable hadroNIO from within your application, use the following code:
 
-```
+```java
 System.setProperty("java.nio.channels.spi.SelectorProvider", "de.hhu.bsinfo.hadronio.HadronioProvider");
 ```
 

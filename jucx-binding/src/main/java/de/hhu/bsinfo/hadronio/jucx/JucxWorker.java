@@ -10,7 +10,7 @@ public class JucxWorker implements UcxWorker {
     private final UcpWorker worker;
     private final Object progressLock = new Object();
 
-    public JucxWorker(UcpWorker worker) {
+    public JucxWorker(final UcpWorker worker) {
         this.worker = worker;
     }
 
