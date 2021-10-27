@@ -46,7 +46,7 @@ public class JucxSocketChannel implements UcxSocketChannel {
 
         establishConnection(callback);
         while (!connected) {
-            worker.poll(true);
+            worker.progress();
         }
     }
 

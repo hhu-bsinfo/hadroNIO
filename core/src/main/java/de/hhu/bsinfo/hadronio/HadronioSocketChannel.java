@@ -187,7 +187,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
 
         if (isBlocking()) {
             while (!socketChannel.isConnected()) {
-                worker.poll(true);
+                worker.progress();
             }
         }
 
@@ -220,7 +220,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
             if (isBlocking()) {
                 while (readableMessages.get() <= 0) {
                     fillReceiveBuffer();
-                    worker.poll(false);
+                    worker.progress();
                 }
             }
 
@@ -294,7 +294,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
                 if (length <= MessageUtil.HEADER_LENGTH) {
                     LOGGER.debug("Unable to claim space in the send buffer (Error: [{}])", INSUFFICIENT_CAPACITY);
                     if (isBlocking()) {
-                        worker.poll(true);
+                        worker.progress();
                         continue;
                     }
                     return written;
@@ -305,7 +305,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
                 if (index < 0) {
                     LOGGER.debug("Unable to claim space in the send buffer (Error: [{}])", index);
                     if (isBlocking()) {
-                        worker.poll(true);
+                        worker.progress();
                         continue;
                     }
                     return written;

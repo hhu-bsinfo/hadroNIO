@@ -106,7 +106,7 @@ public class HadronioServerSocketChannel extends ServerSocketChannel implements 
         }
 
         while (isBlocking() && !serverSocketChannel.hasPendingConnections()) {
-            worker.poll(true);
+            worker.progress();
         }
 
         final long[] tags = new long[2];

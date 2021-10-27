@@ -165,11 +165,18 @@ class HadronioSelector extends AbstractSelector {
     }
 
     private void pollWorker(final boolean blocking, final long timeout) {
-        // TODO: Implement timeout
         try {
             LOGGER.debug("Polling worker (blocking: [{}], timeout: [{}])", blocking, timeout);
-            worker.poll(blocking);
-            LOGGER.debug("Finished polling worker (blocking: [{}], timeout: [{}])", blocking, timeout);
+            boolean eventsPolled;
+            final long endTime = System.nanoTime() + timeout * 1000000;
+            do {
+                eventsPolled = worker.progress();
+                if (System.nanoTime() > endTime) {
+                    LOGGER.debug("Timeout of [{}] has been reached while polling worker", timeout);
+                    break;
+                }
+            } while(blocking && !eventsPolled);
+            LOGGER.debug("Finished polling worker (eventsPolled: [{}])", eventsPolled);
         } catch (IOException e) {
             LOGGER.error("Failed to poll worker (Message: [{}])", e.getMessage(), e);
         }

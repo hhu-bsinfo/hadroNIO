@@ -19,10 +19,10 @@ public class JucxWorker implements UcxWorker {
     }
 
     @Override
-    public void progress() throws IOException {
+    public boolean progress() throws IOException {
         try {
             synchronized (progressLock) {
-                worker.progress();
+                return worker.progress() > 0;
             }
         } catch (Exception e) {
             throw new IOException(e);
