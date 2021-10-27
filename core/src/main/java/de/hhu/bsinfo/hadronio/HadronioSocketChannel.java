@@ -369,8 +369,6 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
         connected = false;
 
         socketChannel.close();
-        sendBuffer.close();
-        receiveBuffer.close();
     }
 
     @Override

@@ -17,7 +17,7 @@ import static org.agrona.concurrent.ringbuffer.RingBufferDescriptor.*;
  * A ring buffer used for storing requests.
  * This implementation is a modified version of {@link org.agrona.concurrent.ringbuffer.OneToOneRingBuffer}.
  */
-public class RingBuffer implements Closeable {
+public class RingBuffer {
 
     private static final int REQUEST_MESSAGE_ID = 1;
 
@@ -284,10 +284,5 @@ public class RingBuffer implements Closeable {
         }
 
         throw new IllegalStateException("Claimed space previously " + (PADDING_MSG_TYPE_ID == buffer.getInt(typeOffset(recordIndex)) ? "aborted" : "committed" + "!"));
-    }
-
-    @Override
-    public void close() {
-        MemoryUtil.free(buffer);
     }
 }

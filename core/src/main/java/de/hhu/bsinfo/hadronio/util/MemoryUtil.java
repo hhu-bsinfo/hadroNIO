@@ -25,9 +25,5 @@ class MemoryUtil {
     public static AtomicBuffer allocateAligned(final int size, final Alignment alignment) {
         return new UnsafeBuffer(BufferUtil.allocateDirectAligned(size, alignment.value()));
     }
-
-    public static void free(final AtomicBuffer buffer) {
-        BufferUtil.free(buffer);
-    }
 }
 
