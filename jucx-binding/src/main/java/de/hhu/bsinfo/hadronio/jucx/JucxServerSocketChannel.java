@@ -3,6 +3,7 @@ package de.hhu.bsinfo.hadronio.jucx;
 import de.hhu.bsinfo.hadronio.UcxConnectionCallback;
 import de.hhu.bsinfo.hadronio.UcxServerSocketChannel;
 import de.hhu.bsinfo.hadronio.UcxSocketChannel;
+import de.hhu.bsinfo.hadronio.UcxWorker;
 import org.openucx.jucx.UcxException;
 import org.openucx.jucx.ucp.*;
 import org.slf4j.Logger;
@@ -16,12 +17,14 @@ public class JucxServerSocketChannel implements UcxServerSocketChannel {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(JucxServerSocketChannel.class);
 
+    private final UcpContext context;
     private final JucxWorker worker;
     private final Stack<UcpConnectionRequest> pendingConnections = new Stack<>();
     private UcpListener listener;
 
-    JucxServerSocketChannel(final JucxWorker worker) {
-        this.worker = worker;
+    JucxServerSocketChannel(final UcpContext context) {
+        this.context = context;
+        worker = new JucxWorker(context, new UcpWorkerParams());
     }
 
     @Override
@@ -47,13 +50,13 @@ public class JucxServerSocketChannel implements UcxServerSocketChannel {
     }
 
     @Override
-    public UcxSocketChannel accept(UcxConnectionCallback callback) throws IOException {
+    public UcxSocketChannel accept(final UcxConnectionCallback callback) throws IOException {
         if (pendingConnections.empty()) {
             return null;
         }
 
         LOGGER.info("Creating new UcxSocketChannel");
-        final UcxSocketChannel socket = new JucxSocketChannel(worker, pendingConnections.pop(), callback);
+        final UcxSocketChannel socket = new JucxSocketChannel(context, pendingConnections.pop(), callback);
         LOGGER.info("Accepted incoming connection");
 
         return socket;
@@ -62,6 +65,11 @@ public class JucxServerSocketChannel implements UcxServerSocketChannel {
     @Override
     public boolean hasPendingConnections() {
         return !pendingConnections.isEmpty();
+    }
+
+    @Override
+    public UcxWorker getWorker() {
+        return worker;
     }
 
     @Override

@@ -30,7 +30,6 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
     static final long FLUSH_ANSWER = 0xDEADBEEFDEAFBEEFL;
 
     private final UcxSocketChannel socketChannel;
-    private final UcxWorker worker;
     private final Configuration configuration;
 
     private final RingBuffer sendBuffer;
@@ -52,11 +51,10 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
     private boolean channelClosed = false;
     private int readyOps;
 
-    public HadronioSocketChannel(final SelectorProvider provider, final UcxSocketChannel socketChannel, final UcxWorker worker) {
+    public HadronioSocketChannel(final SelectorProvider provider, final UcxSocketChannel socketChannel) {
         super(provider);
 
         this.socketChannel = socketChannel;
-        this.worker = worker;
         configuration = Configuration.getInstance();
         sendBuffer = new RingBuffer(configuration.getSendBufferLength());
         receiveBuffer = new RingBuffer(configuration.getReceiveBufferLength());
@@ -187,7 +185,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
 
         if (isBlocking()) {
             while (!socketChannel.isConnected()) {
-                worker.progress();
+                socketChannel.getWorker().progress();
             }
         }
 
@@ -220,7 +218,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
             if (isBlocking()) {
                 while (readableMessages.get() <= 0) {
                     fillReceiveBuffer();
-                    worker.progress();
+                    socketChannel.getWorker().progress();
                 }
             }
 
@@ -294,7 +292,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
                 if (length <= MessageUtil.HEADER_LENGTH) {
                     LOGGER.debug("Unable to claim space in the send buffer (Error: [{}])", INSUFFICIENT_CAPACITY);
                     if (isBlocking()) {
-                        worker.progress();
+                        socketChannel.getWorker().progress();
                         continue;
                     }
                     return written;
@@ -305,7 +303,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
                 if (index < 0) {
                     LOGGER.debug("Unable to claim space in the send buffer (Error: [{}])", index);
                     if (isBlocking()) {
-                        worker.progress();
+                        socketChannel.getWorker().progress();
                         continue;
                     }
                     return written;
@@ -316,7 +314,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
                 sendBuffer.commitWrite(index);
 
                 final long tag = TagUtil.setMessageType(remoteTag, TagUtil.MessageType.DEFAULT);
-                final boolean blocking = !configuration.useWorkerPollThread() && isBlocking() && !buffer.hasRemaining();
+                final boolean blocking = isBlocking() && !buffer.hasRemaining();
                 final boolean completed = socketChannel.sendTaggedMessage(sendBuffer.memoryAddress() + index, length, tag, true, blocking);
                 LOGGER.debug("Send request completed instantly: [{}]", completed);
 
@@ -373,10 +371,6 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
 
     @Override
     protected void implConfigureBlocking(final boolean blocking) {
-        if (!blocking && Configuration.getInstance().useWorkerPollThread()) {
-            throw new IllegalArgumentException("Non-blocking socket channels are not supported when using the worker poll thread!");
-        }
-
         LOGGER.info("Socket channel is now configured to be [{}]", blocking ? "BLOCKING" : "NON-BLOCKING");
     }
 
@@ -406,6 +400,11 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
     @Override
     public int readyOps() {
         return readyOps;
+    }
+
+    @Override
+    public UcxWorker getWorker() {
+        return socketChannel.getWorker();
     }
 
     private void flush() throws IOException {

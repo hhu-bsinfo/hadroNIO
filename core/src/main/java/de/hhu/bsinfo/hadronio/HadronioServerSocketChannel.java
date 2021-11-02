@@ -21,17 +21,15 @@ public class HadronioServerSocketChannel extends ServerSocketChannel implements 
     private static final int DEFAULT_SERVER_PORT = 2998;
 
     private final UcxServerSocketChannel serverSocketChannel;
-    private final UcxWorker worker;
 
     private InetSocketAddress localAddress;
     private boolean channelClosed = false;
     private boolean channelBound = false;
     private int readyOps;
 
-    public HadronioServerSocketChannel(final SelectorProvider provider, final UcxServerSocketChannel serverSocketChannel, final UcxWorker worker) {
+    public HadronioServerSocketChannel(final SelectorProvider provider, final UcxServerSocketChannel serverSocketChannel) {
         super(provider);
         this.serverSocketChannel = serverSocketChannel;
-        this.worker = worker;
     }
 
     @Override
@@ -106,7 +104,7 @@ public class HadronioServerSocketChannel extends ServerSocketChannel implements 
         }
 
         while (isBlocking() && !serverSocketChannel.hasPendingConnections()) {
-            worker.progress();
+            serverSocketChannel.getWorker().progress();
         }
 
         final long[] tags = new long[2];
@@ -116,7 +114,7 @@ public class HadronioServerSocketChannel extends ServerSocketChannel implements 
         };
 
         final UcxSocketChannel socketChannel = serverSocketChannel.accept(connectionCallback);
-        final HadronioSocketChannel ret = new HadronioSocketChannel(provider(), socketChannel, worker);
+        final HadronioSocketChannel ret = new HadronioSocketChannel(provider(), socketChannel);
         ret.onConnection(true, tags[0], tags[1]);
         ret.setConnected();
 
@@ -148,6 +146,11 @@ public class HadronioServerSocketChannel extends ServerSocketChannel implements 
     @Override
     public int readyOps() {
         return readyOps;
+    }
+
+    @Override
+    public UcxWorker getWorker() {
+        return serverSocketChannel.getWorker();
     }
 
     boolean isBound() {

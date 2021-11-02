@@ -4,6 +4,7 @@ import de.hhu.bsinfo.hadronio.UcxConnectionCallback;
 import de.hhu.bsinfo.hadronio.UcxReceiveCallback;
 import de.hhu.bsinfo.hadronio.UcxSendCallback;
 import de.hhu.bsinfo.hadronio.UcxSocketChannel;
+import de.hhu.bsinfo.hadronio.UcxWorker;
 import de.hhu.bsinfo.hadronio.util.TagUtil;
 import org.openucx.jucx.UcxCallback;
 import org.openucx.jucx.ucp.*;
@@ -28,13 +29,13 @@ public class JucxSocketChannel implements UcxSocketChannel {
 
     private boolean connected = false;
 
-    JucxSocketChannel(final JucxWorker worker) {
-        this.worker = worker;
+    JucxSocketChannel(final UcpContext context) {
+        worker = new JucxWorker(context, new UcpWorkerParams().requestWakeupTagSend().requestWakeupTagRecv());
         errorHandler = new JucxErrorHandler(this);
     }
 
-    JucxSocketChannel(final JucxWorker worker, final UcpConnectionRequest connectionRequest, UcxConnectionCallback callback) throws IOException {
-        this.worker = worker;
+    JucxSocketChannel(final UcpContext context, final UcpConnectionRequest connectionRequest, final UcxConnectionCallback callback) throws IOException {
+        worker = new JucxWorker(context, new UcpWorkerParams().requestWakeupTagSend().requestWakeupTagRecv());
         errorHandler = new JucxErrorHandler(this);
         endpoint = worker.getWorker().newEndpoint(
             new UcpEndpointParams().
@@ -58,6 +59,11 @@ public class JucxSocketChannel implements UcxSocketChannel {
     @Override
     public void setReceiveCallback(final UcxReceiveCallback receiveCallback) {
         this.receiveCallback = new ReceiveCallback(receiveCallback);
+    }
+
+    @Override
+    public UcxWorker getWorker() {
+        return worker;
     }
 
     @Override

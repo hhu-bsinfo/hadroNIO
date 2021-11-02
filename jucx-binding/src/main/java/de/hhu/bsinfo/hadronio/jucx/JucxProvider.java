@@ -3,36 +3,27 @@ package de.hhu.bsinfo.hadronio.jucx;
 import de.hhu.bsinfo.hadronio.*;
 import org.openucx.jucx.ucp.UcpContext;
 import org.openucx.jucx.ucp.UcpParams;
-import org.openucx.jucx.ucp.UcpWorkerParams;
 
 public class JucxProvider implements UcxProvider {
 
     private final UcpContext context;
-    private final JucxWorker worker;
 
     public JucxProvider() {
         context = new UcpContext(new UcpParams().requestWakeupFeature().requestTagFeature().requestStreamFeature());
-        worker = new JucxWorker(context.newWorker(new UcpWorkerParams().requestThreadSafety()));
     }
 
     @Override
     public UcxServerSocketChannel createServerSocketChannel() {
-        return new JucxServerSocketChannel(worker);
+        return new JucxServerSocketChannel(context);
     }
 
     @Override
     public UcxSocketChannel createSocketChannel() {
-        return new JucxSocketChannel(worker);
-    }
-
-    @Override
-    public UcxWorker getWorker() {
-        return worker;
+        return new JucxSocketChannel(context);
     }
 
     @Override
     public void close() {
-        worker.close();
         context.close();
     }
 }

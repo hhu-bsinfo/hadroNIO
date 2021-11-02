@@ -7,6 +7,4 @@ public interface UcxProvider extends Closeable {
     UcxServerSocketChannel createServerSocketChannel();
 
     UcxSocketChannel createSocketChannel();
-
-    UcxWorker getWorker();
 }

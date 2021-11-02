@@ -7,4 +7,6 @@ interface HadronioSelectableChannel {
     int readyOps();
 
     void select() throws IOException;
+
+    UcxWorker getWorker();
 }

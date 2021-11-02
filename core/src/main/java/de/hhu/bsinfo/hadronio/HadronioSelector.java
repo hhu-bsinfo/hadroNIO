@@ -16,7 +16,6 @@ class HadronioSelector extends AbstractSelector {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(HadronioSelector.class);
 
-    private final UcxWorker worker;
     private final Set<SelectionKey> keys = new HashSet<>();
     private final FixedSelectionKeySet selectedKeys = new FixedSelectionKeySet();
     private final Object wakeupLock = new Object();
@@ -24,9 +23,8 @@ class HadronioSelector extends AbstractSelector {
     private boolean wakeupStatus = true;
     private boolean selectorClosed = false;
 
-    HadronioSelector(final SelectorProvider selectorProvider, final UcxWorker worker) {
+    HadronioSelector(final SelectorProvider selectorProvider) {
         super(selectorProvider);
-        this.worker = worker;
     }
 
     @Override
@@ -111,7 +109,7 @@ class HadronioSelector extends AbstractSelector {
         LOGGER.debug("Waking up worker");
         synchronized (wakeupLock) {
             wakeupStatus = true;
-            worker.interrupt();
+            // worker.interrupt();
             wakeupLock.notifyAll();
         }
 
@@ -167,10 +165,14 @@ class HadronioSelector extends AbstractSelector {
     private void pollWorker(final boolean blocking, final long timeout) {
         try {
             LOGGER.debug("Polling worker (blocking: [{}], timeout: [{}])", blocking, timeout);
-            boolean eventsPolled;
+            boolean eventsPolled = false;
             final long endTime = System.nanoTime() + timeout * 1000000;
+
             do {
-                eventsPolled = worker.progress();
+                for (final SelectionKey key : keys) {
+                    eventsPolled |= ((HadronioSelectableChannel) key.channel()).getWorker().progress();
+                }
+
                 if (System.nanoTime() > endTime) {
                     LOGGER.debug("Timeout of [{}] has been reached while polling worker", timeout);
                     break;

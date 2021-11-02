@@ -1,17 +1,19 @@
 package de.hhu.bsinfo.hadronio.jucx;
 
 import de.hhu.bsinfo.hadronio.UcxWorker;
+import org.openucx.jucx.ucp.UcpContext;
 import org.openucx.jucx.ucp.UcpWorker;
 
 import java.io.IOException;
+import org.openucx.jucx.ucp.UcpWorkerParams;
 
 public class JucxWorker implements UcxWorker {
 
     private final UcpWorker worker;
     private final Object progressLock = new Object();
 
-    public JucxWorker(final UcpWorker worker) {
-        this.worker = worker;
+    public JucxWorker(final UcpContext context, final UcpWorkerParams workerParams) {
+        worker = new UcpWorker(context, workerParams);
     }
 
     UcpWorker getWorker() {

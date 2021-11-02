@@ -17,4 +17,6 @@ public interface UcxSocketChannel extends Closeable {
     void setSendCallback(UcxSendCallback sendCallback);
 
     void setReceiveCallback(UcxReceiveCallback receiveCallback);
+
+    UcxWorker getWorker();
 }

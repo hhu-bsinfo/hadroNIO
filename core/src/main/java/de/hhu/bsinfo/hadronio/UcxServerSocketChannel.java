@@ -11,4 +11,6 @@ public interface UcxServerSocketChannel extends Closeable {
     UcxSocketChannel accept(UcxConnectionCallback callback) throws IOException;
 
     boolean hasPendingConnections();
+
+    UcxWorker getWorker();
 }

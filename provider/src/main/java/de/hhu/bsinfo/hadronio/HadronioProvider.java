@@ -20,7 +20,6 @@ public class HadronioProvider extends SelectorProvider implements Closeable {
     private static final Logger LOGGER = LoggerFactory.getLogger(HadronioProvider.class);
 
     private final UcxProvider provider;
-    private final WorkerPollThread workerPollThread;
 
     public HadronioProvider() {
         if (System.getProperty("java.nio.channels.spi.SelectorProvider").equals("de.hhu.bsinfo.hadronio.HadronioProvider")) {
@@ -34,13 +33,8 @@ public class HadronioProvider extends SelectorProvider implements Closeable {
 
         try {
             provider = (UcxProvider) Class.forName(configuration.getProviderClass()).getConstructor().newInstance();
-            workerPollThread = new WorkerPollThread(provider.getWorker());
         } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException | ClassNotFoundException e) {
             throw new IllegalArgumentException("Unable to instantiate class '" + configuration.getProviderClass() + "'!", e);
-        }
-
-        if (configuration.useWorkerPollThread()) {
-            workerPollThread.start();
         }
     }
 
@@ -63,7 +57,7 @@ public class HadronioProvider extends SelectorProvider implements Closeable {
     public AbstractSelector openSelector() {
         LOGGER.info("Creating new HadronioSelector");
 
-        return new HadronioSelector(this, provider.getWorker());
+        return new HadronioSelector(this);
     }
 
     @Override
@@ -71,7 +65,7 @@ public class HadronioProvider extends SelectorProvider implements Closeable {
         LOGGER.info("Creating new HadronioServerSocketChannel");
 
         final UcxServerSocketChannel serverSocketChannel = provider.createServerSocketChannel();
-        return new HadronioServerSocketChannel(this, serverSocketChannel, provider.getWorker());
+        return new HadronioServerSocketChannel(this, serverSocketChannel);
     }
 
     @Override
@@ -79,7 +73,7 @@ public class HadronioProvider extends SelectorProvider implements Closeable {
         LOGGER.info("Creating new HadronioSocketChannel");
 
         final UcxSocketChannel socketChannel = provider.createSocketChannel();
-        return new HadronioSocketChannel(this, socketChannel, provider.getWorker());
+        return new HadronioSocketChannel(this, socketChannel);
     }
 
     public static void printBanner() {
@@ -99,7 +93,6 @@ public class HadronioProvider extends SelectorProvider implements Closeable {
 
     @Override
     public void close() throws IOException {
-        workerPollThread.close();
         provider.close();
     }
 }
