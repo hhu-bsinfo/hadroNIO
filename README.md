@@ -106,43 +106,92 @@ This repository contains a test application with several commands, which include
 ```shell
 ./gradlew installDist
 ```
-### Counter
+
+### Tests using blocking socket channels
+
+These commands use blocking socket channels for communication.
+
+#### Counter
 
 The counter command starts a simple test, which sends an increasing number to the remote side, while also receiving an increasing from the remote side.
 
 Start a server:
 ```shell
-./build/example/install/hadronio/bin/hadronio counter --server
+./build/example/install/hadronio/bin/hadronio blocking counter --server
 ```
 
 Start a client:
 ```shell
-./build/example/install/hadronio/bin/hadronio --remote <server address>
+./build/example/install/hadronio/bin/hadronio blocking counter --remote <server address>
 ```
 
-### Benchmark
+#### Benchmark
 
 The benchmark command can be used for quick unidirectional performance tests with two nodes. The subcommand `throughput` starts a throughput benchmark, while the subcommand `latency` measures round trip times.
 
 Start a server:
 ```shell
-./build/example/install/hadronio/bin/hadronio benchmark throughput --server
+./build/example/install/hadronio/bin/hadronio blocking benchmark throughput --server
 ```
 Start a client:
 ```shell
-./build/example/install/hadronio/bin/hadronio benchmark throughput --remote <server address>
+./build/example/install/hadronio/bin/hadronio blocking benchmark throughput --remote <server address>
+```
+
+### Netty
+
+These commands use [netty](https://netty.io/) and thus non-blocking socket channels for communication.
+In contrast to the blocking commands, the servers support multiple connections, so that clients can be started multiple times.
+
+#### Hello
+
+A simple test, where the client sends a short message and terminates, once it has received an answer from the server.
+
+Start a server:
+```shell
+./build/example/install/hadronio/bin/hadronio netty hello --server
+```
+Start a client:
+```shell
+./build/example/install/hadronio/bin/hadronio netty hello --remote <server address>
+```
+
+#### Echo
+
+This command implements the echo protocol, meaning that the server always answers with a copy of everything it receives.  
+The client reads lines from standard input, sends each line to the server and waits for an answer.
+
+Start a server:
+```shell
+./build/example/install/hadronio/bin/hadronio netty echo --server
+```
+Start a client:
+```shell
+./build/example/install/hadronio/bin/hadronio netty echo --remote <server address>
+```
+
+#### Benchmark
+
+This is the equivalent to the blocking benchmark command. Currently, only `throughput` is supported.
+
+Start a server:
+```shell
+./build/example/install/hadronio/bin/hadronio netty benchmark throughput --server
+```
+Start a client:
+```shell
+./build/example/install/hadronio/bin/hadronio netty benchmark throughput --remote <server address>
 ```
 
 ### Parameters
 
 The test application can be configured using the following parameters:
 
- - `-a`, `--address`: The local address to bind to (Default: `0.0.0.0:2998`)
- - `-b`, `--blocking`: Use blocking socket channels instead of NIO's non-blocking API.
- - `-c`, `--count`: The iteration count (e.g. number of message to send/receive).
- - `-l`, `--length`: The message size (only valid for benchmark).
- - `-r`, `--remote`: The remote address to connect to.
  - `-s`, `--server`: Start a server instance, waiting for a client to connect.
+ - `-r`, `--remote`: The remote address to connect to.
+ - `-a`, `--address`: The local address to bind to (Default: `0.0.0.0:2998`)
+ - `-c`, `--count`: The iteration count (e.g. number of messages to send/receive).
+ - `-l`, `--length`: The message size (only valid for benchmark).
 
 ## Configuration
 

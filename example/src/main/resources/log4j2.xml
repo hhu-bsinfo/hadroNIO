@@ -31,5 +31,8 @@
 			<Logger name="de.hhu.bsinfo" level="info" additivity="false">
 				<AppenderRef ref="ConsoleAsync" />
 			</Logger>
+			<Logger name="io.netty" level="info" additivity="false">
+				<AppenderRef ref="ConsoleAsync" />
+			</Logger>
   	</Loggers>
 </Configuration>

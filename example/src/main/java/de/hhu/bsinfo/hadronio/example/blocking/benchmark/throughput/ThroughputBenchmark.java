@@ -1,4 +1,4 @@
-package de.hhu.bsinfo.hadronio.benchmark.throughput;
+package de.hhu.bsinfo.hadronio.example.blocking.benchmark.throughput;
 
 import de.hhu.bsinfo.hadronio.HadronioProvider;
 import de.hhu.bsinfo.hadronio.util.CloseSignal;
@@ -17,15 +17,10 @@ import java.nio.channels.SocketChannel;
 
 @CommandLine.Command(
         name = "throughput",
-        description = "Messaging throughput benchmark.",
+        description = "Messaging throughput benchmark using blocking socket channels",
         showDefaultValues = true,
         separator = " ")
 public class ThroughputBenchmark implements Runnable {
-
-    static {
-        System.setProperty("java.nio.channels.spi.SelectorProvider", "de.hhu.bsinfo.hadronio.HadronioProvider");
-        HadronioProvider.printBanner();
-    }
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ThroughputBenchmark.class);
     private static final int DEFAULT_SERVER_PORT = 2998;
@@ -46,19 +41,16 @@ public class ThroughputBenchmark implements Runnable {
     private InetSocketAddress remoteAddress;
 
     @CommandLine.Option(
-            names = {"-b", "--blocking"},
-            description = "Use blocking channels.")
-    private boolean blocking = false;
-
-    @CommandLine.Option(
             names = {"-l", "--length"},
-            description = "The message size.")
-    private int messageSize = 1024;
+            description = "The message size.",
+            required = true)
+    private int messageSize;
 
     @CommandLine.Option(
             names = {"-c", "--count"},
-            description = "The amount of messages.")
-    private int messageCount = 1000;
+            description = "The amount of messages.",
+            required = true)
+    private int messageCount;
 
     private SocketChannel socket;
     private ByteBuffer messageBuffer;
@@ -87,18 +79,38 @@ public class ThroughputBenchmark implements Runnable {
                 socket = SocketChannel.open(remoteAddress);
             }
         } catch (IOException e) {
-            LOGGER.error("Failed to create socket channel!", e);
+            LOGGER.error("Failed to setup connection!", e);
             return;
         }
 
         closeSignal = new CloseSignal(socket);
 
         try {
-            if (blocking) {
-                runBlocking();
+            LOGGER.info("Starting benchmark with blocking socket channels");
+            socket.configureBlocking(true);
+            final long startTime = System.nanoTime();
+
+            if (isServer) {
+                for (int i = 1; i <= messageCount; i++) {
+                    socket.write(messageBuffer);
+                    if (messageBuffer.hasRemaining()) {
+                        LOGGER.error("Buffer not fully written!");
+                    }
+
+                    messageBuffer.clear();
+                }
             } else {
-                runNonBlocking();
+                for (int i = 1; i <= messageCount; i++) {
+                    do {
+                        socket.read(messageBuffer);
+                    } while (messageBuffer.hasRemaining());
+
+                    messageBuffer.clear();
+                }
             }
+
+            closeSignal.exchange();
+            result.setMeasuredTime(System.nanoTime() - startTime);
 
             socket.close();
         } catch (IOException e) {
@@ -109,62 +121,5 @@ public class ThroughputBenchmark implements Runnable {
         if (isServer) {
             LOGGER.info("Benchmark result:\n{}", result);
         }
-    }
-
-    private void runBlocking() throws IOException {
-        LOGGER.info("Starting benchmark with blocking socket channels");
-        socket.configureBlocking(true);
-        final long startTime = System.nanoTime();
-
-        if (isServer) {
-            for (int i = 1; i <= messageCount; i++) {
-                socket.write(messageBuffer);
-                if (messageBuffer.hasRemaining()) {
-                    LOGGER.error("Buffer not fully written!");
-                }
-
-                messageBuffer.clear();
-            }
-        } else {
-            for (int i = 1; i <= messageCount; i++) {
-                do {
-                    socket.read(messageBuffer);
-                } while (messageBuffer.hasRemaining());
-
-                messageBuffer.clear();
-            }
-        }
-
-        closeSignal.exchange();
-        result.setMeasuredTime(System.nanoTime() - startTime);
-    }
-
-    private void runNonBlocking() throws IOException {
-        LOGGER.info("Starting benchmark with non-blocking socket channels");
-        socket.configureBlocking(false);
-
-        final Selector selector = Selector.open();
-        if (isServer) {
-            final SelectionKey key = socket.register(selector, SelectionKey.OP_WRITE);
-            key.attach(new ServerHandler(socket, key, messageBuffer, messageCount));
-        } else {
-            final SelectionKey key = socket.register(selector, SelectionKey.OP_READ);
-            key.attach(new ClientHandler(socket, key, messageBuffer, messageCount));
-        }
-
-        final long startTime = System.nanoTime();
-
-        while (!selector.keys().isEmpty()) {
-            selector.select();
-
-            for (final SelectionKey key : selector.selectedKeys()) {
-                ((Runnable) key.attachment()).run();
-            }
-
-            selector.selectedKeys().clear();
-        }
-
-        closeSignal.exchange();
-        result.setMeasuredTime(System.nanoTime() - startTime);
     }
 }

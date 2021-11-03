@@ -1,7 +1,8 @@
-package de.hhu.bsinfo.hadronio;
+package de.hhu.bsinfo.hadronio.example;
 
-import de.hhu.bsinfo.hadronio.benchmark.Benchmark;
-import de.hhu.bsinfo.hadronio.counter.CounterDemo;
+import de.hhu.bsinfo.hadronio.HadronioProvider;
+import de.hhu.bsinfo.hadronio.example.blocking.Blocking;
+import de.hhu.bsinfo.hadronio.example.netty.Netty;
 import de.hhu.bsinfo.hadronio.util.InetSocketAddressConverter;
 import picocli.CommandLine;
 
@@ -10,7 +11,7 @@ import java.net.InetSocketAddress;
 @CommandLine.Command(
         name = "hadronio",
         description = "Test applications for hadroNIO",
-        subcommands = { CounterDemo.class, Benchmark.class}
+        subcommands = { Blocking.class, Netty.class }
 )
 public class Application implements Runnable {
 
@@ -22,6 +23,9 @@ public class Application implements Runnable {
     }
 
     public static void main(String... args) {
+        System.setProperty("java.nio.channels.spi.SelectorProvider", "de.hhu.bsinfo.hadronio.HadronioProvider");
+        HadronioProvider.printBanner();
+
         final int exitCode = new CommandLine(new Application())
                 .registerConverter(InetSocketAddress.class, new InetSocketAddressConverter(DEFAULT_SERVER_PORT))
                 .setCaseInsensitiveEnumValuesAllowed(true)
