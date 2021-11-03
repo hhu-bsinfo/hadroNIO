@@ -1,5 +1,16 @@
 ext {
     projectVersion = '0.1.2' + (Boolean.valueOf(System.getProperty('release')) ? '' : '-SNAPSHOT')
+
+    buildConfigVersion = '1.1.8'
+    gitVersionVersion = '0.12.2'
+    shadowVersion = '7.1.0'
+
+    picocliVersion = '4.6.1'
+    agronaVersion = '1.12.0'
+    jucxVersion = '1.11.2'
+    slf4jVersion = '1.7.32'
+    log4jVersion = '2.14.1'
+    junitJupiterVersion = '5.8.1'
 }
 
 buildscript {

@@ -5,10 +5,10 @@ plugins {
 group 'de.hhu.bsinfo'
 version = getProperty('projectVersion')
 
-compileJava {
-    sourceCompatibility = '8'
-    targetCompatibility = '8'
-    options.encoding = 'UTF-8'
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(8))
+    }
 }
 
 repositories {
@@ -17,11 +17,11 @@ repositories {
 
 dependencies {
     implementation project(':core')
-    implementation 'org.openucx:jucx:1.11.2'
-    implementation 'org.slf4j:slf4j-api:1.7.32'
+    implementation "org.openucx:jucx:${jucxVersion}"
+    implementation "org.slf4j:slf4j-api:${slf4jVersion}"
 
-    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.1'
-    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.1'
+    testImplementation "org.junit.jupiter:junit-jupiter-api:${junitJupiterVersion}"
+    testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:${junitJupiterVersion}"
 }
 
 test {
