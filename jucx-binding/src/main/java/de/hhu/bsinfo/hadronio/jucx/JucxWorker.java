@@ -10,7 +10,6 @@ import org.openucx.jucx.ucp.UcpWorkerParams;
 public class JucxWorker implements UcxWorker {
 
     private final UcpWorker worker;
-    private final Object progressLock = new Object();
 
     public JucxWorker(final UcpContext context, final UcpWorkerParams workerParams) {
         worker = new UcpWorker(context, workerParams);
@@ -23,9 +22,7 @@ public class JucxWorker implements UcxWorker {
     @Override
     public boolean progress() throws IOException {
         try {
-            synchronized (progressLock) {
-                return worker.progress() > 0;
-            }
+            return worker.progress() > 0;
         } catch (Exception e) {
             throw new IOException(e);
         }
