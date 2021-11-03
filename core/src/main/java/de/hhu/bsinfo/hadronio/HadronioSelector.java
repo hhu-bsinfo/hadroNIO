@@ -109,7 +109,6 @@ class HadronioSelector extends AbstractSelector {
         LOGGER.debug("Waking up worker");
         synchronized (wakeupLock) {
             wakeupStatus = true;
-            // worker.interrupt();
             wakeupLock.notifyAll();
         }
 
@@ -148,7 +147,6 @@ class HadronioSelector extends AbstractSelector {
                                 if (wakeupStatus) {
                                     LOGGER.debug("Selector has been interrupted by wakeup");
                                     wakeupStatus = false;
-
                                     break;
                                 }
                             }
@@ -177,7 +175,7 @@ class HadronioSelector extends AbstractSelector {
                     LOGGER.debug("Timeout of [{}] has been reached while polling worker", timeout);
                     break;
                 }
-            } while(blocking && !eventsPolled);
+            } while(blocking && !eventsPolled && !wakeupStatus);
             LOGGER.debug("Finished polling worker (eventsPolled: [{}])", eventsPolled);
         } catch (IOException e) {
             LOGGER.error("Failed to poll worker (Message: [{}])", e.getMessage(), e);
