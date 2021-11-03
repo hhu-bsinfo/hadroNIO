@@ -60,7 +60,7 @@ public class HadronioProvider extends SelectorProvider implements Closeable {
     }
 
     @Override
-    public ServerSocketChannel openServerSocketChannel() {
+    public ServerSocketChannel openServerSocketChannel() throws IOException {
         LOGGER.info("Creating new HadronioServerSocketChannel");
 
         final UcxListener serverSocketChannel = provider.createListener();
@@ -68,7 +68,7 @@ public class HadronioProvider extends SelectorProvider implements Closeable {
     }
 
     @Override
-    public SocketChannel openSocketChannel() {
+    public SocketChannel openSocketChannel() throws IOException {
         LOGGER.info("Creating new HadronioSocketChannel");
 
         final UcxEndpoint socketChannel = provider.createEndpoint();

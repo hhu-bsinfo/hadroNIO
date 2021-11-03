@@ -1,5 +1,5 @@
 os: linux
-dist: bionic
+dist: focal
 language: java
 
 stages:
@@ -10,9 +10,15 @@ stages:
 jobs:
   include:
     - stage: build
+      before_install:
+        - wget -O panama.zip https://coconucos.cs.hhu.de/forschung/jdk/latest.zip
+        - unzip panama.zip -d /tmp
+        - echo "org.gradle.java.installations.paths=/tmp/panama/" > gradle.properties
       script:
         - ./gradlew build
     - stage: release
+      install:
+        - ./gradlew provider:assemble
       script:
         - ./gradlew clean
         - ./gradlew publish -Dgpr.user=${GPR_USER} -Dgpr.token=${GPR_TOKEN} -Drelease=true
