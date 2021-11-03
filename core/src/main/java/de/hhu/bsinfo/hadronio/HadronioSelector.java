@@ -173,7 +173,7 @@ class HadronioSelector extends AbstractSelector {
                     eventsPolled |= ((HadronioSelectableChannel) key.channel()).getWorker().progress();
                 }
 
-                if (System.nanoTime() > endTime) {
+                if (timeout > 0 && System.nanoTime() > endTime) {
                     LOGGER.debug("Timeout of [{}] has been reached while polling worker", timeout);
                     break;
                 }
