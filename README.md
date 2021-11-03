@@ -95,7 +95,7 @@ Additionally, you need to configure SLF4J to enable logging output for `de.hhu.b
 
 You should now see log output from hadroNIO in your terminal. If everything is configured correctly, the first line of log output should look like the following:
 ```console
-[13:55:19.021][main][INF][HadronioProvider] de.hhu.bsinfo.hadronio.HadronioProvider is set as default SelectorProvider -> hadroNIO is active
+[13:55:19.021][main][INF][HadronioProvider] Initializing HadronioProvider
 ```
 
 To enable more detailed log messages, just set the log level to `debug`. However, this will drastically decrease performance and is not recommended for normal usage.
@@ -138,7 +138,7 @@ Start a client:
 ./build/example/install/hadronio/bin/hadronio blocking benchmark throughput --remote <server address>
 ```
 
-### Netty
+### Tests using netty
 
 These commands use [netty](https://netty.io/) and thus non-blocking socket channels for communication.
 In contrast to the blocking commands, the servers support multiple connections, so that clients can be started multiple times.

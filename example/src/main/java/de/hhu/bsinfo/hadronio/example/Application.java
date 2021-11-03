@@ -1,6 +1,5 @@
 package de.hhu.bsinfo.hadronio.example;
 
-import de.hhu.bsinfo.hadronio.HadronioProvider;
 import de.hhu.bsinfo.hadronio.example.blocking.Blocking;
 import de.hhu.bsinfo.hadronio.example.netty.Netty;
 import de.hhu.bsinfo.hadronio.util.InetSocketAddressConverter;
@@ -24,7 +23,6 @@ public class Application implements Runnable {
 
     public static void main(String... args) {
         System.setProperty("java.nio.channels.spi.SelectorProvider", "de.hhu.bsinfo.hadronio.HadronioProvider");
-        HadronioProvider.printBanner();
 
         final int exitCode = new CommandLine(new Application())
                 .registerConverter(InetSocketAddress.class, new InetSocketAddressConverter(DEFAULT_SERVER_PORT))

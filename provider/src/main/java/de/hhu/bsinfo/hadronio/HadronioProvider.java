@@ -22,11 +22,7 @@ public class HadronioProvider extends SelectorProvider implements Closeable {
     private final UcxProvider provider;
 
     public HadronioProvider() {
-        if (System.getProperty("java.nio.channels.spi.SelectorProvider").equals("de.hhu.bsinfo.hadronio.HadronioProvider")) {
-            LOGGER.info("de.hhu.bsinfo.hadronio.HadronioProvider is set as default SelectorProvider -> hadroNIO is active");
-        } else {
-            throw new IllegalStateException("de.hhu.bsinfo.hadronio.HadronioProvider is not set as default SelectorProvider -> hadroNIO is not active");
-        }
+        LOGGER.info("Initializing HadronioProvider\n\n{}\n", getBanner());
 
         final Configuration configuration = Configuration.getInstance();
         LOGGER.info("hadroNIO configuration: [{}]", configuration);
@@ -76,19 +72,18 @@ public class HadronioProvider extends SelectorProvider implements Closeable {
         return new HadronioSocketChannel(this, socketChannel);
     }
 
-    public static void printBanner() {
+    public static String getBanner() {
         final InputStream inputStream = HadronioProvider.class.getClassLoader().getResourceAsStream("banner.txt");
 
         if (inputStream == null) {
-            return;
+            return "";
         }
 
         final BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
         final String banner = reader.lines().collect(Collectors.joining(System.lineSeparator()));
+        final String[] providerClass = Configuration.getInstance().getProviderClass().split("\\.");
 
-        System.out.print("\n");
-        System.out.printf(banner, BuildConfig.VERSION, BuildConfig.BUILD_DATE, BuildConfig.GIT_BRANCH, BuildConfig.GIT_COMMIT, Configuration.getInstance().getProviderClass());
-        System.out.print("\n\n");
+        return String.format(banner, BuildConfig.VERSION, BuildConfig.BUILD_DATE, BuildConfig.GIT_BRANCH, BuildConfig.GIT_COMMIT, providerClass[providerClass.length - 1]);
     }
 
     @Override
