@@ -8,7 +8,7 @@ import picocli.CommandLine;
 @CommandLine.Command(
         name = "netty",
         description = "Example applications using netty",
-        subcommands = { HelloDemo.class, EchoDemo.class, Benchmark.class}
+        subcommands = { HelloDemo.class, EchoDemo.class, Benchmark.class }
 )
 public class Netty implements Runnable {
 

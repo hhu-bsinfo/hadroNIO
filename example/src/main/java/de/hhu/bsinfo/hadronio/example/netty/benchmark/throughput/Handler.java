@@ -30,11 +30,10 @@ public class Handler extends ChannelInboundHandlerAdapter {
     public void channelActive(final ChannelHandlerContext context) {
         if (context.channel().parent() != null) {
             LOGGER.info("Accepted incoming connection from [{}]", context.channel().remoteAddress());
+            startTime = System.nanoTime();
         } else {
             LOGGER.info("Successfully connected to [{}]", context.channel().remoteAddress());
         }
-
-        startTime = System.nanoTime();
     }
 
     @Override
