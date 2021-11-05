@@ -114,6 +114,10 @@ public class HadronioServerSocketChannel extends ServerSocketChannel implements 
         };
 
         final UcxSocketChannel socketChannel = serverSocketChannel.accept(connectionCallback);
+        if (socketChannel == null) {
+            return null;
+        }
+
         final HadronioSocketChannel ret = new HadronioSocketChannel(provider(), socketChannel);
         ret.onConnection(true, tags[0], tags[1]);
         ret.setConnected();
