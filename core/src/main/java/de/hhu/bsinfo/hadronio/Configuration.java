@@ -12,9 +12,9 @@ class Configuration {
     private static final int MIN_BUFFER_SLICE_LENGTH = 32;
     private static final int MIN_FLUSH_INTERVAL_SIZE = 128;
 
-    private static final int DEFAULT_SEND_BUFFER_LENGTH = 4 * 1024 * 1024;
-    private static final int DEFAULT_RECEIVE_BUFFER_LENGTH = 4 * 1024 * 1024;
-    private static final int DEFAULT_BUFFER_SLICE_LENGTH = 32 * 1024;
+    private static final int DEFAULT_SEND_BUFFER_LENGTH = 8 * 1024 * 1024;
+    private static final int DEFAULT_RECEIVE_BUFFER_LENGTH = 8 * 1024 * 1024;
+    private static final int DEFAULT_BUFFER_SLICE_LENGTH = 64 * 1024;
     private static final int DEFAULT_FLUSH_INTERVAL_SIZE = 1024;
     private static final String DEFAULT_PROVIDER_CLASS = "de.hhu.bsinfo.hadronio.jucx.JucxProvider";
 
