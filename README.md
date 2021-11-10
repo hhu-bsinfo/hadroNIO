@@ -9,6 +9,7 @@ Transparent acceleration for Java NIO applications via [UCX](https://openucx.org
 <p align="center">
   <a href="https://travis-ci.com/github/hhu-bsinfo/hadroNIO"><img src="https://www.travis-ci.com/hhu-bsinfo/hadroNIO.svg?branch=main"></a>
   <a href="https://openjdk.java.net/"><img src="https://img.shields.io/badge/java-8+-blue.svg"></a>
+  <a href="https://openucx.org/"><img src="https://img.shields.io/badge/ucx-1.11.2-blue.svg"></a>
   <a href="https://github.com/hhu-bsinfo/hadroNIO/blob/master/LICENSE"><img src="https://img.shields.io/badge/license-GPLv3-orange.svg"></a>
 </p>
 
@@ -30,7 +31,7 @@ This is a research project by the [Operating Systems group](https://www.cs.hhu.d
 
 ## Build instructions
 
-hadroNIO is compatible with all Java version, starting from Java 8.
+hadroNIO is compatible with all Java versions, starting from Java 8.
 
 Execute the following commands to clone this repository and build a portable JAR-file, containing hadroNIO and all its dependencies:
 
@@ -40,11 +41,11 @@ cd hadroNIO/
 ./gradlew shadowJar
 ```
 
-The JAR-file should now be located at `build/provider/libs/hadronio-0.1.2-SNAPSHOT-all.jar`.
+The JAR-file should now be located at `build/provider/libs/hadronio-0.2.0-SNAPSHOT-all.jar`.
 
 ### Known issues
 
- - Building hadroNIO with a Java version higher than 8, but then running it with Java 8 JVM results in a `java.lang.NoSuchMethodError`, regarding the class `java.nio.ByteBuffer`. This happens, because the `ByteBuffer` overrides methode of its super class `Buffer` in Java 9+, while it relies on the implementations provided by `Buffer` in Java 8. If you come across this error, make sure to both build an run hadroNIO using Java 8, or use a newer version of Java altogether.
+ - Building hadroNIO with a Java version higher than 8, but then running it with Java 8 JVM results in a `java.lang.NoSuchMethodError`, regarding the class `java.nio.ByteBuffer`. This happens, because the `ByteBuffer` overrides methods of its super class `Buffer` in Java 9+, while it relies on the implementations provided by `Buffer` in Java 8. If you come across this error, make sure to both build an run hadroNIO using Java 8, or use a newer version of Java altogether.
 
 ## Run instructions
 
@@ -52,7 +53,7 @@ To run hadroNIO, **UCX 1.11.2** needs to be installed on your system. See the [O
 
 To accelerate an existing Java application (e.g. `application.jar`), the hadroNIO JAR-file needs to be included in the classpath. Additionally, the property `java.nio.channels.spi.SelectorProvider` must be set to `de.hhu.bsinfo.hadronio.HadronioProvider`:
 ```shell
-java -cp path/to/hadronio-0.1.2-SNAPSHOT-all.jar -Djava.nio.channels.spi.SelectorProvider=de.hhu.bsinfo.hadronio.HadronioProvider -jar application.jar
+java -cp path/to/hadronio-0.2.0-SNAPSHOT-all.jar -Djava.nio.channels.spi.SelectorProvider=de.hhu.bsinfo.hadronio.HadronioProvider -jar application.jar
 ```
 
 ### Enable logging
@@ -223,7 +224,7 @@ repositories {
 }
 
 dependencies {
-    implementation 'de.hhu.bsinfo:hadronio:0.1.2'
+    implementation 'de.hhu.bsinfo:hadronio:0.2.0'
 }
 ```
 

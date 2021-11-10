@@ -16,16 +16,11 @@ jobs:
       script:
         - ./gradlew clean
         - ./gradlew publish -Dgpr.user=${GPR_USER} -Dgpr.token=${GPR_TOKEN} -Drelease=true
-        - ./gradlew provider:shadowJar example:distZip -Drelease=true
         - export PUBLISH=true
 
 deploy:
   provider: releases
   token: ${ACCESS_TOKEN}
-  file:
-    - build/provider/libs/hadronio-${TRAVIS_TAG}-all.jar
-    - build/example/distributions/hadronio-${TRAVIS_TAG}.zip
-  skip_cleanup: true
   overwrite: true
   on:
     repo: hhu-bsinfo/hadroNIO

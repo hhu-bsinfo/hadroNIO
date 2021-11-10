@@ -1,5 +1,5 @@
 ext {
-    projectVersion = '0.1.2' + (Boolean.valueOf(System.getProperty('release')) ? '' : '-SNAPSHOT')
+    projectVersion = '0.2.0' + (Boolean.valueOf(System.getProperty('release')) ? '' : '-SNAPSHOT')
 
     buildConfigVersion = '1.1.8'
     gitVersionVersion = '0.12.2'
