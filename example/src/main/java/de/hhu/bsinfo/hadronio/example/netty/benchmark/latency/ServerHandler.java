@@ -39,6 +39,7 @@ public class ServerHandler extends ChannelInboundHandlerAdapter {
     public void channelActive(final ChannelHandlerContext context) {
         LOGGER.info("Accepted incoming connection from [{}]", context.channel().remoteAddress());
         startTime = System.nanoTime();
+
         result.startSingleMeasurement();
         context.channel().writeAndFlush(sendBuffer);
     }
@@ -52,12 +53,12 @@ public class ServerHandler extends ChannelInboundHandlerAdapter {
             result.stopSingleMeasurement();
             receivedBytes = 0;
             receivedMessages++;
+
+            result.startSingleMeasurement();
+            sendBuffer.resetReaderIndex();
+            context.channel().writeAndFlush(sendBuffer);
         }
         receiveBuffer.release();
-
-        sendBuffer.resetReaderIndex();
-        result.startSingleMeasurement();
-        context.channel().writeAndFlush(sendBuffer);
 
         if (receivedMessages >= messageCount) {
             result.finishMeasuring(System.nanoTime() - startTime);

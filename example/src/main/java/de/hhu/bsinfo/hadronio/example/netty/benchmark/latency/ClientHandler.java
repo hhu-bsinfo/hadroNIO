@@ -45,11 +45,11 @@ public class ClientHandler extends ChannelInboundHandlerAdapter {
         if (receivedBytes == messageSize) {
             receivedBytes = 0;
             receivedMessages++;
+
+            sendBuffer.resetReaderIndex();
+            context.channel().writeAndFlush(sendBuffer);
         }
         receiveBuffer.release();
-
-        sendBuffer.resetReaderIndex();
-        context.channel().writeAndFlush(sendBuffer);
 
         if (receivedMessages >= messageCount && context.channel().parent() != null) {
             context.channel().close();

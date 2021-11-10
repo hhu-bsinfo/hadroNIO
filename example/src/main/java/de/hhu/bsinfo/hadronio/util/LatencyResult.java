@@ -48,6 +48,10 @@ public class LatencyResult {
         return latencyStatistics.getPercentilesNs(percentile) / 1000000000;
     }
 
+    public double getOperationThroughput() {
+        return operationThroughput;
+    }
+
     @Override
     public String toString() {
         return "LatencyResult {" +
