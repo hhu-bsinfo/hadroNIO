@@ -1,5 +1,9 @@
 package de.hhu.bsinfo.hadronio;
 
+import de.hhu.bsinfo.hadronio.binding.UcxEndpoint;
+import de.hhu.bsinfo.hadronio.binding.UcxWorker;
+import de.hhu.bsinfo.hadronio.util.MemoryUtil;
+import de.hhu.bsinfo.hadronio.util.MemoryUtil.Alignment;
 import de.hhu.bsinfo.hadronio.util.MessageUtil;
 import de.hhu.bsinfo.hadronio.util.RingBuffer;
 import de.hhu.bsinfo.hadronio.util.TagUtil;
@@ -27,9 +31,10 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
 
     private static final Logger LOGGER = LoggerFactory.getLogger(HadronioSocketChannel.class);
 
+    static final long CONNECTION_MAGIC_NUMBER = 0xC0FFEE00ADD1C7EDL;
     static final long FLUSH_ANSWER = 0xDEADBEEFDEAFBEEFL;
 
-    private final UcxSocketChannel socketChannel;
+    private final UcxEndpoint endpoint;
     private final Configuration configuration;
 
     private final RingBuffer sendBuffer;
@@ -51,10 +56,10 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
     private boolean channelClosed = false;
     private int readyOps;
 
-    public HadronioSocketChannel(final SelectorProvider provider, final UcxSocketChannel socketChannel) {
+    public HadronioSocketChannel(final SelectorProvider provider, final UcxEndpoint endpoint) {
         super(provider);
 
-        this.socketChannel = socketChannel;
+        this.endpoint = endpoint;
         configuration = Configuration.getInstance();
         sendBuffer = new RingBuffer(configuration.getSendBufferLength());
         receiveBuffer = new RingBuffer(configuration.getReceiveBufferLength());
@@ -163,13 +168,13 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
 
         connectionPending = true;
         LOGGER.info("Connecting to [{}]", remoteAddress);
-        socketChannel.connect((InetSocketAddress) remoteAddress, new ConnectionCallback(this));
+        endpoint.connect((InetSocketAddress) remoteAddress);
+        establishConnection();
 
         if (isBlocking()) {
             finishConnect();
         }
 
-        connected = socketChannel.isConnected();
         return connected;
     }
 
@@ -184,14 +189,14 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
         }
 
         if (isBlocking()) {
-            while (!socketChannel.isConnected()) {
-                socketChannel.getWorker().progress();
+            while (!connected) {
+                endpoint.getWorker().progress();
             }
         }
 
-        if (socketChannel.isConnected()) {
-            connectable = false;
+        if (connectable) {
             connected = true;
+            connectable = false;
         } else if (connectionFailed) {
             throw new IOException("Failed to connect socket channel!");
         }
@@ -218,7 +223,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
             if (isBlocking()) {
                 while (readableMessages.get() <= 0) {
                     fillReceiveBuffer();
-                    socketChannel.getWorker().progress();
+                    endpoint.getWorker().progress();
                 }
             }
 
@@ -292,7 +297,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
                 if (length <= MessageUtil.HEADER_LENGTH) {
                     LOGGER.debug("Unable to claim space in the send buffer (Error: [{}])", INSUFFICIENT_CAPACITY);
                     if (isBlocking()) {
-                        socketChannel.getWorker().progress();
+                        endpoint.getWorker().progress();
                         continue;
                     }
                     return written;
@@ -303,7 +308,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
                 if (index < 0) {
                     LOGGER.debug("Unable to claim space in the send buffer (Error: [{}])", index);
                     if (isBlocking()) {
-                        socketChannel.getWorker().progress();
+                        endpoint.getWorker().progress();
                         continue;
                     }
                     return written;
@@ -315,7 +320,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
 
                 final long tag = TagUtil.setMessageType(remoteTag, TagUtil.MessageType.DEFAULT);
                 final boolean blocking = isBlocking() && !buffer.hasRemaining();
-                final boolean completed = socketChannel.sendTaggedMessage(sendBuffer.memoryAddress() + index, length, tag, true, blocking);
+                final boolean completed = endpoint.sendTaggedMessage(sendBuffer.memoryAddress() + index, length, tag, true, blocking);
                 LOGGER.debug("Send request completed instantly: [{}]", completed);
 
                 if (++sendCounter % configuration.getFlushIntervalSize() == 0) {
@@ -366,7 +371,9 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
         outputClosed = true;
         connected = false;
 
-        socketChannel.close();
+        if (!endpoint.isClosed()) {
+            endpoint.close();
+        }
     }
 
     @Override
@@ -390,7 +397,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
         if (!inputClosed && readableMessages.get() > 0) {
             readyOps |= SelectionKey.OP_READ;
         }
-        if (isConnected() && !socketChannel.isConnected()) {
+        if (isConnected() && endpoint.isClosed()) {
             readyOps |= SelectionKey.OP_READ;
         }
 
@@ -404,22 +411,42 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
 
     @Override
     public UcxWorker getWorker() {
-        return socketChannel.getWorker();
+        return endpoint.getWorker();
     }
 
     private void flush() throws IOException {
         final long tag = TagUtil.setMessageType(localTag, TagUtil.MessageType.FLUSH);
         isFlushing.set(true);
         flushBuffer.putLong(0, 0);
-        socketChannel.receiveTaggedMessage(flushBuffer.addressOffset(), flushBuffer.capacity(), tag, TagUtil.TAG_MASK_FULL,true, false);
+        endpoint.receiveTaggedMessage(flushBuffer.addressOffset(), flushBuffer.capacity(), tag, TagUtil.TAG_MASK_FULL,true, false);
     }
 
     public void onConnection(final boolean success, long localTag, long remoteTag) {
         if (success) {
             this.localTag = localTag;
             this.remoteTag = remoteTag;
-            socketChannel.setSendCallback(new SendCallback(this, sendBuffer));
-            socketChannel.setReceiveCallback(new ReceiveCallback(this, readableMessages, isFlushing, configuration.getFlushIntervalSize()));
+
+            endpoint.setSendCallback(() -> {
+                LOGGER.debug("hadroNIO SendCallback called");
+                final AtomicBoolean padding = new AtomicBoolean(true);
+                int readFromBuffer;
+
+                do {
+                    readFromBuffer = sendBuffer.read((msgTypeId, buffer, index, length) -> {
+                        LOGGER.debug("Message type id: [{}], Index: [{}], Length: [{}]", msgTypeId, index, length);
+                        padding.set(false);
+                    }, 1);
+
+                    if (padding.get()) {
+                        LOGGER.debug("Read [{}] padding bytes from send buffer", readFromBuffer);
+                        sendBuffer.commitRead(readFromBuffer);
+                    }
+                } while (padding.get());
+
+                sendBuffer.commitRead(readFromBuffer);
+            });
+
+            endpoint.setReceiveCallback(new ReceiveCallback(this, readableMessages, isFlushing, configuration.getFlushIntervalSize()));
 
             LOGGER.info("SocketChannel connected successfully (localTag: [0x{}], remoteTag: [0x{}])", Long.toHexString(localTag), Long.toHexString(remoteTag));
 
@@ -450,15 +477,11 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
             LOGGER.debug("Claimed part of the receive buffer (Index: [{}], Length: [{}])", index, configuration.getBufferSliceLength());
 
             receiveBuffer.commitWrite(index);
-            final boolean completed = socketChannel.receiveTaggedMessage(receiveBuffer.memoryAddress() + index, configuration.getBufferSliceLength(), tag, TagUtil.TAG_MASK_FULL, true, false);
+            final boolean completed = endpoint.receiveTaggedMessage(receiveBuffer.memoryAddress() + index, configuration.getBufferSliceLength(), tag, TagUtil.TAG_MASK_FULL, true, false);
             LOGGER.debug("Receive request completed instantly: [{}]", completed);
 
             index = receiveBuffer.tryClaim(configuration.getBufferSliceLength());
         }
-    }
-
-    void setConnected() {
-        this.connected = true;
     }
 
     long getRemoteTag() {
@@ -473,8 +496,23 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
         return outputClosed;
     }
 
-    UcxSocketChannel getSocketChannelImplementation() {
-        return socketChannel;
+    UcxEndpoint getSocketChannelImplementation() {
+        return endpoint;
+    }
+
+    void establishConnection() {
+        final AtomicBuffer sendBuffer = MemoryUtil.allocateAligned(2 * Long.BYTES, Alignment.PAGE);
+        final AtomicBuffer receiveBuffer = MemoryUtil.allocateAligned(2 * Long.BYTES, Alignment.PAGE);
+
+        final long localId = TagUtil.generateId();
+        sendBuffer.putLong(0, CONNECTION_MAGIC_NUMBER);
+        sendBuffer.putLong(Long.BYTES, localId);
+
+        final ConnectionCallback connectionCallback = new ConnectionCallback(this, receiveBuffer, localId);
+
+        LOGGER.info("Exchanging tags to establish connection");
+        endpoint.sendStream(sendBuffer.addressOffset(), sendBuffer.capacity(), connectionCallback);
+        endpoint.receiveStream(receiveBuffer.addressOffset(), receiveBuffer.capacity(), connectionCallback);
     }
 
     private boolean isNotReadable() throws ClosedChannelException {
@@ -486,11 +524,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
             throw new NotYetConnectedException();
         }
 
-        if (inputClosed) {
-            return true;
-        }
-
-        return isConnected() && !socketChannel.isConnected();
+        return inputClosed || endpoint.isClosed();
     }
 
     private boolean isNotWriteable() throws ClosedChannelException {
@@ -502,6 +536,6 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
             throw new NotYetConnectedException();
         }
 
-        return outputClosed;
+        return outputClosed || endpoint.isClosed();
     }
 }

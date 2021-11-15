@@ -1,5 +1,8 @@
 package de.hhu.bsinfo.hadronio;
 
+import de.hhu.bsinfo.hadronio.binding.UcxEndpoint;
+import de.hhu.bsinfo.hadronio.binding.UcxListener;
+import de.hhu.bsinfo.hadronio.binding.UcxProvider;
 import de.hhu.bsinfo.hadronio.generated.BuildConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,7 +63,7 @@ public class HadronioProvider extends SelectorProvider implements Closeable {
     public ServerSocketChannel openServerSocketChannel() {
         LOGGER.info("Creating new HadronioServerSocketChannel");
 
-        final UcxServerSocketChannel serverSocketChannel = provider.createServerSocketChannel();
+        final UcxListener serverSocketChannel = provider.createListener();
         return new HadronioServerSocketChannel(this, serverSocketChannel);
     }
 
@@ -68,7 +71,7 @@ public class HadronioProvider extends SelectorProvider implements Closeable {
     public SocketChannel openSocketChannel() {
         LOGGER.info("Creating new HadronioSocketChannel");
 
-        final UcxSocketChannel socketChannel = provider.createSocketChannel();
+        final UcxEndpoint socketChannel = provider.createEndpoint();
         return new HadronioSocketChannel(this, socketChannel);
     }
 

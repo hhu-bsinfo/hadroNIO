@@ -1,5 +1,10 @@
 package de.hhu.bsinfo.hadronio;
 
+import de.hhu.bsinfo.hadronio.binding.UcxConnectionRequest;
+import de.hhu.bsinfo.hadronio.binding.UcxEndpoint;
+import de.hhu.bsinfo.hadronio.binding.UcxListener;
+import de.hhu.bsinfo.hadronio.binding.UcxWorker;
+import java.util.Stack;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,16 +25,17 @@ public class HadronioServerSocketChannel extends ServerSocketChannel implements 
     private static final Logger LOGGER = LoggerFactory.getLogger(HadronioServerSocketChannel.class);
     private static final int DEFAULT_SERVER_PORT = 2998;
 
-    private final UcxServerSocketChannel serverSocketChannel;
+    private final UcxListener listener;
+    private final Stack<UcxConnectionRequest> pendingRequests = new Stack<>();
 
     private InetSocketAddress localAddress;
     private boolean channelClosed = false;
     private boolean channelBound = false;
     private int readyOps;
 
-    public HadronioServerSocketChannel(final SelectorProvider provider, final UcxServerSocketChannel serverSocketChannel) {
+    public HadronioServerSocketChannel(final SelectorProvider provider, final UcxListener listener) {
         super(provider);
-        this.serverSocketChannel = serverSocketChannel;
+        this.listener = listener;
     }
 
     @Override
@@ -51,7 +57,16 @@ public class HadronioServerSocketChannel extends ServerSocketChannel implements 
         }
 
         try {
-            serverSocketChannel.bind(localAddress, backlog);
+            listener.bind(localAddress, connectionRequest -> {
+                LOGGER.info("Received connection request");
+
+                if (backlog <= 0 || pendingRequests.size() < backlog) {
+                    pendingRequests.push(connectionRequest);
+                } else {
+                    LOGGER.error("Discarding connection request, because the maximum number of pending requests ({}) has been reached", backlog);
+                }
+            });
+
             channelBound = true;
         } catch (IOException e){
             channelBound = false;
@@ -103,26 +118,24 @@ public class HadronioServerSocketChannel extends ServerSocketChannel implements 
             throw new NotYetBoundException();
         }
 
-        while (isBlocking() && !serverSocketChannel.hasPendingConnections()) {
-            serverSocketChannel.getWorker().progress();
-        }
-
-        final long[] tags = new long[2];
-        final UcxConnectionCallback connectionCallback = (localTag, remoteTag) -> {
-            tags[0] = localTag;
-            tags[1] = remoteTag;
-        };
-
-        final UcxSocketChannel socketChannel = serverSocketChannel.accept(connectionCallback);
-        if (socketChannel == null) {
+        if (!isBlocking() && pendingRequests.isEmpty()) {
             return null;
         }
 
-        final HadronioSocketChannel ret = new HadronioSocketChannel(provider(), socketChannel);
-        ret.onConnection(true, tags[0], tags[1]);
-        ret.setConnected();
+        while (isBlocking() && pendingRequests.isEmpty()) {
+            listener.getWorker().progress();
+        }
 
-        return ret;
+        LOGGER.info("Accepting connection request");
+        final UcxEndpoint endpoint = listener.accept(pendingRequests.pop());
+        final HadronioSocketChannel socket = new HadronioSocketChannel(provider(), endpoint);
+
+        socket.establishConnection();
+        while (!socket.isConnected()) {
+            socket.getWorker().progress();
+        }
+
+        return socket;
     }
 
     @Override
@@ -134,7 +147,7 @@ public class HadronioServerSocketChannel extends ServerSocketChannel implements 
     protected void implCloseSelectableChannel() throws IOException {
         LOGGER.info("Closing server socket channel bound to [{}]", localAddress);
         channelClosed = true;
-        serverSocketChannel.close();
+        listener.close();
     }
 
     @Override
@@ -144,7 +157,7 @@ public class HadronioServerSocketChannel extends ServerSocketChannel implements 
 
     @Override
     public void select() {
-        readyOps = serverSocketChannel.hasPendingConnections() ? OP_ACCEPT : 0;
+        readyOps = pendingRequests.isEmpty() ? 0 : OP_ACCEPT;
     }
 
     @Override
@@ -154,7 +167,7 @@ public class HadronioServerSocketChannel extends ServerSocketChannel implements 
 
     @Override
     public UcxWorker getWorker() {
-        return serverSocketChannel.getWorker();
+        return listener.getWorker();
     }
 
     boolean isBound() {

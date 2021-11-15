@@ -1,6 +1,8 @@
 package de.hhu.bsinfo.hadronio.jucx;
 
-import de.hhu.bsinfo.hadronio.*;
+import de.hhu.bsinfo.hadronio.binding.UcxEndpoint;
+import de.hhu.bsinfo.hadronio.binding.UcxListener;
+import de.hhu.bsinfo.hadronio.binding.UcxProvider;
 import org.openucx.jucx.ucp.UcpContext;
 import org.openucx.jucx.ucp.UcpParams;
 
@@ -13,13 +15,13 @@ public class JucxProvider implements UcxProvider {
     }
 
     @Override
-    public UcxServerSocketChannel createServerSocketChannel() {
-        return new JucxServerSocketChannel(context);
+    public UcxListener createListener() {
+        return new JucxListener(context);
     }
 
     @Override
-    public UcxSocketChannel createSocketChannel() {
-        return new JucxSocketChannel(context);
+    public UcxEndpoint createEndpoint() {
+        return new JucxEndpoint(context);
     }
 
     @Override

@@ -7,7 +7,7 @@ ext {
 
     agronaVersion = '1.12.0'
     jucxVersion = '1.11.2'
-    picocliVersion = '4.6.1'
+    picocliVersion = '4.6.2'
     nettyVersion = '4.1.70.Final'
     slf4jVersion = '1.7.32'
     log4jVersion = '2.14.1'
@@ -33,5 +33,5 @@ subprojects {
 }
 
 wrapper {
-    gradleVersion = "7.2"
+    gradleVersion = "7.3"
 }

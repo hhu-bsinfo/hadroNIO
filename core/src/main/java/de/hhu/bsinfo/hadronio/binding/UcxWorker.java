@@ -1,4 +1,4 @@
-package de.hhu.bsinfo.hadronio;
+package de.hhu.bsinfo.hadronio.binding;
 
 import java.io.Closeable;
 import java.io.IOException;

@@ -1,6 +1,7 @@
 package de.hhu.bsinfo.hadronio.jucx;
 
-import de.hhu.bsinfo.hadronio.UcxReceiveCallback;
+import de.hhu.bsinfo.hadronio.binding.UcxException;
+import de.hhu.bsinfo.hadronio.binding.UcxReceiveCallback;
 import org.openucx.jucx.ucp.UcpRequest;
 import org.openucx.jucx.UcxCallback;
 import org.slf4j.Logger;
@@ -20,13 +21,12 @@ public class ReceiveCallback extends UcxCallback {
     public void onSuccess(final UcpRequest request) {
         LOGGER.debug("JUCX ReceiveCallback called (Completed: [{}], Size: [{}], Tag: [0x{}])", request.isCompleted(), request.getRecvSize(), Long.toHexString(request.getSenderTag()));
         if (request.isCompleted()) {
-            callback.onSuccess(request.getSenderTag());
+            callback.onMessageReceived(request.getSenderTag());
         }
     }
 
     @Override
     public void onError(final int ucsStatus, final String errorMessage) {
-        LOGGER.error("Failed to receive a message! Status: [{}], Error: [{}]", ucsStatus, errorMessage);
-        callback.onError();
+        throw new UcxException("Failed to receive a message (Status: [" + ucsStatus + "], Error: [" + errorMessage + "])!");
     }
 }

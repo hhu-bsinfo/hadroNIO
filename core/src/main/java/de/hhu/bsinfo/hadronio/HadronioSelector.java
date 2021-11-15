@@ -1,5 +1,6 @@
 package de.hhu.bsinfo.hadronio;
 
+import de.hhu.bsinfo.hadronio.binding.UcxException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -177,7 +178,7 @@ class HadronioSelector extends AbstractSelector {
                 }
             } while(blocking && !eventsPolled && !wakeupStatus);
             LOGGER.debug("Finished polling worker (eventsPolled: [{}])", eventsPolled);
-        } catch (IOException e) {
+        } catch (IOException | UcxException e) {
             LOGGER.error("Failed to poll worker (Message: [{}])", e.getMessage(), e);
         }
     }

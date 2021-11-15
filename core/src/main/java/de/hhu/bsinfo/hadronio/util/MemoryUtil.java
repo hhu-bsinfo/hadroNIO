@@ -4,9 +4,9 @@ import org.agrona.BufferUtil;
 import org.agrona.concurrent.AtomicBuffer;
 import org.agrona.concurrent.UnsafeBuffer;
 
-class MemoryUtil {
+public class MemoryUtil {
 
-    enum Alignment {
+    public enum Alignment {
         TYPE    (0x0008),
         CACHE   (0x0040),
         PAGE    (0x1000);

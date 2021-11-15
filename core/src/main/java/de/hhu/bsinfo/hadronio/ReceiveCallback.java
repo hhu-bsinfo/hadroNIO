@@ -1,5 +1,6 @@
 package de.hhu.bsinfo.hadronio;
 
+import de.hhu.bsinfo.hadronio.binding.UcxReceiveCallback;
 import de.hhu.bsinfo.hadronio.util.TagUtil;
 import org.agrona.concurrent.AtomicBuffer;
 import org.agrona.concurrent.UnsafeBuffer;
@@ -34,7 +35,7 @@ class ReceiveCallback implements UcxReceiveCallback {
     }
 
     @Override
-    public void onSuccess(long tag) {
+    public void onMessageReceived(long tag) {
         final long id = TagUtil.getTargetId(tag);
         final TagUtil.MessageType messageType = TagUtil.getMessageType(tag);
         LOGGER.debug("hadroNIO ReceiveCallback called (id: [0x{}], messageType: [{}])", Long.toHexString(id), messageType);
@@ -58,17 +59,5 @@ class ReceiveCallback implements UcxReceiveCallback {
 
         int readable = readableMessages.incrementAndGet();
         LOGGER.debug("Readable messages: [{}]", readable);
-    }
-
-    @Override
-    public void onError() {
-        LOGGER.error("hadroNIO ReceiveCallback error handler called (Closing socket channel)");
-
-        try {
-            socket.close();
-        } catch (IOException e) {
-            LOGGER.error("Failed to close socket channel (Message: [{}])", e.getMessage());
-            LOGGER.debug("Stack trace:", e);
-        }
     }
 }
