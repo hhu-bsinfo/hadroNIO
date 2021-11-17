@@ -20,6 +20,4 @@ public interface UcxEndpoint extends UcxProgressable {
     void setSendCallback(UcxCallback sendCallback);
 
     void setReceiveCallback(UcxReceiveCallback receiveCallback);
-
-    boolean isClosed();
 }

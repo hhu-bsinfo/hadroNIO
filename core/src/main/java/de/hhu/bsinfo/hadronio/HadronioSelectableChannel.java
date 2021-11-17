@@ -5,9 +5,11 @@ import java.io.IOException;
 
 interface HadronioSelectableChannel {
 
-    int readyOps();
-
     void select() throws IOException;
+
+    default void handleError() {};
+
+    int readyOps();
 
     UcxWorker getWorker();
 }

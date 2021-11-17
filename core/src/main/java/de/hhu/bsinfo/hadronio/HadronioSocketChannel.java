@@ -54,6 +54,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
     private boolean inputClosed = false;
     private boolean outputClosed = false;
     private boolean channelClosed = false;
+    private boolean errorState = false;
     private int readyOps;
 
     public HadronioSocketChannel(final SelectorProvider provider, final UcxEndpoint endpoint) {
@@ -111,7 +112,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
             throw new ClosedChannelException();
         }
         
-        LOGGER.info("Closing connection for input -> This socket channel will no longer be readable");
+        LOGGER.info("Closing connection for input");
 
         inputClosed = true;
         return this;
@@ -127,7 +128,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
             throw new ClosedChannelException();
         }
 
-        LOGGER.info("Closing connection for output -> This socket channel will no longer be writable");
+        LOGGER.info("Closing connection for output");
 
         outputClosed = true;
         return this;
@@ -371,9 +372,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
         outputClosed = true;
         connected = false;
 
-        if (!endpoint.isClosed()) {
-            endpoint.close();
-        }
+        endpoint.close();
     }
 
     @Override
@@ -397,11 +396,22 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
         if (!inputClosed && readableMessages.get() > 0) {
             readyOps |= SelectionKey.OP_READ;
         }
-        if (isConnected() && endpoint.isClosed()) {
+        if (errorState) {
             readyOps |= SelectionKey.OP_READ;
         }
 
         this.readyOps = readyOps;
+    }
+
+    @Override
+    public void handleError() {
+        try {
+            shutdownOutput();
+        } catch (IOException e) {
+            LOGGER.error("Unable to shutdown output of socket channel");
+        }
+
+        errorState = true;
     }
 
     @Override
@@ -524,7 +534,11 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
             throw new NotYetConnectedException();
         }
 
-        return inputClosed || endpoint.isClosed();
+        if (errorState && readableMessages.get() == 0) {
+            return true;
+        }
+
+        return inputClosed;
     }
 
     private boolean isNotWriteable() throws ClosedChannelException {
@@ -536,6 +550,6 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
             throw new NotYetConnectedException();
         }
 
-        return outputClosed || endpoint.isClosed();
+        return outputClosed;
     }
 }

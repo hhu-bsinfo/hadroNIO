@@ -17,26 +17,23 @@ public class JucxEndpoint implements UcxEndpoint {
     private static final Logger LOGGER = LoggerFactory.getLogger(JucxEndpoint.class);
 
     private final JucxWorker worker;
-    private final JucxErrorHandler errorHandler;
     private UcpEndpoint endpoint;
     private org.openucx.jucx.UcxCallback sendCallback;
     private org.openucx.jucx.UcxCallback receiveCallback;
 
-    private boolean closed = false;
-
     JucxEndpoint(final UcpContext context) {
         worker = new JucxWorker(context, new UcpWorkerParams().requestWakeupTagSend().requestWakeupTagRecv());
-        errorHandler = new JucxErrorHandler(this);
     }
 
     JucxEndpoint(final UcpContext context, final UcpConnectionRequest connectionRequest) {
         worker = new JucxWorker(context, new UcpWorkerParams().requestWakeupTagSend().requestWakeupTagRecv());
-        errorHandler = new JucxErrorHandler(this);
         endpoint = worker.getWorker().newEndpoint(
             new UcpEndpointParams().
             setConnectionRequest(connectionRequest).
             setPeerErrorHandlingMode().
-            setErrorHandler(errorHandler));
+            setErrorHandler((ep, status, errorMsg) -> {
+                throw new IOException("A UCX error occurred (Status: [" + status + "], Error: [" + errorMsg + "])!");
+            }));
 
         LOGGER.info("Endpoint created: [{}]", endpoint);
     }
@@ -47,7 +44,9 @@ public class JucxEndpoint implements UcxEndpoint {
             new UcpEndpointParams().
             setSocketAddress(remoteAddress).
             setPeerErrorHandlingMode().
-            setErrorHandler(errorHandler));
+            setErrorHandler((ep, status, errorMsg) -> {
+                throw new IOException("A UCX error occurred (Status: [" + status + "], Error: [" + errorMsg + "])!");
+            }));
 
         LOGGER.info("Endpoint created: [{}]", endpoint);
     }
@@ -101,11 +100,6 @@ public class JucxEndpoint implements UcxEndpoint {
     }
 
     @Override
-    public boolean isClosed() {
-        return closed;
-    }
-
-    @Override
     public UcxWorker getWorker() {
         return worker;
     }
@@ -113,7 +107,6 @@ public class JucxEndpoint implements UcxEndpoint {
     @Override
     public void close() {
         LOGGER.info("Closing endpoint");
-        closed = true;
         endpoint.close();
     }
 }

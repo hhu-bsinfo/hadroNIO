@@ -162,14 +162,20 @@ class HadronioSelector extends AbstractSelector {
     }
 
     private void pollWorker(final boolean blocking, final long timeout) {
-        try {
             LOGGER.debug("Polling worker (blocking: [{}], timeout: [{}])", blocking, timeout);
             boolean eventsPolled = false;
             final long endTime = System.nanoTime() + timeout * 1000000;
 
             do {
                 for (final SelectionKey key : keys) {
-                    eventsPolled |= ((HadronioSelectableChannel) key.channel()).getWorker().progress();
+                    final HadronioSelectableChannel channel = (HadronioSelectableChannel) key.channel();
+
+                    try {
+                        eventsPolled |= channel.getWorker().progress();
+                    } catch (IOException | UcxException e) {
+                        LOGGER.error("Failed to progress worker (Message: [{}])", e.getMessage());
+                        channel.handleError();
+                    }
                 }
 
                 if (timeout > 0 && System.nanoTime() > endTime) {
@@ -178,9 +184,6 @@ class HadronioSelector extends AbstractSelector {
                 }
             } while(blocking && !eventsPolled && !wakeupStatus);
             LOGGER.debug("Finished polling worker (eventsPolled: [{}])", eventsPolled);
-        } catch (IOException | UcxException e) {
-            LOGGER.error("Failed to poll worker (Message: [{}])", e.getMessage(), e);
-        }
     }
 
     private boolean selectKey(final HadronioSelectionKey key) {
