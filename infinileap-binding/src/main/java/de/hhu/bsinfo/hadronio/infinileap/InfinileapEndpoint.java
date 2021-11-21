@@ -152,6 +152,6 @@ public class InfinileapEndpoint implements UcxEndpoint {
             worker.getWorker().progress();
         }
 
-        return Status.is(status, Status.OK);
+        return Status.is(ucp_request_check_status(status), Status.OK);
     }
 }
