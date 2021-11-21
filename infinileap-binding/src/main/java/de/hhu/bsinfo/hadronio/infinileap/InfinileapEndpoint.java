@@ -7,15 +7,7 @@ import de.hhu.bsinfo.hadronio.binding.UcxEndpoint;
 import de.hhu.bsinfo.hadronio.binding.UcxException;
 import de.hhu.bsinfo.hadronio.binding.UcxReceiveCallback;
 import de.hhu.bsinfo.hadronio.binding.UcxWorker;
-import de.hhu.bsinfo.infinileap.binding.ConnectionRequest;
-import de.hhu.bsinfo.infinileap.binding.Context;
-import de.hhu.bsinfo.infinileap.binding.ControlException;
-import de.hhu.bsinfo.infinileap.binding.Endpoint;
-import de.hhu.bsinfo.infinileap.binding.EndpointParameters;
-import de.hhu.bsinfo.infinileap.binding.RequestParameters;
-import de.hhu.bsinfo.infinileap.binding.Status;
-import de.hhu.bsinfo.infinileap.binding.Tag;
-import de.hhu.bsinfo.infinileap.binding.WorkerParameters;
+import de.hhu.bsinfo.infinileap.binding.*;
 import de.hhu.bsinfo.infinileap.primitive.NativeLong;
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -30,8 +22,9 @@ public class InfinileapEndpoint implements UcxEndpoint {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(InfinileapEndpoint.class);
 
-    private final InfinileapWorker worker;
     private Endpoint endpoint;
+    private final InfinileapWorker worker;
+    private final EndpointParameters parameters = new EndpointParameters();
     private final RequestParameters sendParameters = new RequestParameters();
     private final RequestParameters receiveParameters = new RequestParameters();
     private final RequestParameters emptyParameters = new RequestParameters();
@@ -42,14 +35,23 @@ public class InfinileapEndpoint implements UcxEndpoint {
 
     InfinileapEndpoint(final Context context, final ConnectionRequest connectionRequest) throws ControlException {
         worker = new InfinileapWorker(context, new WorkerParameters());
-        endpoint = worker.getWorker().createEndpoint(new EndpointParameters().setConnectionRequest(connectionRequest));
+        endpoint = worker.getWorker().createEndpoint(
+                parameters.setConnectionRequest(connectionRequest)
+                .setErrorHandler((userData, endpoint, status) -> {
+                    throw new UcxException("A UCX error occurred (Status: [" + status + "])!");
+        }));
+
         LOGGER.info("Endpoint created");
     }
 
     @Override
     public void connect(final InetSocketAddress remoteAddress) throws IOException {
         try {
-            endpoint = worker.getWorker().createEndpoint(new EndpointParameters().setRemoteAddress(remoteAddress));
+            endpoint = worker.getWorker().createEndpoint(
+                    parameters.setRemoteAddress(remoteAddress)
+                    .setErrorHandler((userData, endpoint, status) -> {
+                        throw new UcxException("A UCX error occurred (Status: [" + status + "])!");
+                    }));
         } catch (ControlException e) {
             throw new IOException(e);
         }
