@@ -140,6 +140,7 @@ public class InfinileapEndpoint implements UcxEndpoint {
     @Override
     public void close() {
         LOGGER.info("Closing endpoint");
+        endpoint.close();
     }
 
     private boolean checkStatus(long status, boolean blocking) {
