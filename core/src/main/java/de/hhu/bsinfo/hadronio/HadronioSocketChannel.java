@@ -13,10 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.net.Socket;
-import java.net.SocketAddress;
-import java.net.SocketOption;
+import java.net.*;
 import java.nio.ByteBuffer;
 import java.nio.channels.*;
 import java.nio.channels.spi.SelectorProvider;
@@ -190,16 +187,18 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
         }
 
         if (isBlocking()) {
-            while (!connected) {
+            while (!connected && !connectionFailed) {
                 endpoint.getWorker().progress();
             }
+        }
+
+        if (connectionFailed) {
+            throw new IOException("Failed to connect socket channel!");
         }
 
         if (connectable) {
             connected = true;
             connectable = false;
-        } else if (connectionFailed) {
-            throw new IOException("Failed to connect socket channel!");
         }
 
         return connected;
@@ -211,7 +210,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
             throw new ClosedChannelException();
         }
 
-        throw new IOException("Trying to get remote address, which is not supported");
+        throw new IOException("Trying to get remote address, which is not supported!");
     }
 
     @Override
@@ -393,10 +392,10 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
         if (isConnected() && !outputClosed && !isFlushing.get() && sendBuffer.maxMessageLength() > MessageUtil.HEADER_LENGTH) {
             readyOps |= SelectionKey.OP_WRITE;
         }
-        if (!inputClosed && readableMessages.get() > 0) {
+        if (isConnected() && !inputClosed && readableMessages.get() > 0) {
             readyOps |= SelectionKey.OP_READ;
         }
-        if (errorState) {
+        if (isConnected() && errorState) {
             readyOps |= SelectionKey.OP_READ;
         }
 
@@ -405,10 +404,15 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
 
     @Override
     public void handleError() {
-        try {
-            shutdownOutput();
-        } catch (IOException e) {
-            LOGGER.error("Unable to shutdown output of socket channel");
+        if (isConnected()) {
+            try {
+                shutdownOutput();
+            } catch (IOException e) {
+                LOGGER.error("Unable to shutdown output of socket channel");
+            }
+        } else if (connectionPending) {
+            connectable = true;
+            connectionFailed = true;
         }
 
         errorState = true;
