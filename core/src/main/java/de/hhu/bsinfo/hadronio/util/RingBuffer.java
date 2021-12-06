@@ -5,8 +5,6 @@ import org.agrona.UnsafeAccess;
 import org.agrona.concurrent.AtomicBuffer;
 import org.agrona.concurrent.MessageHandler;
 
-import java.io.Closeable;
-
 import static org.agrona.BitUtil.align;
 import static org.agrona.concurrent.broadcast.RecordDescriptor.PADDING_MSG_TYPE_ID;
 import static org.agrona.concurrent.ringbuffer.RecordDescriptor.*;
@@ -151,7 +149,6 @@ public class RingBuffer {
     }
 
     private int claim(final AtomicBuffer buffer, final int length) {
-
         // Calculate the required space to claim
         final int required = BitUtil.align(length, ALIGNMENT);
 

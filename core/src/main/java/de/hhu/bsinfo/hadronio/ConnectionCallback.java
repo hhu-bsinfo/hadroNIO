@@ -1,7 +1,6 @@
 package de.hhu.bsinfo.hadronio;
 
 import de.hhu.bsinfo.hadronio.binding.UcxCallback;
-import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.agrona.concurrent.AtomicBuffer;
 import org.slf4j.Logger;
@@ -22,6 +21,7 @@ class ConnectionCallback implements UcxCallback {
         this.localTag = localTag;
     }
 
+    @Override
     public void onSuccess() {
         final int count = successCounter.incrementAndGet();
         LOGGER.debug("Connection callback has been called with a successfully completed request ([{}/2])", count);

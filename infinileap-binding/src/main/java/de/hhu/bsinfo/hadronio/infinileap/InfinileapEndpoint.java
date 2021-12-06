@@ -4,7 +4,6 @@ import static org.openucx.Communication.ucp_request_check_status;
 
 import de.hhu.bsinfo.hadronio.binding.UcxCallback;
 import de.hhu.bsinfo.hadronio.binding.UcxEndpoint;
-import de.hhu.bsinfo.hadronio.binding.UcxException;
 import de.hhu.bsinfo.hadronio.binding.UcxReceiveCallback;
 import de.hhu.bsinfo.hadronio.binding.UcxWorker;
 import de.hhu.bsinfo.infinileap.binding.*;
@@ -18,7 +17,7 @@ import jdk.incubator.foreign.ValueLayout.OfLong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class InfinileapEndpoint implements UcxEndpoint {
+class InfinileapEndpoint implements UcxEndpoint {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(InfinileapEndpoint.class);
 
@@ -29,6 +28,8 @@ public class InfinileapEndpoint implements UcxEndpoint {
     private final RequestParameters receiveParameters = new RequestParameters();
     private final RequestParameters emptyParameters = new RequestParameters();
 
+    private boolean errorState = false;
+
     InfinileapEndpoint(final Context context) throws ControlException {
         worker = new InfinileapWorker(context, new WorkerParameters());
     }
@@ -38,7 +39,8 @@ public class InfinileapEndpoint implements UcxEndpoint {
         endpoint = worker.getWorker().createEndpoint(
                 parameters.setConnectionRequest(connectionRequest)
                 .setErrorHandler((userData, endpoint, status) -> {
-                    throw new UcxException("A UCX error occurred (Status: [" + status + "])!");
+                    LOGGER.error("A UCX error occurred (Status: [{}])!", status);
+                    handleError();
         }));
 
         LOGGER.info("Endpoint created");
@@ -50,7 +52,8 @@ public class InfinileapEndpoint implements UcxEndpoint {
             endpoint = worker.getWorker().createEndpoint(
                     parameters.setRemoteAddress(remoteAddress)
                     .setErrorHandler((userData, endpoint, status) -> {
-                        throw new UcxException("A UCX error occurred (Status: [" + status + "])!");
+                        LOGGER.error("A UCX error occurred (Status: [{}])!", status);
+                        handleError();
                     }));
         } catch (ControlException e) {
             throw new IOException(e);
@@ -78,7 +81,8 @@ public class InfinileapEndpoint implements UcxEndpoint {
                 if (status == Status.OK) {
                     callback.onSuccess();
                 } else {
-                    throw new UcxException("Failed to send data via streaming (Status: [" + status + "])!");
+                    LOGGER.error("Failed to send data via streaming (Status: [{}])!", status);
+                    handleError();
                 }
             }));
 
@@ -95,7 +99,8 @@ public class InfinileapEndpoint implements UcxEndpoint {
                 if (status == Status.OK) {
                     callback.onSuccess();
                 } else {
-                    throw new UcxException("Failed to receive data via streaming (Status: [" + status + "])!");
+                    LOGGER.error("Failed to receive data via streaming (Status: [{}])!", status);
+                    handleError();
                 }
             }));
 
@@ -112,7 +117,8 @@ public class InfinileapEndpoint implements UcxEndpoint {
                     LOGGER.debug("Infinileap SendCallback called (Status: [{}])", status);
                     sendCallback.onSuccess();
                 } else {
-                    throw new UcxException("Failed to send a message (Status: [" + status + "])");
+                    LOGGER.error("Failed to send a message (Status: [{}])!", status);
+                    handleError();
                 }
             });
     }
@@ -127,9 +133,15 @@ public class InfinileapEndpoint implements UcxEndpoint {
                     LOGGER.debug("Infinileap ReceiveCallback called (Status: [{}], Size: [{}], Tag: [0x{}])", status, size, Long.toHexString(tag));
                     receiveCallback.onMessageReceived(tag);
                 } else {
-                    throw new UcxException("Failed to receive a message (Status: [" + status + "])");
+                    LOGGER.error("Failed to receive a message (Status: [{}])!", status);
+                    handleError();
                 }
             });
+    }
+
+    @Override
+    public boolean getErrorState() {
+        return errorState;
     }
 
     @Override
@@ -141,6 +153,10 @@ public class InfinileapEndpoint implements UcxEndpoint {
     public void close() {
         LOGGER.info("Closing endpoint");
         endpoint.close();
+    }
+
+    private void handleError() {
+        errorState = true;
     }
 
     private boolean checkStatus(long status, boolean blocking) {

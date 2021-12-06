@@ -15,14 +15,15 @@ import java.net.InetSocketAddress;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class InfinileapListener implements UcxListener {
+class InfinileapListener implements UcxListener {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(InfinileapListener.class);
 
     private final Context context;
     private final InfinileapWorker worker;
-    private ListenerParameters listenerParameters;
     private Listener listener;
+    // Need to be kept as instance variable, or else the connection handler will be garbage collected
+    private ListenerParameters listenerParameters;
 
     InfinileapListener(final Context context) throws ControlException {
         this.context = context;
@@ -46,7 +47,7 @@ public class InfinileapListener implements UcxListener {
     @Override
     public UcxEndpoint accept(final UcxConnectionRequest connectionRequest) throws IOException {
         try {
-            return new InfinileapEndpoint(context, ((InfinileapConnectionRequest) connectionRequest).getConnectionRequest());
+            return new InfinileapEndpoint(context, ((InfinileapConnectionRequest) connectionRequest).connectionRequest());
         } catch (ControlException e) {
             throw new IOException(e);
         }

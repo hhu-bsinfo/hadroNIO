@@ -1,10 +1,8 @@
 package de.hhu.bsinfo.hadronio;
 
-import de.hhu.bsinfo.hadronio.binding.UcxException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.nio.channels.ClosedSelectorException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
@@ -91,17 +89,17 @@ class HadronioSelector extends AbstractSelector {
     }
 
     @Override
-    public int selectNow() throws IOException {
+    public int selectNow() {
         return select(false, 0);
     }
 
     @Override
-    public int select(final long timeout) throws IOException {
+    public int select(final long timeout) {
         return select(true, timeout);
     }
 
     @Override
-    public int select() throws IOException {
+    public int select() {
         return select(true, 0);
     }
 
@@ -116,7 +114,7 @@ class HadronioSelector extends AbstractSelector {
         return this;
     }
 
-    private int select(final boolean blocking, final long timeout) throws IOException {
+    private int select(final boolean blocking, final long timeout) {
         if (selectorClosed) {
             throw new ClosedSelectorException();
         }
@@ -169,13 +167,7 @@ class HadronioSelector extends AbstractSelector {
             do {
                 for (final SelectionKey key : keys) {
                     final HadronioSelectableChannel channel = (HadronioSelectableChannel) key.channel();
-
-                    try {
-                        eventsPolled |= channel.getWorker().progress();
-                    } catch (IOException | UcxException e) {
-                        LOGGER.error("Failed to progress worker (Message: [{}])", e.getMessage());
-                        channel.handleError();
-                    }
+                    eventsPolled |= channel.getWorker().progress();
                 }
 
                 if (timeout > 0 && System.nanoTime() > endTime) {
@@ -251,7 +243,7 @@ class HadronioSelector extends AbstractSelector {
         }
     }
 
-    private int performSelectOperation() throws IOException {
+    private int performSelectOperation() {
         LOGGER.debug("Selecting [{}] {}", keys.size(), keys.size() == 1 ? "key" : "keys");
         int updatedKeys = 0;
 

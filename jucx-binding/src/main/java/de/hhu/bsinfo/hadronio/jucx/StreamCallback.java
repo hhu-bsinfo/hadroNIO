@@ -1,18 +1,19 @@
 package de.hhu.bsinfo.hadronio.jucx;
 
 import de.hhu.bsinfo.hadronio.binding.UcxCallback;
-import de.hhu.bsinfo.hadronio.binding.UcxException;
 import org.openucx.jucx.ucp.UcpRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class StreamCallback extends org.openucx.jucx.UcxCallback {
+class StreamCallback extends org.openucx.jucx.UcxCallback {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(StreamCallback.class);
 
+    private final JucxEndpoint endpoint;
     private final UcxCallback callback;
 
-    public StreamCallback(final UcxCallback callback) {
+    public StreamCallback(JucxEndpoint endpoint, final UcxCallback callback) {
+        this.endpoint = endpoint;
         this.callback = callback;
     }
 
@@ -26,6 +27,7 @@ public class StreamCallback extends org.openucx.jucx.UcxCallback {
 
     @Override
     public void onError(final int ucsStatus, final String errorMessage) {
-        throw new UcxException("Failed to send/receive data via streaming (Status: [" + ucsStatus + "], Error: [" + errorMessage + "])!");
+        LOGGER.error("Failed to send/receive data via streaming (Status: [{}], Error: [{}])!", ucsStatus, errorMessage);
+        endpoint.handleError();
     }
 }

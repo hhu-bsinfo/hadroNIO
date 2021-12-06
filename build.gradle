@@ -5,13 +5,14 @@ ext {
     gitVersionVersion = '0.12.2'
     shadowVersion = '7.1.0'
 
-    agronaVersion = '1.12.0'
     jucxVersion = '1.11.2'
+    infinileapVersion = '0.1.0-SNAPSHOT'
+    agronaVersion = '1.14.0'
     picocliVersion = '4.6.2'
     nettyVersion = '4.1.70.Final'
     slf4jVersion = '1.7.32'
     log4jVersion = '2.14.1'
-    junitJupiterVersion = '5.8.1'
+    junitJupiterVersion = '5.8.2'
 }
 
 buildscript {

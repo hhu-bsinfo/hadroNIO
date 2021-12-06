@@ -4,15 +4,13 @@ import de.hhu.bsinfo.hadronio.binding.UcxEndpoint;
 import de.hhu.bsinfo.hadronio.binding.UcxReceiveCallback;
 import de.hhu.bsinfo.hadronio.binding.UcxCallback;
 import de.hhu.bsinfo.hadronio.binding.UcxWorker;
-import java.nio.ByteBuffer;
 import org.openucx.jucx.ucp.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.net.InetSocketAddress;
 
-public class JucxEndpoint implements UcxEndpoint {
+class JucxEndpoint implements UcxEndpoint {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(JucxEndpoint.class);
 
@@ -20,6 +18,7 @@ public class JucxEndpoint implements UcxEndpoint {
     private UcpEndpoint endpoint;
     private org.openucx.jucx.UcxCallback sendCallback;
     private org.openucx.jucx.UcxCallback receiveCallback;
+    private boolean errorState = false;
 
     JucxEndpoint(final UcpContext context) {
         worker = new JucxWorker(context, new UcpWorkerParams().requestWakeupTagSend().requestWakeupTagRecv());
@@ -31,8 +30,9 @@ public class JucxEndpoint implements UcxEndpoint {
             new UcpEndpointParams().
             setConnectionRequest(connectionRequest).
             setPeerErrorHandlingMode().
-            setErrorHandler((ep, status, errorMsg) -> {
-                throw new IOException("A UCX error occurred (Status: [" + status + "], Error: [" + errorMsg + "])!");
+            setErrorHandler((endpoint, status, message) -> {
+                LOGGER.error("A UCX error occurred (Status: [{}], Error: [{}])!", status, message);
+                handleError();
             }));
 
         LOGGER.info("Endpoint created: [{}]", endpoint);
@@ -44,21 +44,23 @@ public class JucxEndpoint implements UcxEndpoint {
             new UcpEndpointParams().
             setSocketAddress(remoteAddress).
             setPeerErrorHandlingMode().
-            setErrorHandler((ep, status, errorMsg) -> {
-                throw new IOException("A UCX error occurred (Status: [" + status + "], Error: [" + errorMsg + "])!");
+            setErrorHandler((endpoint, status, message) -> {
+                LOGGER.error("A UCX error occurred (Status: [{}], Error: [{}])!", status, message);
+                handleError();
             }));
 
         LOGGER.info("Endpoint created: [{}]", endpoint);
     }
 
     @Override
-    public boolean sendTaggedMessage(final long address, final long size, final long tag, final boolean useCallback, final boolean blocking) throws IOException {
+    public boolean sendTaggedMessage(final long address, final long size, final long tag, final boolean useCallback, final boolean blocking) {
         final UcpRequest request = endpoint.sendTaggedNonBlocking(address, size, tag, useCallback ? sendCallback : null);
         while (blocking && !request.isCompleted()) {
             try {
                 worker.getWorker().progressRequest(request);
             } catch (Exception e) {
-                throw new IOException(e);
+                // Should never happen, since we do no throw exceptions inside our error handlers
+                throw new IllegalStateException(e);
             }
         }
 
@@ -66,13 +68,14 @@ public class JucxEndpoint implements UcxEndpoint {
     }
 
     @Override
-    public boolean receiveTaggedMessage(final long address, final long size, final long tag, final long tagMask, final boolean useCallback, final boolean blocking) throws IOException {
+    public boolean receiveTaggedMessage(final long address, final long size, final long tag, final long tagMask, final boolean useCallback, final boolean blocking) {
         final UcpRequest request = worker.getWorker().recvTaggedNonBlocking(address, size, tag, tagMask, useCallback ? receiveCallback : null);
         while (blocking && !request.isCompleted()) {
             try {
                 worker.getWorker().progressRequest(request);
             } catch (Exception e) {
-                throw new IOException(e);
+                // Should never happen, since we do no throw exceptions inside our error handlers
+                throw new IllegalStateException(e);
             }
         }
 
@@ -81,22 +84,27 @@ public class JucxEndpoint implements UcxEndpoint {
 
     @Override
     public void sendStream(final long address, final long size, final UcxCallback callback) {
-        endpoint.sendStreamNonBlocking(address, size, new StreamCallback(callback));
+        endpoint.sendStreamNonBlocking(address, size, new StreamCallback(this, callback));
     }
 
     @Override
     public void receiveStream(final long address, final long size, final UcxCallback callback) {
-        endpoint.recvStreamNonBlocking(address, size, UcpConstants.UCP_STREAM_RECV_FLAG_WAITALL, new StreamCallback(callback));
+        endpoint.recvStreamNonBlocking(address, size, UcpConstants.UCP_STREAM_RECV_FLAG_WAITALL, new StreamCallback(this, callback));
     }
 
     @Override
     public void setSendCallback(final UcxCallback sendCallback) {
-        this.sendCallback = new SendCallback(sendCallback);
+        this.sendCallback = new SendCallback(this, sendCallback);
     }
 
     @Override
     public void setReceiveCallback(final UcxReceiveCallback receiveCallback) {
-        this.receiveCallback = new ReceiveCallback(receiveCallback);
+        this.receiveCallback = new ReceiveCallback(this, receiveCallback);
+    }
+
+    @Override
+    public boolean getErrorState() {
+        return errorState;
     }
 
     @Override
@@ -108,5 +116,9 @@ public class JucxEndpoint implements UcxEndpoint {
     public void close() {
         LOGGER.info("Closing endpoint");
         endpoint.close();
+    }
+
+    void handleError() {
+        errorState = true;
     }
 }

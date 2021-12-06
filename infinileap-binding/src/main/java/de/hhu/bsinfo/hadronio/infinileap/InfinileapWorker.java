@@ -9,7 +9,7 @@ import de.hhu.bsinfo.infinileap.binding.WorkerProgress;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class InfinileapWorker implements UcxWorker {
+class InfinileapWorker implements UcxWorker {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(InfinileapWorker.class);
 

@@ -7,7 +7,6 @@ import org.agrona.concurrent.UnsafeBuffer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -47,14 +46,9 @@ class ReceiveCallback implements UcxReceiveCallback {
         }
 
         if (++receiveCounter % flushIntervalSize == 0) {
-            try {
-                LOGGER.debug("Sending flush answer");
-                final long flushTag = TagUtil.setMessageType(socket.getRemoteTag(), TagUtil.MessageType.FLUSH);
-                socket.getSocketChannelImplementation().sendTaggedMessage(flushBuffer.addressOffset(), flushBuffer.capacity(), flushTag, false, true);
-            } catch (IOException e) {
-                LOGGER.error("Failed to send flush message (Message: [{}])", e.getMessage());
-                LOGGER.debug("Stack trace:", e);
-            }
+            LOGGER.debug("Sending flush answer");
+            final long flushTag = TagUtil.setMessageType(socket.getRemoteTag(), TagUtil.MessageType.FLUSH);
+            socket.getSocketChannelImplementation().sendTaggedMessage(flushBuffer.addressOffset(), flushBuffer.capacity(), flushTag, false, true);
         }
 
         int readable = readableMessages.incrementAndGet();

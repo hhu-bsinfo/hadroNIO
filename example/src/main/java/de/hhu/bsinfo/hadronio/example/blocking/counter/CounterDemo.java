@@ -78,14 +78,19 @@ public class CounterDemo implements Runnable {
 
         CloseSignal closeSignal = new CloseSignal(socket);
 
-        while (sendCounter < count || receiveCounter < count) {
-            if (sendCounter < count) {
-                write();
-            }
+        try {
+            while (sendCounter < count || receiveCounter < count) {
+                if (sendCounter < count) {
+                    write();
+                }
 
-            if (receiveCounter < count) {
-                read();
+                if (receiveCounter < count) {
+                    read();
+                }
             }
+        } catch (IOException e) {
+            LOGGER.error("Failed to send/receive counter", e);
+            return;
         }
 
         try {
@@ -96,7 +101,7 @@ public class CounterDemo implements Runnable {
         }
     }
 
-    private void write() {
+    private void write() throws IOException {
         if (sendBuffer.position() == 0) {
             LOGGER.info("Sending [{}]", ++sendCounter);
 
@@ -104,11 +109,7 @@ public class CounterDemo implements Runnable {
             sendBuffer.rewind();
         }
 
-        try {
-            socket.write(sendBuffer);
-        } catch (IOException e) {
-            LOGGER.error("Unable to write to SocketChannel", e);
-        }
+        socket.write(sendBuffer);
 
         if (sendBuffer.hasRemaining()) {
             LOGGER.debug("Could not write all bytes at once! Remaining bytes: [{}]", sendBuffer.remaining());
@@ -118,12 +119,8 @@ public class CounterDemo implements Runnable {
         sendBuffer.clear();
     }
 
-    private void read() {
-        try {
-            socket.read(receiveBuffer);
-        } catch (IOException e) {
-            LOGGER.error("Unable to read from SocketChannel", e);
-        }
+    private void read() throws IOException {
+        socket.read(receiveBuffer);
 
         if (receiveBuffer.hasRemaining()) {
             LOGGER.debug("Could not read all bytes at once! Remaining bytes: [{}]", receiveBuffer.remaining());

@@ -13,7 +13,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 
-public class JucxListener implements UcxListener {
+class JucxListener implements UcxListener {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(JucxListener.class);
 
