@@ -516,6 +516,10 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
         int written = 0;
 
         do {
+            while (isFlushing.get()) {
+                endpoint.getWorker().progress();
+            }
+
             final int length = Math.min(Math.min(source.remaining() + MessageUtil.HEADER_LENGTH, sendBuffer.maxMessageLength()), configuration.getBufferSliceLength());
             if (length <= MessageUtil.HEADER_LENGTH) {
                 LOGGER.debug("Unable to claim space in the send buffer (Error: [{}])", INSUFFICIENT_CAPACITY);
@@ -558,6 +562,10 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
 
     private int writeNonBlocking(final ByteBuffer source) {
         int written = 0;
+
+        if (isFlushing.get()) {
+            return written;
+        }
 
         do {
             final int length = Math.min(Math.min(source.remaining() + MessageUtil.HEADER_LENGTH, sendBuffer.maxMessageLength()), configuration.getBufferSliceLength());
