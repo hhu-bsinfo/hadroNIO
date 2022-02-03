@@ -26,6 +26,11 @@ public class ThroughputBenchmark implements Runnable {
     private InetSocketAddress bindAddress = new InetSocketAddress(DEFAULT_SERVER_PORT);
 
     @CommandLine.Option(
+        names = {"-t", "--threshold"},
+        description = "The maximum amount of buffers to aggregate.")
+    private int aggregationThreshold = 64;
+
+    @CommandLine.Option(
         names = {"-r", "--remote"},
         description = "The address to connect to.")
     private InetSocketAddress remoteAddress;
@@ -49,7 +54,7 @@ public class ThroughputBenchmark implements Runnable {
             return;
         }
 
-        final Runnable runnable = isServer ? new Server(bindAddress, messageSize, messageCount) : new Client(bindAddress, remoteAddress, messageSize, messageCount);
+        final Runnable runnable = isServer ? new Server(bindAddress, messageSize, messageCount) : new Client(bindAddress, remoteAddress, messageSize, messageCount, aggregationThreshold);
         runnable.run();
     }
 }

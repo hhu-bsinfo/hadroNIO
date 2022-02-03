@@ -27,6 +27,7 @@ import static org.agrona.concurrent.ringbuffer.RingBuffer.INSUFFICIENT_CAPACITY;
 public class HadronioSocketChannel extends SocketChannel implements HadronioSelectableChannel {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(HadronioSocketChannel.class);
+    private static final ByteBuffer[] SINGLE_BUFFER_ARRAY = new ByteBuffer[1];
 
     static final long CONNECTION_MAGIC_NUMBER = 0xC0FFEE00ADD1C7EDL;
     static final long FLUSH_ANSWER = 0xDEADBEEFDEADBEEFL;
@@ -257,11 +258,8 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
         }
 
         synchronized (sendBuffer) {
-            if (isBlocking()) {
-                return writeBlocking(buffer);
-            } else {
-                return writeNonBlocking(buffer);
-            }
+            SINGLE_BUFFER_ARRAY[0] = buffer;
+            return (int) write(SINGLE_BUFFER_ARRAY, 0, 1);
         }
     }
 
@@ -272,16 +270,31 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
         }
 
         synchronized (sendBuffer) {
-            int writtenTotal = 0;
-
-            for (int i = 0; i < length; i++) {
-                writtenTotal += write(buffers[offset + i]);
-                if (buffers[offset + i].remaining() > 0) {
-                    break;
+            if (isBlocking()) {
+                // Calculate full message length
+                int totalLength = 0;
+                for (int i = 0; i < length; i++) {
+                    totalLength += buffers[offset + i].remaining();
                 }
-            }
 
-            return writtenTotal;
+                // Call write repeatedly, until all bytes are written
+                long totalWritten = 0;
+                while (totalWritten < totalLength) {
+                    long written = write(buffers, offset, length, true);
+                    if (written == 0) {
+                        endpoint.getWorker().progress();
+                        if (endpoint.getErrorState()) {
+                            throw new IOException("UCX endpoint has moved to error state!");
+                        }
+                    }
+
+                    totalWritten += written;
+                }
+
+                return totalWritten;
+            } else {
+                return write(buffers, offset, length, false);
+            }
         }
     }
 
@@ -486,15 +499,17 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
         final AtomicInteger readBytes = new AtomicInteger();
         int readFromBuffer;
 
+        LOGGER.debug("Trying to read [{}] bytes (Readable messages: [{}])", target.remaining(), readableMessages.get());
+
         do {
             readFromBuffer = receiveBuffer.read((msgTypeId, sourceBuffer, sourceIndex, sourceBufferLength) -> {
                 final int read = MessageUtil.readMessage(sourceBuffer, sourceIndex, target);
-                final boolean completed = MessageUtil.getRemainingBytes(sourceBuffer, sourceIndex) == 0;
-                LOGGER.debug("Message type id: [{}], Index: [{}], Buffer Length: [{}], Read: [{}], Completed: [{}]", msgTypeId, sourceIndex, sourceBufferLength, read, completed);
+                final int remaining = MessageUtil.getRemainingBytes(sourceBuffer, sourceIndex);
+                LOGGER.debug("Message type id: [{}], Index: [{}], Buffer Length: [{}], Read: [{}], Remaining: [{}]", msgTypeId, sourceIndex, sourceBufferLength, read, remaining);
 
                 padding.set(false);
                 readBytes.set(read);
-                messageCompleted.set(completed);
+                messageCompleted.set(remaining == 0);
             }, 1);
 
             if (padding.get()) {
@@ -545,7 +560,14 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
                 continue;
             }
 
-            sendMessage(source, index, length);
+            MessageUtil.writeMessage(sendBuffer.buffer(), index, source, length - MessageUtil.HEADER_LENGTH);
+            source.position(source.position() + length - MessageUtil.HEADER_LENGTH);
+            sendBuffer.commitWrite(index);
+
+            final long tag = TagUtil.setMessageType(remoteTag, TagUtil.MessageType.DEFAULT);
+            final boolean blocking = isBlocking() && !source.hasRemaining();
+            endpoint.sendTaggedMessage(sendBuffer.memoryAddress() + index, length, tag, true, blocking);
+
             if (endpoint.getErrorState()) {
                 throw new IOException("UCX endpoint has moved to error state!");
             }
@@ -555,53 +577,90 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
             }
 
             written += length - MessageUtil.HEADER_LENGTH;
-        } while (isBlocking() && source.hasRemaining());
+        } while (source.hasRemaining());
 
         return written;
     }
 
-    private int writeNonBlocking(final ByteBuffer source) {
-        int written = 0;
-
+    private int write(final ByteBuffer[] sources, final int offset, final int length, final boolean blocking) {
+        // Do not send anything, while flushing; Too many dangling messages cause high memory usage by UCX
         if (isFlushing.get()) {
-            return written;
+            return 0;
         }
 
-        do {
-            final int length = Math.min(Math.min(source.remaining() + MessageUtil.HEADER_LENGTH, sendBuffer.maxMessageLength()), configuration.getBufferSliceLength());
-            if (length <= MessageUtil.HEADER_LENGTH) {
-                LOGGER.debug("Unable to claim space in the send buffer (Error: [{}])", INSUFFICIENT_CAPACITY);
-                return written;
+        // Calculate full message length
+        int sourcesLength = 0;
+        for (int i = 0; i < length; i++) {
+            sourcesLength += sources[offset + i].remaining();
+        }
+
+        if (sourcesLength == 0) {
+            return 0;
+        }
+
+        // Claim space in send buffer
+        // If the message is larger than a single buffer slice, we only claim a buffer slice and do not send the full message
+        final int messageLength = Math.min(Math.min(sourcesLength + MessageUtil.HEADER_LENGTH, sendBuffer.maxMessageLength()), configuration.getBufferSliceLength());
+        if (messageLength <= MessageUtil.HEADER_LENGTH) {
+            LOGGER.debug("Unable to claim space in the send buffer (Error: [{}])", INSUFFICIENT_CAPACITY);
+            return 0;
+        }
+
+        final int index = sendBuffer.tryClaim(messageLength);
+
+        if (index < 0) {
+            LOGGER.debug("Unable to claim space in the send buffer (Error: [{}])", index);
+            return 0;
+        }
+
+        // Write message header
+        MessageUtil.setMessageLength(sendBuffer.buffer(), index, messageLength - MessageUtil.HEADER_LENGTH);
+        MessageUtil.setReadBytes(sendBuffer.buffer(), index, 0);
+
+        // Copy message data from source buffers into send buffer
+        int remaining = messageLength - MessageUtil.HEADER_LENGTH;
+        int targetIndex = index + MessageUtil.MESSAGE_OFFSET_DATA;
+        int lastBufferIndex = 0;
+        int lastBufferPosition = 0;
+
+        for (int i = 0; remaining > 0; i++) {
+            final ByteBuffer sourceBuffer = sources[offset + i];
+            final int currentLength = Math.min(sourceBuffer.remaining(), remaining);
+            if (sourceBuffer.remaining() == 0) {
+                continue;
             }
 
-            final int index = sendBuffer.tryClaim(length);
+            LOGGER.debug("Copying source buffer into send buffer (Buffer: [{}/{}], Position: [{}/{}], Length: [{}], Remaining: [{}])",
+                offset + i + 1, length, sourceBuffer.position(), sourceBuffer.limit(), currentLength, remaining);
+            sendBuffer.buffer().putBytes(targetIndex, sourceBuffer, sourceBuffer.position(), currentLength);
 
-            if (index < 0) {
-                LOGGER.debug("Unable to claim space in the send buffer (Error: [{}])", index);
-                return written;
-            }
+            lastBufferIndex = i;
+            lastBufferPosition = sourceBuffer.position() + currentLength;
+            targetIndex += currentLength;
+            remaining -= currentLength;
+        }
 
-            final boolean completed = sendMessage(source, index, length);
-            LOGGER.debug("Send request completed instantly: [{}]", completed);
+        sendBuffer.commitWrite(index);
 
-            if (++sendCounter % configuration.getFlushIntervalSize() == 0) {
-                flush();
-            }
+        // Update source buffer positions afterwards
+        // We cannot do it inside the copy loop, because it is possible, that the array contains the same buffer multiple times
+        for (int i = 0; i < lastBufferIndex; i++) {
+            final ByteBuffer buffer = sources[offset + i];
+            buffer.position(buffer.limit());
+        }
+        sources[lastBufferIndex].position(lastBufferPosition);
 
-            written += length - MessageUtil.HEADER_LENGTH;
-        } while (isBlocking() && source.hasRemaining());
-
-        return written;
-    }
-
-    private boolean sendMessage(final ByteBuffer source, final int sendBufferIndex, final int length) {
-        MessageUtil.writeMessage(sendBuffer.buffer(), sendBufferIndex, source, length - MessageUtil.HEADER_LENGTH);
-        source.position(source.position() + length - MessageUtil.HEADER_LENGTH);
-        sendBuffer.commitWrite(sendBufferIndex);
-
+        // Send message via endpoint
         final long tag = TagUtil.setMessageType(remoteTag, TagUtil.MessageType.DEFAULT);
-        final boolean blocking = isBlocking() && !source.hasRemaining();
-        return endpoint.sendTaggedMessage(sendBuffer.memoryAddress() + sendBufferIndex, length, tag, true, blocking);
+        final boolean completed = endpoint.sendTaggedMessage(sendBuffer.memoryAddress() + index, messageLength, tag, true, blocking);
+        LOGGER.debug("Send request completed instantly: [{}]", completed);
+
+        // Flush, if necessary
+        if (++sendCounter % configuration.getFlushIntervalSize() == 0) {
+            flush();
+        }
+
+        return messageLength - MessageUtil.HEADER_LENGTH;
     }
 
     private boolean isNotReadable() throws ClosedChannelException {

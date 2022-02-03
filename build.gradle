@@ -3,15 +3,15 @@ ext {
 
     buildConfigVersion = '1.1.8'
     gitVersionVersion = '0.12.2'
-    shadowVersion = '7.1.0'
+    shadowVersion = '7.1.2'
 
     jucxVersion = '1.11.2'
     infinileapVersion = '0.1.0-SNAPSHOT'
     agronaVersion = '1.14.0'
     picocliVersion = '4.6.2'
-    nettyVersion = '4.1.70.Final'
-    slf4jVersion = '1.7.32'
-    log4jVersion = '2.14.1'
+    nettyVersion = '4.1.73.Final'
+    slf4jVersion = '1.7.35'
+    log4jVersion = '2.17.1'
     junitJupiterVersion = '5.8.2'
 }
 

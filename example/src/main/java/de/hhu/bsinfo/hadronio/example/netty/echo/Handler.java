@@ -24,13 +24,14 @@ public class Handler extends ChannelInboundHandlerAdapter {
     @Override
     public void channelRead(final ChannelHandlerContext context, final Object message) {
         final ByteBuf buffer = (ByteBuf) message;
-        final StringBuilder string = new StringBuilder();
+        final byte[] bytes = new byte[buffer.readableBytes()];
 
-        while (buffer.isReadable()) {
-            string.append((char) buffer.readByte());
+        for (int i = 0; i < bytes.length; i++) {
+            bytes[i] = buffer.readByte();
         }
 
         buffer.release();
+        final String string = new String(bytes, StandardCharsets.UTF_8);
         LOGGER.info("Received message: [{}]", string);
 
         if (context.channel().parent() != null) {

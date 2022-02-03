@@ -36,6 +36,11 @@ public class ThroughputBenchmark implements Runnable {
     private InetSocketAddress bindAddress = new InetSocketAddress(DEFAULT_SERVER_PORT);
 
     @CommandLine.Option(
+            names = {"-t", "--threshold"},
+            description = "The maximum amount of buffers to aggregate.")
+    private int aggregationThreshold = 64;
+
+    @CommandLine.Option(
             names = {"-r", "--remote"},
             description = "The address to connect to.")
     private InetSocketAddress remoteAddress;
@@ -52,11 +57,6 @@ public class ThroughputBenchmark implements Runnable {
             required = true)
     private int messageCount;
 
-    private SocketChannel socket;
-    private ByteBuffer messageBuffer;
-    private ThroughputResult result;
-    private CloseSignal closeSignal;
-
     @Override
     public void run() {
         if (!isServer && remoteAddress == null) {
@@ -65,9 +65,14 @@ public class ThroughputBenchmark implements Runnable {
         }
 
         bindAddress = isServer ? bindAddress : new InetSocketAddress(bindAddress.getAddress(), 0);
-        messageBuffer = ByteBuffer.allocateDirect(messageSize);
-        result = new ThroughputResult(messageCount, messageSize);
+        final ThroughputResult result = new ThroughputResult(messageCount, messageSize);
+        final ByteBuffer receiveBuffer = ByteBuffer.allocateDirect(messageSize);
+        final ByteBuffer[] sendBuffers = new ByteBuffer[aggregationThreshold];
+        for (int i = 0; i < aggregationThreshold; i++) {
+            sendBuffers[i] = ByteBuffer.allocateDirect(messageSize);
+        }
 
+        SocketChannel socket;
         try {
             if (isServer) {
                 final ServerSocketChannel serverSocket = ServerSocketChannel.open();
@@ -83,7 +88,7 @@ public class ThroughputBenchmark implements Runnable {
             return;
         }
 
-        closeSignal = new CloseSignal(socket);
+        final CloseSignal closeSignal = new CloseSignal(socket);
 
         try {
             LOGGER.info("Starting benchmark with blocking socket channels");
@@ -91,21 +96,20 @@ public class ThroughputBenchmark implements Runnable {
             final long startTime = System.nanoTime();
 
             if (isServer) {
-                for (int i = 1; i <= messageCount; i++) {
-                    socket.write(messageBuffer);
-                    if (messageBuffer.hasRemaining()) {
-                        LOGGER.error("Buffer not fully written!");
-                    }
+                for (int i = 0; i < messageCount; i += aggregationThreshold) {
+                    socket.write(sendBuffers, 0, aggregationThreshold < messageCount - i ? aggregationThreshold : messageCount - i);
 
-                    messageBuffer.clear();
+                    for (int j = 0; j < aggregationThreshold; j++) {
+                        sendBuffers[j].clear();
+                    }
                 }
             } else {
                 for (int i = 1; i <= messageCount; i++) {
                     do {
-                        socket.read(messageBuffer);
-                    } while (messageBuffer.hasRemaining());
+                        socket.read(receiveBuffer);
+                    } while (receiveBuffer.hasRemaining());
 
-                    messageBuffer.clear();
+                    receiveBuffer.clear();
                 }
             }
 

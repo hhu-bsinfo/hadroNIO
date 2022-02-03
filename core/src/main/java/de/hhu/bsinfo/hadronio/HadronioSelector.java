@@ -105,7 +105,7 @@ class HadronioSelector extends AbstractSelector {
 
     @Override
     public Selector wakeup() {
-        LOGGER.debug("Waking up worker");
+        LOGGER.trace("Waking up worker");
         synchronized (wakeupLock) {
             wakeupStatus = true;
             wakeupLock.notifyAll();
@@ -119,7 +119,7 @@ class HadronioSelector extends AbstractSelector {
             throw new ClosedSelectorException();
         }
 
-        LOGGER.debug("Starting select operation (blocking: [{}], timeout: [{}])", blocking, timeout);
+        LOGGER.trace("Starting select operation (blocking: [{}], timeout: [{}])", blocking, timeout);
 
         boolean keysAvailable = checkKeys(blocking, timeout);
         if (!keysAvailable) {
@@ -137,14 +137,14 @@ class HadronioSelector extends AbstractSelector {
                         updatedKeys += performSelectOperation();
                         removeCancelledKeys();
 
-                        LOGGER.debug("Finished select iteration (blocking: [{}], keys: [{}], selectedKeys: [{}])", blocking, keys.size(), selectedKeys.size());
+                        LOGGER.trace("Finished select iteration (blocking: [{}], keys: [{}], selectedKeys: [{}])", blocking, keys.size(), selectedKeys.size());
 
                         if (blocking && keys.size() > 0 && selectedKeys.size() == 0) {
                             pollWorker(true, timeout);
 
                             synchronized (wakeupLock) {
                                 if (wakeupStatus) {
-                                    LOGGER.debug("Selector has been interrupted by wakeup");
+                                    LOGGER.trace("Selector has been interrupted by wakeup");
                                     wakeupStatus = false;
                                     break;
                                 }
@@ -152,7 +152,7 @@ class HadronioSelector extends AbstractSelector {
                         }
                     } while (blocking && keys.size() > 0 && selectedKeys.size() == 0);
 
-                    LOGGER.debug("Finished select operation (blocking: [{}], timeout: [{}], updatedKeys: [{}])", blocking, timeout, updatedKeys);
+                    LOGGER.trace("Finished select operation (blocking: [{}], timeout: [{}], updatedKeys: [{}])", blocking, timeout, updatedKeys);
                     return updatedKeys;
                 }
             }
@@ -160,7 +160,7 @@ class HadronioSelector extends AbstractSelector {
     }
 
     private void pollWorker(final boolean blocking, final long timeout) {
-            LOGGER.debug("Polling worker (blocking: [{}], timeout: [{}])", blocking, timeout);
+            LOGGER.trace("Polling worker (blocking: [{}], timeout: [{}])", blocking, timeout);
             boolean eventsPolled = false;
             final long endTime = System.nanoTime() + timeout * 1000000;
 
@@ -171,18 +171,18 @@ class HadronioSelector extends AbstractSelector {
                 }
 
                 if (timeout > 0 && System.nanoTime() > endTime) {
-                    LOGGER.debug("Timeout of [{}] has been reached while polling worker", timeout);
+                    LOGGER.trace("Timeout of [{}] has been reached while polling worker", timeout);
                     break;
                 }
             } while(blocking && !eventsPolled && !wakeupStatus);
-            LOGGER.debug("Finished polling worker (eventsPolled: [{}])", eventsPolled);
+            LOGGER.trace("Finished polling worker (eventsPolled: [{}])", eventsPolled);
     }
 
     private boolean selectKey(final HadronioSelectionKey key) {
-        LOGGER.debug("Selecting key: [{}]", key);
+        LOGGER.trace("Selecting key: [{}]", key);
         final int channelReadyOps = ((HadronioSelectableChannel) key.channel()).readyOps();
         final int readyOps = channelReadyOps & key.interestOps();
-        LOGGER.debug("Selected channel (channelReadyOps: [{}], readyOps: [{}])", channelReadyOps, readyOps);
+        LOGGER.trace("Selected channel (channelReadyOps: [{}], readyOps: [{}])", channelReadyOps, readyOps);
 
         if (readyOps != 0) {
             if (selectedKeys.contains(key)) {
@@ -203,14 +203,14 @@ class HadronioSelector extends AbstractSelector {
             return true;
         }
 
-        LOGGER.debug("No keys are registered");
+        LOGGER.trace("No keys are registered");
         if (!blocking) {
             return false;
         }
 
         synchronized (wakeupLock) {
             try {
-                LOGGER.debug("Waiting for new keys (timeout: [{}])", timeout);
+                LOGGER.trace("Waiting for new keys (timeout: [{}])", timeout);
                 wakeupLock.wait(timeout);
             } catch (InterruptedException e) {
                 LOGGER.warn("Thread has been interrupted while waiting for keys to be registered");
@@ -218,14 +218,14 @@ class HadronioSelector extends AbstractSelector {
             }
 
             if (wakeupStatus) {
-                LOGGER.debug("Selector has been interrupted by wakeup");
+                LOGGER.trace("Selector has been interrupted by wakeup");
                 wakeupStatus = false;
                 return false;
             }
         }
 
         if (keys.isEmpty()) {
-            LOGGER.debug("There are still no keys registered after wait() has returned");
+            LOGGER.trace("There are still no keys registered after wait() has returned");
             return false;
         }
 
@@ -235,7 +235,7 @@ class HadronioSelector extends AbstractSelector {
     private void removeCancelledKeys() {
         synchronized (cancelledKeys()) {
             if (!cancelledKeys().isEmpty()) {
-                LOGGER.debug("Removing [{}] cancelled {}", cancelledKeys().size(), cancelledKeys().size() == 1 ? "key" : "keys");
+                LOGGER.trace("Removing [{}] cancelled {}", cancelledKeys().size(), cancelledKeys().size() == 1 ? "key" : "keys");
                 keys.removeAll(cancelledKeys());
                 selectedKeys.removeAll(cancelledKeys());
                 cancelledKeys().clear();
@@ -244,7 +244,7 @@ class HadronioSelector extends AbstractSelector {
     }
 
     private int performSelectOperation() {
-        LOGGER.debug("Selecting [{}] {}", keys.size(), keys.size() == 1 ? "key" : "keys");
+        LOGGER.trace("Selecting [{}] {}", keys.size(), keys.size() == 1 ? "key" : "keys");
         int updatedKeys = 0;
 
         for (SelectionKey key : Collections.unmodifiableSet(keys)) {
@@ -255,7 +255,7 @@ class HadronioSelector extends AbstractSelector {
             }
         }
 
-        LOGGER.debug("Finished selecting (updatedKeys: [{}])", updatedKeys);
+        LOGGER.trace("Finished selecting (updatedKeys: [{}])", updatedKeys);
         return updatedKeys;
     }
 

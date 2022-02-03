@@ -55,7 +55,7 @@ public class WrappingSocket extends Socket {
 
     @Override
     public InputStream getInputStream() {
-        throw new UnsupportedOperationException("Sending/Receiving via direkt socket access is not supported!");
+        throw new UnsupportedOperationException("Sending/Receiving via direct socket access is not supported!");
     }
 
     @Override
@@ -97,7 +97,7 @@ public class WrappingSocket extends Socket {
 
     @Override
     public OutputStream getOutputStream() {
-        throw new UnsupportedOperationException("Sending/Receiving via direkt socket access is not supported!");
+        throw new UnsupportedOperationException("Sending/Receiving via direct socket access is not supported!");
     }
 
     @Override
@@ -111,7 +111,7 @@ public class WrappingSocket extends Socket {
 
     @Override
     public int getReceiveBufferSize() {
-        return Configuration.getInstance().getReceiveBufferLength();
+        return Configuration.getInstance().getBufferSliceLength();
     }
 
     @Override
@@ -130,7 +130,7 @@ public class WrappingSocket extends Socket {
 
     @Override
     public int getSendBufferSize() {
-        return Configuration.getInstance().getSendBufferLength();
+        return Configuration.getInstance().getBufferSliceLength();
     }
 
     @Override
@@ -180,7 +180,7 @@ public class WrappingSocket extends Socket {
 
     @Override
     public void sendUrgentData(int data) {
-        throw new UnsupportedOperationException("Sending/Receiving via direkt socket access is not supported!");
+        throw new UnsupportedOperationException("Sending/Receiving via direct socket access is not supported!");
     }
 
     @Override

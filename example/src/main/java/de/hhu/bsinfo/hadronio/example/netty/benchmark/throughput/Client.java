@@ -20,12 +20,14 @@ public class Client implements Runnable {
     private final InetSocketAddress remoteAddress;
     private final int messageSize;
     private final int messageCount;
+    private final int aggregationThreshold;
 
-    public Client(final InetSocketAddress bindAddress, final InetSocketAddress remoteAddress, int messageSize, int messageCount) {
+    public Client(final InetSocketAddress bindAddress, final InetSocketAddress remoteAddress, int messageSize, int messageCount, int aggregationThreshold) {
         this.bindAddress = bindAddress;
         this.remoteAddress = remoteAddress;
         this.messageSize = messageSize;
         this.messageCount = messageCount;
+        this.aggregationThreshold = aggregationThreshold;
     }
 
     @Override
@@ -47,14 +49,30 @@ public class Client implements Runnable {
             final Channel channel = bootstrap.connect(remoteAddress, bindAddress).sync().channel();
             channel.closeFuture().addListener(future -> LOGGER.info("Socket channel closed"));
 
-            final ByteBuf buffer = channel.alloc().buffer(messageSize).retain(messageCount);
-            for (int i = 0; i < messageSize; i++) {
-                buffer.writeByte(i);
+            final ByteBuf[] buffers = new ByteBuf[aggregationThreshold];
+            for (int i = 0; i < aggregationThreshold; i++) {
+                buffers[i] = channel.alloc().buffer(messageSize).retain(messageCount / aggregationThreshold);
             }
 
-            for (int i = 0; i < messageCount; i++) {
-                channel.writeAndFlush(buffer).sync();
-                buffer.resetReaderIndex();
+            for (int i = 0; i < messageCount - 1; i++) {
+                final ByteBuf buffer = buffers[i % aggregationThreshold];
+                buffer.setIndex(0, buffer.capacity());
+
+                if (i % aggregationThreshold == 0) {
+                    channel.writeAndFlush(buffer).sync();
+                } else {
+                    channel.write(buffer);
+                }
+            }
+
+            final ByteBuf buffer = buffers[messageCount % aggregationThreshold];
+            buffer.setIndex(0, buffer.capacity());
+            channel.writeAndFlush(buffer).sync();
+
+            for (final ByteBuf buf : buffers) {
+                if (buf.refCnt() > 0) {
+                    buf.release(buf.refCnt());
+                }
             }
 
             channel.closeFuture().sync();
