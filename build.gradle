@@ -5,12 +5,12 @@ ext {
     gitVersionVersion = '0.12.2'
     shadowVersion = '7.1.2'
 
-    jucxVersion = '1.11.2'
+    jucxVersion = '1.12.1-rc2'
     infinileapVersion = '0.1.0-SNAPSHOT'
     agronaVersion = '1.14.0'
-    picocliVersion = '4.6.2'
-    nettyVersion = '4.1.73.Final'
-    slf4jVersion = '1.7.35'
+    picocliVersion = '4.6.3'
+    nettyVersion = '4.1.74.Final'
+    slf4jVersion = '1.7.36'
     log4jVersion = '2.17.1'
     junitJupiterVersion = '5.8.2'
 }
@@ -34,5 +34,5 @@ subprojects {
 }
 
 wrapper {
-    gradleVersion = "7.3.1"
+    gradleVersion = "7.4"
 }

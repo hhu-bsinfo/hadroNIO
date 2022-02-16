@@ -9,7 +9,7 @@ Transparent acceleration for Java NIO applications via [UCX](https://openucx.org
 <p align="center">
   <a href="https://travis-ci.com/github/hhu-bsinfo/hadroNIO"><img src="https://www.travis-ci.com/hhu-bsinfo/hadroNIO.svg?branch=main"></a>
   <a href="https://openjdk.java.net/"><img src="https://img.shields.io/badge/java-8+-blue.svg"></a>
-  <a href="https://openucx.org/"><img src="https://img.shields.io/badge/ucx-1.11.2-blue.svg"></a>
+  <a href="https://openucx.org/"><img src="https://img.shields.io/badge/ucx-1.12.1_rc2-blue.svg"></a>
   <a href="https://github.com/hhu-bsinfo/hadroNIO/blob/master/LICENSE"><img src="https://img.shields.io/badge/license-GPLv3-orange.svg"></a>
 </p>
 
@@ -49,7 +49,7 @@ The JAR-file should now be located at `build/provider/libs/hadronio-0.2.0-SNAPSH
 
 ## Run instructions
 
-To run hadroNIO, **UCX 1.11.2** needs to be installed on your system. See the [OpenUCX GitHub Repository](https://github.com/openucx/ucx) for information on how to build and install UCX.
+To run hadroNIO, **UCX 1.12.1-rc2** needs to be installed on your system. See the [OpenUCX GitHub Repository](https://github.com/openucx/ucx) for information on how to build and install UCX.
 
 To accelerate an existing Java application (e.g. `application.jar`), the hadroNIO JAR-file needs to be included in the classpath. Additionally, the property `java.nio.channels.spi.SelectorProvider` must be set to `de.hhu.bsinfo.hadronio.HadronioProvider`:
 ```shell

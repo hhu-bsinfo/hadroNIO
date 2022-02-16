@@ -213,7 +213,11 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
             throw new ClosedChannelException();
         }
 
-        throw new IOException("Trying to get remote address, which is not supported!");
+        if (!connected) {
+            throw new NotYetConnectedException();
+        }
+
+        return endpoint.getRemoteAddress();
     }
 
     @Override

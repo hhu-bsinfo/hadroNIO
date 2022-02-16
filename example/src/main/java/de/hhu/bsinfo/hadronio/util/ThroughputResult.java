@@ -20,6 +20,14 @@ public class ThroughputResult {
         return totalTime;
     }
 
+    public double getOperationThroughput() {
+        return operationThroughput;
+    }
+
+    public double getDataThroughput() {
+        return dataThroughput;
+    }
+
     public void setMeasuredTime(final long timeInNanos) {
         this.totalTime = timeInNanos / 1000000000d;
 

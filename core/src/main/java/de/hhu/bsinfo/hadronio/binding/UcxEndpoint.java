@@ -20,4 +20,6 @@ public interface UcxEndpoint extends UcxProgressable {
     void setReceiveCallback(UcxReceiveCallback receiveCallback);
 
     boolean getErrorState();
+
+    InetSocketAddress getRemoteAddress();
 }

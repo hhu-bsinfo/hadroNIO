@@ -37,7 +37,7 @@ class JucxListener implements UcxListener {
             throw new IOException("Failed to bind server socket channel to " + localAddress + "!", e);
         }
 
-        LOGGER.info("Listening on [{}]", localAddress);
+        LOGGER.info("Listening on [{}]", listener.getAddress());
     }
 
     @Override
@@ -48,6 +48,11 @@ class JucxListener implements UcxListener {
     @Override
     public UcxWorker getWorker() {
         return worker;
+    }
+
+    @Override
+    public InetSocketAddress getAddress() {
+        return listener.getAddress();
     }
 
     @Override

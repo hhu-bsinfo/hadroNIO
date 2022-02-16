@@ -10,4 +10,6 @@ public interface UcxListener extends UcxProgressable {
     UcxEndpoint accept(UcxConnectionRequest connectionRequest) throws IOException;
 
     UcxWorker getWorker();
+
+    InetSocketAddress getAddress();
 }

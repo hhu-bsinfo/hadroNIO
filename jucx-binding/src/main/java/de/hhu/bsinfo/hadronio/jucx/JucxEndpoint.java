@@ -16,6 +16,7 @@ class JucxEndpoint implements UcxEndpoint {
 
     private final JucxWorker worker;
     private UcpEndpoint endpoint;
+    private InetSocketAddress remoteAddress;
     private org.openucx.jucx.UcxCallback sendCallback;
     private org.openucx.jucx.UcxCallback receiveCallback;
     private boolean errorState = false;
@@ -25,6 +26,7 @@ class JucxEndpoint implements UcxEndpoint {
     }
 
     JucxEndpoint(final UcpContext context, final UcpConnectionRequest connectionRequest) {
+        remoteAddress = connectionRequest.getClientAddress();
         worker = new JucxWorker(context, new UcpWorkerParams().requestWakeupTagSend().requestWakeupTagRecv());
         endpoint = worker.getWorker().newEndpoint(
             new UcpEndpointParams().
@@ -40,6 +42,7 @@ class JucxEndpoint implements UcxEndpoint {
 
     @Override
     public void connect(final InetSocketAddress remoteAddress) {
+        this.remoteAddress = remoteAddress;
         endpoint = worker.getWorker().newEndpoint(
             new UcpEndpointParams().
             setSocketAddress(remoteAddress).
@@ -105,6 +108,11 @@ class JucxEndpoint implements UcxEndpoint {
     @Override
     public boolean getErrorState() {
         return errorState;
+    }
+
+    @Override
+    public InetSocketAddress getRemoteAddress() {
+        return remoteAddress;
     }
 
     @Override

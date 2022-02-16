@@ -1,6 +1,7 @@
 package de.hhu.bsinfo.hadronio.jucx;
 
 import de.hhu.bsinfo.hadronio.binding.UcxConnectionRequest;
+import java.net.InetSocketAddress;
 import org.openucx.jucx.ucp.UcpConnectionRequest;
 
 class JucxConnectionRequest implements UcxConnectionRequest {
@@ -13,5 +14,10 @@ class JucxConnectionRequest implements UcxConnectionRequest {
 
     UcpConnectionRequest getConnectionRequest() {
         return connectionRequest;
+    }
+
+    @Override
+    public void reject() {
+        connectionRequest.reject();
     }
 }

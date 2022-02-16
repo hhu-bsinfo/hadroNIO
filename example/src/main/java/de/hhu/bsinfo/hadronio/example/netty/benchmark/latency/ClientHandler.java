@@ -1,6 +1,5 @@
 package de.hhu.bsinfo.hadronio.example.netty.benchmark.latency;
 
-import de.hhu.bsinfo.hadronio.util.LatencyResult;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;

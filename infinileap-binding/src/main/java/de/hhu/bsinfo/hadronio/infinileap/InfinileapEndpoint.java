@@ -145,6 +145,11 @@ class InfinileapEndpoint implements UcxEndpoint {
     }
 
     @Override
+    public InetSocketAddress getRemoteAddress() {
+        return null;
+    }
+
+    @Override
     public UcxWorker getWorker() {
         return worker;
     }

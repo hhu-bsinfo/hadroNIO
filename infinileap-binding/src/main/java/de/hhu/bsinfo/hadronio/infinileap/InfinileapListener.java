@@ -59,6 +59,12 @@ class InfinileapListener implements UcxListener {
     }
 
     @Override
+    public InetSocketAddress getAddress() {
+        // TODO: Implement once available in Infinileap
+        return null;
+    }
+
+    @Override
     public void close() {
         LOGGER.info("Closing listener");
         listener.close();

@@ -28,7 +28,6 @@ public class HadronioServerSocketChannel extends ServerSocketChannel implements 
     private final UcxListener listener;
     private final Stack<UcxConnectionRequest> pendingRequests = new Stack<>();
 
-    private InetSocketAddress localAddress;
     private boolean channelClosed = false;
     private boolean channelBound = false;
     private int readyOps;
@@ -44,9 +43,11 @@ public class HadronioServerSocketChannel extends ServerSocketChannel implements 
             throw new ClosedChannelException();
         }
 
-        if (localAddress != null) {
+        if (channelBound) {
             throw new AlreadyBoundException();
         }
+
+        InetSocketAddress localAddress;
 
         if (socketAddress == null) {
             localAddress = new InetSocketAddress(DEFAULT_SERVER_PORT);
@@ -64,6 +65,7 @@ public class HadronioServerSocketChannel extends ServerSocketChannel implements 
                     pendingRequests.push(connectionRequest);
                 } else {
                     LOGGER.error("Discarding connection request, because the maximum number of pending requests ({}) has been reached", backlog);
+                    connectionRequest.reject();
                 }
             });
 
@@ -114,7 +116,7 @@ public class HadronioServerSocketChannel extends ServerSocketChannel implements 
             throw new ClosedChannelException();
         }
 
-        if (localAddress == null) {
+        if (!channelBound) {
             throw new NotYetBoundException();
         }
 
@@ -140,12 +142,12 @@ public class HadronioServerSocketChannel extends ServerSocketChannel implements 
 
     @Override
     public SocketAddress getLocalAddress() {
-        return localAddress;
+        return listener.getAddress();
     }
 
     @Override
     protected void implCloseSelectableChannel() throws IOException {
-        LOGGER.info("Closing server socket channel bound to [{}]", localAddress);
+        LOGGER.info("Closing server socket channel bound to [{}]", getLocalAddress());
         channelClosed = true;
         listener.close();
     }
