@@ -53,7 +53,6 @@ public class LatencyBenchmark implements Runnable {
     private SocketChannel socket;
     private ByteBuffer messageBuffer;
     private LatencyResult result;
-    private CloseSignal closeSignal;
 
     @Override
     public void run() {
@@ -81,42 +80,37 @@ public class LatencyBenchmark implements Runnable {
             return;
         }
 
-        closeSignal = new CloseSignal(socket);
+        final CloseSignal closeSignal = new CloseSignal(socket);
+        final int warmupCount = (messageCount / 10) > 0 ? (messageCount / 10) : 1;
 
         try {
             LOGGER.info("Starting benchmark with blocking socket channels");
             socket.configureBlocking(true);
 
             if (isServer) {
+                LOGGER.info("Starting warmup with [{}] messages", warmupCount);
+
+                performPingPongIterationsServerWarmup(warmupCount);
+                closeSignal.exchange();
+
+                LOGGER.info("Starting benchmark with [{}] messages", messageCount);
                 final long startTime = System.nanoTime();
 
-                for (int i = 0; i < messageCount; i++) {
-                    result.startSingleMeasurement();
-                    socket.write(messageBuffer);
-                    messageBuffer.flip();
-
-                    do {
-                        socket.read(messageBuffer);
-                    } while (messageBuffer.hasRemaining());
-
-                    result.stopSingleMeasurement();
-                    messageBuffer.flip();
-                }
+                performPingPongIterationsServer(messageCount);
+                closeSignal.exchange();
 
                 result.finishMeasuring(System.nanoTime() - startTime);
             } else {
-                for (int i = 0; i < messageCount; i++) {
-                    do {
-                        socket.read(messageBuffer);
-                    } while (messageBuffer.hasRemaining());
+                LOGGER.info("Starting warmup with [{}] messages", warmupCount);
 
-                    messageBuffer.flip();
-                    socket.write(messageBuffer);
-                    messageBuffer.flip();
-                }
+                performPingPongIterationsClient(warmupCount);
+                closeSignal.exchange();
+
+                LOGGER.info("Starting benchmark with [{}] messages", messageCount);
+                performPingPongIterationsClient(messageCount);
+                closeSignal.exchange();
             }
 
-            closeSignal.exchange();
             socket.close();
         } catch (IOException e) {
             LOGGER.error("Benchmark failed!", e);
@@ -125,6 +119,46 @@ public class LatencyBenchmark implements Runnable {
 
         if (isServer) {
             LOGGER.info("Benchmark result:\n{}", result);
+        }
+    }
+
+    private void performPingPongIterationsServerWarmup(final int messageCount) throws IOException {
+        for (int i = 0; i < messageCount; i++) {
+            socket.write(messageBuffer);
+            messageBuffer.flip();
+
+            do {
+                socket.read(messageBuffer);
+            } while (messageBuffer.hasRemaining());
+
+            messageBuffer.flip();
+        }
+    }
+
+    private void performPingPongIterationsServer(final int messageCount) throws IOException {
+        for (int i = 0; i < messageCount; i++) {
+            result.startSingleMeasurement();
+            socket.write(messageBuffer);
+            messageBuffer.flip();
+
+            do {
+                socket.read(messageBuffer);
+            } while (messageBuffer.hasRemaining());
+
+            result.stopSingleMeasurement();
+            messageBuffer.flip();
+        }
+    }
+
+    private void performPingPongIterationsClient(final int messageCount) throws IOException {
+        for (int i = 0; i < messageCount; i++) {
+            do {
+                socket.read(messageBuffer);
+            } while (messageBuffer.hasRemaining());
+
+            messageBuffer.flip();
+            socket.write(messageBuffer);
+            messageBuffer.flip();
         }
     }
 }

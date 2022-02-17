@@ -1,37 +1,42 @@
 package de.hhu.bsinfo.hadronio.example.netty.benchmark.latency;
 
-import de.hhu.bsinfo.hadronio.util.LatencyResult;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class ServerHandler extends ChannelInboundHandlerAdapter {
+public class ServerWarmupHandler extends ChannelInboundHandlerAdapter {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(ServerHandler.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(ServerWarmupHandler.class);
 
     private final int messageSize;
     private final int messageCount;
-    private final LatencyResult result;
+    private final int warmupCount;
 
     private int receivedMessages = 0;
     private int receivedBytes = 0;
-    private long startTime;
 
-    private final ByteBuf sendBuffer;
+    private ByteBuf sendBuffer;
 
-    public ServerHandler(final int messageSize, final int messageCount, final ByteBuf sendBuffer) {
+    public ServerWarmupHandler(final int messageSize, final int messageCount, final int warmupCount) {
         this.messageSize = messageSize;
         this.messageCount = messageCount;
-        this.sendBuffer = sendBuffer;
-        result = new LatencyResult(messageCount, messageSize);
+        this.warmupCount = warmupCount > 0 ? warmupCount : 1;
     }
 
-    public void start(final ChannelHandlerContext context) {
-        LOGGER.info("Starting benchmark with [{}] messages", messageCount);
-        startTime = System.nanoTime();
-        result.startSingleMeasurement();
+    @Override
+    public void channelRegistered(final ChannelHandlerContext context) {
+        sendBuffer = context.alloc().buffer(messageSize).retain(warmupCount + messageCount);
+        for (int i = 0; i < messageSize; i++) {
+            sendBuffer.writeByte(i);
+        }
+    }
+
+    @Override
+    public void channelActive(final ChannelHandlerContext context) {
+        LOGGER.info("Accepted incoming connection from [{}]", context.channel().remoteAddress());
+        LOGGER.info("Starting warmup with [{}] messages", warmupCount);
         context.channel().writeAndFlush(sendBuffer);
     }
 
@@ -42,18 +47,17 @@ public class ServerHandler extends ChannelInboundHandlerAdapter {
         receiveBuffer.release();
 
         if (receivedBytes == messageSize) {
-            result.stopSingleMeasurement();
             sendBuffer.resetReaderIndex();
             receivedBytes = 0;
             receivedMessages++;
 
-            if (receivedMessages < messageCount) {
-                result.startSingleMeasurement();
+            if (receivedMessages < warmupCount) {
                 context.channel().writeAndFlush(sendBuffer);
             } else {
-                result.finishMeasuring(System.nanoTime() - startTime);
-                LOGGER.info(result.toString());
-                context.channel().close();
+                ServerHandler handler = new ServerHandler(messageSize, messageCount, sendBuffer);
+                context.channel().pipeline().removeLast();
+                context.channel().pipeline().addLast(handler);
+                handler.start(context);
             }
         }
     }

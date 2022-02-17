@@ -57,6 +57,10 @@ public class ThroughputBenchmark implements Runnable {
             required = true)
     private int messageCount;
 
+    private ByteBuffer[] sendBuffers;
+    private ByteBuffer receiveBuffer;
+    private SocketChannel socket;
+
     @Override
     public void run() {
         if (!isServer && remoteAddress == null) {
@@ -65,14 +69,12 @@ public class ThroughputBenchmark implements Runnable {
         }
 
         bindAddress = isServer ? bindAddress : new InetSocketAddress(bindAddress.getAddress(), 0);
-        final ThroughputResult result = new ThroughputResult(messageCount, messageSize);
-        final ByteBuffer receiveBuffer = ByteBuffer.allocateDirect(messageSize);
-        final ByteBuffer[] sendBuffers = new ByteBuffer[aggregationThreshold];
+        receiveBuffer = ByteBuffer.allocateDirect(messageSize);
+        sendBuffers = new ByteBuffer[aggregationThreshold];
         for (int i = 0; i < aggregationThreshold; i++) {
             sendBuffers[i] = ByteBuffer.allocateDirect(messageSize);
         }
 
-        SocketChannel socket;
         try {
             if (isServer) {
                 final ServerSocketChannel serverSocket = ServerSocketChannel.open();
@@ -88,33 +90,37 @@ public class ThroughputBenchmark implements Runnable {
             return;
         }
 
+        final ThroughputResult result = new ThroughputResult(messageCount, messageSize);
         final CloseSignal closeSignal = new CloseSignal(socket);
+        final int warmupCount = (messageCount / 10) > 0 ? (messageCount / 10) : 1;
 
         try {
             LOGGER.info("Starting benchmark with blocking socket channels");
             socket.configureBlocking(true);
-            final long startTime = System.nanoTime();
 
             if (isServer) {
-                for (int i = 0; i < messageCount; i += aggregationThreshold) {
-                    socket.write(sendBuffers, 0, aggregationThreshold < messageCount - i ? aggregationThreshold : messageCount - i);
+                LOGGER.info("Starting warmup with [{}] messages", warmupCount);
 
-                    for (int j = 0; j < aggregationThreshold; j++) {
-                        sendBuffers[j].clear();
-                    }
-                }
+                sendMessages(warmupCount);
+                closeSignal.exchange();
+
+                LOGGER.info("Starting benchmark with [{}] messages", messageCount);
+                final long startTime = System.nanoTime();
+
+                sendMessages(messageCount);
+                closeSignal.exchange();
+
+                result.setMeasuredTime(System.nanoTime() - startTime);
             } else {
-                for (int i = 1; i <= messageCount; i++) {
-                    do {
-                        socket.read(receiveBuffer);
-                    } while (receiveBuffer.hasRemaining());
+                LOGGER.info("Starting warmup with [{}] messages", warmupCount);
 
-                    receiveBuffer.clear();
-                }
+                receiveMessages(warmupCount);
+                closeSignal.exchange();
+
+                LOGGER.info("Starting benchmark with [{}] messages", messageCount);
+                receiveMessages(messageCount);
+                closeSignal.exchange();
             }
-
-            closeSignal.exchange();
-            result.setMeasuredTime(System.nanoTime() - startTime);
 
             socket.close();
         } catch (IOException e) {
@@ -124,6 +130,26 @@ public class ThroughputBenchmark implements Runnable {
 
         if (isServer) {
             LOGGER.info("Benchmark result:\n{}", result);
+        }
+    }
+
+    private void sendMessages(final int messageCount) throws IOException {
+        for (int i = 0; i < messageCount; i += aggregationThreshold) {
+            socket.write(sendBuffers, 0, aggregationThreshold < messageCount - i ? aggregationThreshold : messageCount - i);
+
+            for (int j = 0; j < aggregationThreshold; j++) {
+                sendBuffers[j].clear();
+            }
+        }
+    }
+
+    private void receiveMessages(final int messageCount) throws IOException {
+        for (int i = 1; i <= messageCount; i++) {
+            do {
+                socket.read(receiveBuffer);
+            } while (receiveBuffer.hasRemaining());
+
+            receiveBuffer.clear();
         }
     }
 }

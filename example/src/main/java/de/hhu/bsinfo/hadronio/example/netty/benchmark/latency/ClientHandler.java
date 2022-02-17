@@ -16,31 +16,20 @@ public class ClientHandler extends ChannelInboundHandlerAdapter {
     private int receivedMessages = 0;
     private int receivedBytes = 0;
 
-    private ByteBuf sendBuffer;
+    private final ByteBuf sendBuffer;
 
-    public ClientHandler(final int messageSize, final int messageCount) {
+    public ClientHandler(final int messageSize, final int messageCount, final ByteBuf sendBuffer) {
         this.messageSize = messageSize;
         this.messageCount = messageCount;
-    }
-
-    @Override
-    public void channelRegistered(final ChannelHandlerContext context) {
-        sendBuffer = context.alloc().buffer(messageSize).retain(messageCount);
-        for (int i = 0; i < messageSize; i++) {
-            sendBuffer.writeByte(i);
-        }
-    }
-
-    @Override
-    public void channelActive(final ChannelHandlerContext context) {
-        LOGGER.info("Successfully connected to [{}]", context.channel().remoteAddress());
+        this.sendBuffer = sendBuffer;
     }
 
     @Override
     public void channelRead(final ChannelHandlerContext context, final Object message) {
         final ByteBuf receiveBuffer = (ByteBuf) message;
-
         receivedBytes += receiveBuffer.readableBytes();
+        receiveBuffer.release();
+
         if (receivedBytes == messageSize) {
             receivedBytes = 0;
             receivedMessages++;
@@ -48,9 +37,8 @@ public class ClientHandler extends ChannelInboundHandlerAdapter {
             sendBuffer.resetReaderIndex();
             context.channel().writeAndFlush(sendBuffer);
         }
-        receiveBuffer.release();
 
-        if (receivedMessages >= messageCount && context.channel().parent() != null) {
+        if (receivedMessages >= messageCount) {
             context.channel().close();
         }
     }

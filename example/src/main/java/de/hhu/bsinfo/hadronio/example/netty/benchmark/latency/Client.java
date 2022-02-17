@@ -39,7 +39,7 @@ public class Client implements Runnable {
             .handler(new ChannelInitializer<SocketChannel>() {
                 @Override
                 protected void initChannel(final SocketChannel channel) {
-                    channel.pipeline().addLast(new ClientHandler(messageSize, messageCount));
+                    channel.pipeline().addLast(new ClientWarmupHandler(messageSize, messageCount, messageCount / 10));
                 }
             });
 

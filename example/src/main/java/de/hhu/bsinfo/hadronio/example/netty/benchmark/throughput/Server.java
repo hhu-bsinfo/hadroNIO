@@ -38,7 +38,7 @@ public class Server implements Runnable {
                 @Override
                 protected void initChannel(SocketChannel channel) {
                     channel.closeFuture().addListener(future -> LOGGER.info("Socket channel closed"));
-                    channel.pipeline().addLast(new Handler(messageSize, messageCount));
+                    channel.pipeline().addLast(new WarmupHandler(messageSize, messageCount, messageCount / 10));
                 }
             });
 
