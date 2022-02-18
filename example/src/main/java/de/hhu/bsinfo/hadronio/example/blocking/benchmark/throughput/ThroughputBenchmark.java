@@ -1,7 +1,6 @@
 package de.hhu.bsinfo.hadronio.example.blocking.benchmark.throughput;
 
-import de.hhu.bsinfo.hadronio.HadronioProvider;
-import de.hhu.bsinfo.hadronio.util.CloseSignal;
+import de.hhu.bsinfo.hadronio.util.SyncSignal;
 import de.hhu.bsinfo.hadronio.util.ThroughputResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,8 +9,6 @@ import picocli.CommandLine;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
-import java.nio.channels.SelectionKey;
-import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 
@@ -33,7 +30,7 @@ public class ThroughputBenchmark implements Runnable {
     @CommandLine.Option(
             names = {"-a", "--address"},
             description = "The address to bind to.")
-    private InetSocketAddress bindAddress = new InetSocketAddress(DEFAULT_SERVER_PORT);
+    private InetSocketAddress bindAddress = null;
 
     @CommandLine.Option(
             names = {"-t", "--threshold"},
@@ -52,7 +49,7 @@ public class ThroughputBenchmark implements Runnable {
     private int messageSize;
 
     @CommandLine.Option(
-            names = {"-c", "--count"},
+            names = {"-m", "--messages"},
             description = "The amount of messages.",
             required = true)
     private int messageCount;
@@ -68,7 +65,12 @@ public class ThroughputBenchmark implements Runnable {
             return;
         }
 
-        bindAddress = isServer ? bindAddress : new InetSocketAddress(bindAddress.getAddress(), 0);
+        if (bindAddress == null) {
+            bindAddress = isServer ? new InetSocketAddress(DEFAULT_SERVER_PORT) : null;
+        } else {
+            bindAddress = isServer ? bindAddress : new InetSocketAddress(bindAddress.getAddress(), 0);
+        }
+
         receiveBuffer = ByteBuffer.allocateDirect(messageSize);
         sendBuffers = new ByteBuffer[aggregationThreshold];
         for (int i = 0; i < aggregationThreshold; i++) {
@@ -91,7 +93,7 @@ public class ThroughputBenchmark implements Runnable {
         }
 
         final ThroughputResult result = new ThroughputResult(messageCount, messageSize);
-        final CloseSignal closeSignal = new CloseSignal(socket);
+        final SyncSignal closeSignal = new SyncSignal(socket);
         final int warmupCount = (messageCount / 10) > 0 ? (messageCount / 10) : 1;
 
         try {

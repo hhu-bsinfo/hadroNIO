@@ -142,7 +142,6 @@ Start a client:
 ### Tests using netty
 
 These commands use [netty](https://netty.io/) and thus non-blocking socket channels for communication.
-In contrast to the blocking commands, the servers support multiple connections, so that clients can be started multiple times.
 
 #### Hello
 
@@ -173,7 +172,7 @@ Start a client:
 
 #### Benchmark
 
-This is the equivalent to the blocking benchmark command. Currently, only `throughput` is supported.
+This is the equivalent to the blocking benchmark command.
 
 Start a server:
 ```shell
@@ -191,8 +190,9 @@ The test application can be configured using the following parameters:
  - `-s`, `--server`: Start a server instance, waiting for a client to connect.
  - `-r`, `--remote`: The remote address to connect to.
  - `-a`, `--address`: The local address to bind to (Default: `0.0.0.0:2998`)
- - `-c`, `--count`: The iteration count (e.g. number of messages to send/receive).
+ - `-m`, `--message`: The iteration count (e.g. number of messages to send/receive).
  - `-l`, `--length`: The message size (only valid for benchmark).
+ - `-c`, `--connections`: The amount of connections to use (Only available in `netty throughput benchmark`)
 
 ## Configuration
 

@@ -1,7 +1,6 @@
 package de.hhu.bsinfo.hadronio.example.netty.benchmark.throughput;
 
 import io.netty.bootstrap.Bootstrap;
-import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.EventLoopGroup;
@@ -20,18 +19,17 @@ public class Client implements Runnable {
     private final InetSocketAddress remoteAddress;
     private final int messageSize;
     private final int messageCount;
-    private final int aggregationThreshold;
+    private final int connections;
 
-    private final ByteBuf[] buffers;
-    private Channel channel;
+    private final Channel[] channels;
 
-    public Client(final InetSocketAddress bindAddress, final InetSocketAddress remoteAddress, int messageSize, int messageCount, int aggregationThreshold) {
+    public Client(final InetSocketAddress bindAddress, final InetSocketAddress remoteAddress, final int messageSize, final int messageCount, final int connections) {
         this.bindAddress = bindAddress;
         this.remoteAddress = remoteAddress;
         this.messageSize = messageSize;
         this.messageCount = messageCount;
-        this.aggregationThreshold = aggregationThreshold;
-        buffers = new ByteBuf[aggregationThreshold];
+        this.connections = connections;
+        channels = new Channel[connections];
     }
 
     @Override
@@ -45,60 +43,24 @@ public class Client implements Runnable {
             .handler(new ChannelInitializer<SocketChannel>() {
                 @Override
                 protected void initChannel(final SocketChannel channel) {
-                    channel.pipeline().addLast(new WarmupHandler(messageSize, messageCount, messageCount / 10));
+                    channel.pipeline().addLast(new ClientHandler(messageSize, messageCount));
                 }
             });
 
         try {
-            channel = bootstrap.connect(remoteAddress, bindAddress).sync().channel();
-            channel.closeFuture().addListener(future -> LOGGER.info("Socket channel closed"));
-
-            for (int i = 0; i < aggregationThreshold; i++) {
-                buffers[i] = channel.alloc().buffer(messageSize);
+            for (int i = 0; i < connections; i++) {
+                final Channel channel = bootstrap.connect(remoteAddress, bindAddress).sync().channel();
+                channel.closeFuture().addListener(future -> LOGGER.info("Closed channel connected to [{}]", channel.remoteAddress()));
+                channels[i] = channel;
             }
 
-            // Warmup
-            sendMessages(messageCount / 10);
-
-            channel.pipeline().removeLast();
-            channel.pipeline().addLast(new Handler(messageSize, messageCount));
-
-            // Benchmark
-            LOGGER.info("Starting benchmark with [{}] messages", messageCount);
-            sendMessages(messageCount);
-
-            for (final ByteBuf buf : buffers) {
-                if (buf.refCnt() > 0) {
-                    buf.release(buf.refCnt());
-                }
+            for (int i = 0; i < connections; i++) {
+                channels[i].closeFuture().sync();
             }
-
-            channel.closeFuture().sync();
         } catch (InterruptedException e) {
             LOGGER.error("A sync error occurred", e);
         } finally {
             workerGroup.shutdownGracefully();
         }
-    }
-
-    private void sendMessages(int messageCount) throws InterruptedException {
-        for (int i = 0; i < aggregationThreshold; i++) {
-            buffers[i].retain(messageCount / aggregationThreshold + 1);
-        }
-
-        for (int i = 0; i < messageCount - 1; i++) {
-            final ByteBuf buffer = buffers[i % aggregationThreshold];
-            buffer.setIndex(0, buffer.capacity());
-
-            if (i % aggregationThreshold == 0) {
-                channel.writeAndFlush(buffer).sync();
-            } else {
-                channel.write(buffer);
-            }
-        }
-
-        final ByteBuf buffer = buffers[messageCount % aggregationThreshold];
-        buffer.setIndex(0, buffer.capacity());
-        channel.writeAndFlush(buffer).sync();
     }
 }

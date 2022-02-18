@@ -23,12 +23,17 @@ public class ThroughputBenchmark implements Runnable {
     @CommandLine.Option(
         names = {"-a", "--address"},
         description = "The address to bind to.")
-    private InetSocketAddress bindAddress = new InetSocketAddress(DEFAULT_SERVER_PORT);
+    private InetSocketAddress bindAddress = null;
 
     @CommandLine.Option(
         names = {"-t", "--threshold"},
         description = "The maximum amount of buffers to aggregate.")
     private int aggregationThreshold = 64;
+
+    @CommandLine.Option(
+            names = {"-c", "--connections"},
+            description = "The amount of connections to use for sending/receiving.")
+    private int connections = 1;
 
     @CommandLine.Option(
         names = {"-r", "--remote"},
@@ -42,7 +47,7 @@ public class ThroughputBenchmark implements Runnable {
     private int messageSize;
 
     @CommandLine.Option(
-        names = {"-c", "--count"},
+        names = {"-m", "--messages"},
         description = "The amount of messages to send/receive.",
         required = true)
     private int messageCount;
@@ -54,7 +59,14 @@ public class ThroughputBenchmark implements Runnable {
             return;
         }
 
-        final Runnable runnable = isServer ? new Server(bindAddress, messageSize, messageCount) : new Client(bindAddress, remoteAddress, messageSize, messageCount, aggregationThreshold);
+        if (bindAddress == null) {
+            bindAddress = isServer ? new InetSocketAddress(DEFAULT_SERVER_PORT) : null;
+        } else {
+            bindAddress = isServer ? bindAddress : new InetSocketAddress(bindAddress.getAddress(), 0);
+        }
+
+        final Runnable runnable = isServer ? new Server(bindAddress, messageSize, messageCount, aggregationThreshold, connections) :
+                new Client(bindAddress, remoteAddress, messageSize, messageCount, connections);
         runnable.run();
     }
 }

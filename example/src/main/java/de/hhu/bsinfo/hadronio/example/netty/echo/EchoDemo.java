@@ -23,7 +23,7 @@ public class EchoDemo implements Runnable {
     @CommandLine.Option(
         names = {"-a", "--address"},
         description = "The address to bind to.")
-    private InetSocketAddress bindAddress = new InetSocketAddress(DEFAULT_SERVER_PORT);
+    private InetSocketAddress bindAddress = null;
 
     @CommandLine.Option(
         names = {"-r", "--remote"},
@@ -35,6 +35,12 @@ public class EchoDemo implements Runnable {
         if (!isServer && remoteAddress == null) {
             LOGGER.error("Please specify the server address");
             return;
+        }
+
+        if (bindAddress == null) {
+            bindAddress = isServer ? new InetSocketAddress(DEFAULT_SERVER_PORT) : null;
+        } else {
+            bindAddress = isServer ? bindAddress : new InetSocketAddress(bindAddress.getAddress(), 0);
         }
 
         final Runnable runnable = isServer ? new Server(bindAddress) : new Client(bindAddress, remoteAddress);

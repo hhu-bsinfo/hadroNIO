@@ -1,7 +1,6 @@
 package de.hhu.bsinfo.hadronio.example.blocking.counter;
 
-import de.hhu.bsinfo.hadronio.HadronioProvider;
-import de.hhu.bsinfo.hadronio.util.CloseSignal;
+import de.hhu.bsinfo.hadronio.util.SyncSignal;
 import java.nio.ByteBuffer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,7 +29,7 @@ public class CounterDemo implements Runnable {
     @CommandLine.Option(
             names = {"-a", "--address"},
             description = "The address to bind to.")
-    private InetSocketAddress bindAddress = new InetSocketAddress(DEFAULT_SERVER_PORT);
+    private InetSocketAddress bindAddress = null;
 
     @CommandLine.Option(
             names = {"-r", "--remote"},
@@ -56,7 +55,9 @@ public class CounterDemo implements Runnable {
             return;
         }
 
-        bindAddress = isServer ? bindAddress : new InetSocketAddress(bindAddress.getAddress(), 0);
+        if (bindAddress != null) {
+            bindAddress = isServer ? bindAddress : new InetSocketAddress(bindAddress.getAddress(), 0);
+        }
 
         try {
             if (isServer) {
@@ -76,7 +77,7 @@ public class CounterDemo implements Runnable {
             return;
         }
 
-        CloseSignal closeSignal = new CloseSignal(socket);
+        SyncSignal closeSignal = new SyncSignal(socket);
 
         try {
             while (sendCounter < count || receiveCounter < count) {

@@ -1,7 +1,6 @@
 package de.hhu.bsinfo.hadronio.example.blocking.benchmark.latency;
 
-import de.hhu.bsinfo.hadronio.HadronioProvider;
-import de.hhu.bsinfo.hadronio.util.CloseSignal;
+import de.hhu.bsinfo.hadronio.util.SyncSignal;
 import de.hhu.bsinfo.hadronio.util.LatencyResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,8 +9,6 @@ import picocli.CommandLine;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
-import java.nio.channels.SelectionKey;
-import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 
@@ -33,7 +30,7 @@ public class LatencyBenchmark implements Runnable {
     @CommandLine.Option(
             names = {"-a", "--address"},
             description = "The address to bind to.")
-    private InetSocketAddress bindAddress = new InetSocketAddress(DEFAULT_SERVER_PORT);
+    private InetSocketAddress bindAddress = null;
 
     @CommandLine.Option(
             names = {"-r", "--remote"},
@@ -42,13 +39,15 @@ public class LatencyBenchmark implements Runnable {
 
     @CommandLine.Option(
             names = {"-l", "--length"},
-            description = "The message size.")
-    private int messageSize = 1024;
+            description = "The message size.",
+            required = true)
+    private int messageSize;
 
     @CommandLine.Option(
-            names = {"-c", "--count"},
-            description = "The amount of messages.")
-    private int messageCount = 1000;
+            names = {"-m", "--messages"},
+            description = "The amount of messages.",
+            required = true)
+    private int messageCount;
 
     private SocketChannel socket;
     private ByteBuffer messageBuffer;
@@ -61,7 +60,12 @@ public class LatencyBenchmark implements Runnable {
             return;
         }
 
-        bindAddress = isServer ? bindAddress : new InetSocketAddress(bindAddress.getAddress(), 0);
+        if (bindAddress == null) {
+            bindAddress = isServer ? new InetSocketAddress(DEFAULT_SERVER_PORT) : null;
+        } else {
+            bindAddress = isServer ? bindAddress : new InetSocketAddress(bindAddress.getAddress(), 0);
+        }
+
         messageBuffer = ByteBuffer.allocateDirect(messageSize);
         result = new LatencyResult(messageCount, messageSize);
 
@@ -80,7 +84,7 @@ public class LatencyBenchmark implements Runnable {
             return;
         }
 
-        final CloseSignal closeSignal = new CloseSignal(socket);
+        final SyncSignal closeSignal = new SyncSignal(socket);
         final int warmupCount = (messageCount / 10) > 0 ? (messageCount / 10) : 1;
 
         try {

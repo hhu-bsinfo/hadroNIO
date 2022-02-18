@@ -13,11 +13,24 @@ public class ThroughputResult {
     public ThroughputResult(final int operationCount, final int operationSize) {
         this.operationCount = operationCount;
         this.operationSize = operationSize;
-        this.totalData = (long) operationCount * (long) operationSize;
+        totalData = (long) operationCount * (long) operationSize;
     }
 
-    public double getTotalTime() {
-        return totalTime;
+    ThroughputResult(int operationCount, int operationSize, double totalTime, double operationThroughput, double dataThroughput) {
+        this.operationCount = operationCount;
+        this.operationSize = operationSize;
+        this.totalTime = totalTime;
+        this.operationThroughput = operationThroughput;
+        this.dataThroughput = dataThroughput;
+        totalData = (long) operationCount * (long) operationSize;
+    }
+
+    public int getOperationCount() {
+        return operationCount;
+    }
+
+    public int getOperationSize() {
+        return operationSize;
     }
 
     public double getOperationThroughput() {
@@ -28,11 +41,23 @@ public class ThroughputResult {
         return dataThroughput;
     }
 
+    public double getTotalTime() {
+        return totalTime;
+    }
+
     public void setMeasuredTime(final long timeInNanos) {
         this.totalTime = timeInNanos / 1000000000d;
 
         operationThroughput = (double) operationCount / totalTime;
         dataThroughput = (double) totalData / totalTime;
+    }
+
+    public void setOperationThroughput(double operationThroughput) {
+        this.operationThroughput = operationThroughput;
+    }
+
+    public void setDataThroughput(double dataThroughput) {
+        this.dataThroughput = dataThroughput;
     }
 
     @Override
