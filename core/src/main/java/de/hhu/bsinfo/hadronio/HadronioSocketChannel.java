@@ -27,7 +27,6 @@ import static org.agrona.concurrent.ringbuffer.RingBuffer.INSUFFICIENT_CAPACITY;
 public class HadronioSocketChannel extends SocketChannel implements HadronioSelectableChannel {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(HadronioSocketChannel.class);
-    private static final ByteBuffer[] SINGLE_BUFFER_ARRAY = new ByteBuffer[1];
 
     static final long CONNECTION_MAGIC_NUMBER = 0xC0FFEE00ADD1C7EDL;
     static final long FLUSH_ANSWER = 0xDEADBEEFDEADBEEFL;
@@ -37,6 +36,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
 
     private final RingBuffer sendBuffer;
     private final RingBuffer receiveBuffer;
+    private final ByteBuffer[] singleBufferArray = new ByteBuffer[1];
 
     private final AtomicBuffer flushBuffer = new UnsafeBuffer(ByteBuffer.allocateDirect(Long.BYTES));
     private final AtomicBoolean isFlushing = new AtomicBoolean();
@@ -262,8 +262,8 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
         }
 
         synchronized (sendBuffer) {
-            SINGLE_BUFFER_ARRAY[0] = buffer;
-            return (int) write(SINGLE_BUFFER_ARRAY, 0, 1);
+            singleBufferArray[0] = buffer;
+            return (int) write(singleBufferArray, 0, 1);
         }
     }
 
