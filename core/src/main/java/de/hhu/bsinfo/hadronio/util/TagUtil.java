@@ -2,6 +2,8 @@ package de.hhu.bsinfo.hadronio.util;
 
 import java.util.PrimitiveIterator;
 import java.util.Random;
+import java.util.zip.CRC32;
+import java.util.zip.Checksum;
 
 public class TagUtil {
 
@@ -42,6 +44,17 @@ public class TagUtil {
 
     public static long generateId() {
         return tagIterator.nextLong();
+    }
+
+    public static long calculateChecksum(final long tag) {
+        final Checksum checksum = new CRC32();
+
+        for (int i = 0; i < Long.BYTES; i++) {
+            final byte currentByte = (byte) (tag >> (i * 8));
+            checksum.update(currentByte);
+        }
+
+        return checksum.getValue();
     }
 
     public static long getTargetId(final long tag) {

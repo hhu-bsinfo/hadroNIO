@@ -28,8 +28,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
 
     private static final Logger LOGGER = LoggerFactory.getLogger(HadronioSocketChannel.class);
 
-    static final long CONNECTION_MAGIC_NUMBER = 0xC0FFEE00ADD1C7EDL;
-    static final long FLUSH_ANSWER = 0xDEADBEEFDEADBEEFL;
+    static final long FLUSH_ANSWER = 0xC0FFEE00ADD1C7EDL;
 
     private final UcxEndpoint endpoint;
     private final Configuration configuration;
@@ -466,8 +465,9 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
         final AtomicBuffer receiveBuffer = MemoryUtil.allocateAligned(2 * Long.BYTES, Alignment.PAGE);
 
         final long localId = TagUtil.generateId();
-        sendBuffer.putLong(0, CONNECTION_MAGIC_NUMBER);
-        sendBuffer.putLong(Long.BYTES, localId);
+        final long checksum = TagUtil.calculateChecksum(localId);
+        sendBuffer.putLong(0, localId);
+        sendBuffer.putLong(Long.BYTES, checksum);
 
         final ConnectionCallback connectionCallback = new ConnectionCallback(this, receiveBuffer, localId);
 
