@@ -1,7 +1,7 @@
 package de.hhu.bsinfo.hadronio.binding;
 
 @FunctionalInterface
-public interface UcxCallback {
+public interface UcxSendCallback {
 
-    void onSuccess();
+    void onMessageSent();
 }

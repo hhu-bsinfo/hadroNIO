@@ -2,7 +2,7 @@ package de.hhu.bsinfo.hadronio.jucx;
 
 import de.hhu.bsinfo.hadronio.binding.UcxEndpoint;
 import de.hhu.bsinfo.hadronio.binding.UcxReceiveCallback;
-import de.hhu.bsinfo.hadronio.binding.UcxCallback;
+import de.hhu.bsinfo.hadronio.binding.UcxSendCallback;
 import de.hhu.bsinfo.hadronio.binding.UcxWorker;
 import org.openucx.jucx.ucp.*;
 import org.slf4j.Logger;
@@ -85,18 +85,36 @@ class JucxEndpoint implements UcxEndpoint {
         return request.isCompleted();
     }
 
-    @Override
-    public void sendStream(final long address, final long size, final UcxCallback callback) {
-        endpoint.sendStreamNonBlocking(address, size, new StreamCallback(this, callback));
+    public boolean sendStream(final long address, final long size, final boolean useCallback, final boolean blocking) {
+        final UcpRequest request = endpoint.sendStreamNonBlocking(address, size, useCallback ? sendCallback : null);
+        while (blocking && !request.isCompleted()) {
+            try {
+                worker.getWorker().progressRequest(request);
+            } catch (Exception e) {
+                // Should never happen, since we do no throw exceptions inside our error handlers
+                throw new IllegalStateException(e);
+            }
+        }
+
+        return request.isCompleted();
+    }
+
+    public boolean receiveStream(final long address, final long size, final boolean useCallback, final boolean blocking) {
+        final UcpRequest request = endpoint.recvStreamNonBlocking(address, size, UcpConstants.UCP_STREAM_RECV_FLAG_WAITALL, useCallback ? receiveCallback : null);
+        while (blocking && !request.isCompleted()) {
+            try {
+                worker.getWorker().progressRequest(request);
+            } catch (Exception e) {
+                // Should never happen, since we do no throw exceptions inside our error handlers
+                throw new IllegalStateException(e);
+            }
+        }
+
+        return request.isCompleted();
     }
 
     @Override
-    public void receiveStream(final long address, final long size, final UcxCallback callback) {
-        endpoint.recvStreamNonBlocking(address, size, UcpConstants.UCP_STREAM_RECV_FLAG_WAITALL, new StreamCallback(this, callback));
-    }
-
-    @Override
-    public void setSendCallback(final UcxCallback sendCallback) {
+    public void setSendCallback(final UcxSendCallback sendCallback) {
         this.sendCallback = new SendCallback(this, sendCallback);
     }
 

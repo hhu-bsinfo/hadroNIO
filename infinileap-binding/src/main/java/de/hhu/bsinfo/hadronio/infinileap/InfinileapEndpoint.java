@@ -2,7 +2,7 @@ package de.hhu.bsinfo.hadronio.infinileap;
 
 import static org.openucx.Communication.ucp_request_check_status;
 
-import de.hhu.bsinfo.hadronio.binding.UcxCallback;
+import de.hhu.bsinfo.hadronio.binding.UcxSendCallback;
 import de.hhu.bsinfo.hadronio.binding.UcxEndpoint;
 import de.hhu.bsinfo.hadronio.binding.UcxReceiveCallback;
 import de.hhu.bsinfo.hadronio.binding.UcxWorker;
@@ -75,11 +75,11 @@ class InfinileapEndpoint implements UcxEndpoint {
     }
 
     @Override
-    public void sendStream(final long address, final long size, final UcxCallback callback) {
+    public void sendStream(final long address, final long size, final UcxSendCallback callback) {
         final var retStatus = endpoint.sendStream(MemorySegment.ofAddress(MemoryAddress.ofLong(address), size, ResourceScope.globalScope()), size, new RequestParameters().setSendCallback(
             (request, status, data) -> {
                 if (status == Status.OK) {
-                    callback.onSuccess();
+                    callback.onMessageSent();
                 } else {
                     LOGGER.error("Failed to send data via streaming (Status: [{}])!", status);
                     handleError();
@@ -87,17 +87,17 @@ class InfinileapEndpoint implements UcxEndpoint {
             }));
 
         if (checkStatus(retStatus, false)) {
-            callback.onSuccess();
+            callback.onMessageSent();
         }
     }
 
     @Override
-    public void receiveStream(final long address, final long size, final UcxCallback callback) {
+    public void receiveStream(final long address, final long size, final UcxSendCallback callback) {
         final var receiveSize = new NativeLong();
         final var retStatus = endpoint.receiveStream(MemorySegment.ofAddress(MemoryAddress.ofLong(address), size, ResourceScope.globalScope()), size, receiveSize, new RequestParameters().setReceiveCallback(
             (request, status, tagInfo, data) -> {
                 if (status == Status.OK) {
-                    callback.onSuccess();
+                    callback.onMessageSent();
                 } else {
                     LOGGER.error("Failed to receive data via streaming (Status: [{}])!", status);
                     handleError();
@@ -105,17 +105,17 @@ class InfinileapEndpoint implements UcxEndpoint {
             }));
 
         if (checkStatus(retStatus, false)) {
-            callback.onSuccess();
+            callback.onMessageSent();
         }
     }
 
     @Override
-    public void setSendCallback(final UcxCallback sendCallback) {
+    public void setSendCallback(final UcxSendCallback sendCallback) {
         sendParameters.setSendCallback(
             (request, status, data) -> {
                 if (status == Status.OK) {
                     LOGGER.debug("Infinileap SendCallback called (Status: [{}])", status);
-                    sendCallback.onSuccess();
+                    sendCallback.onMessageSent();
                 } else {
                     LOGGER.error("Failed to send a message (Status: [{}])!", status);
                     handleError();

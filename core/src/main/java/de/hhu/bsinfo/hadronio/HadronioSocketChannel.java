@@ -470,10 +470,12 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
         sendBuffer.putLong(Long.BYTES, checksum);
 
         final ConnectionCallback connectionCallback = new ConnectionCallback(this, receiveBuffer, localId);
+        endpoint.setSendCallback(connectionCallback);
+        endpoint.setReceiveCallback(connectionCallback);
 
         LOGGER.info("Exchanging tags to establish connection");
-        endpoint.sendStream(sendBuffer.addressOffset(), sendBuffer.capacity(), connectionCallback);
-        endpoint.receiveStream(receiveBuffer.addressOffset(), receiveBuffer.capacity(), connectionCallback);
+        endpoint.sendStream(sendBuffer.addressOffset(), sendBuffer.capacity(), true, false);
+        endpoint.receiveStream(receiveBuffer.addressOffset(), receiveBuffer.capacity(), true, false);
     }
 
     private int readBlocking(final ByteBuffer target) throws IOException {

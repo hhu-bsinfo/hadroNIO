@@ -11,11 +11,11 @@ public interface UcxEndpoint extends UcxProgressable {
 
     boolean receiveTaggedMessage(long address, long size, long tag, long tagMask, boolean useCallback, boolean blocking);
 
-    void sendStream(long address, long size, UcxCallback callback);
+    boolean sendStream(long address, long size, boolean useCallback, boolean blocking);
 
-    void receiveStream(long address, long size, UcxCallback callback);
+    boolean receiveStream(long address, long size, boolean useCallback, boolean blocking);
 
-    void setSendCallback(UcxCallback sendCallback);
+    void setSendCallback(UcxSendCallback sendCallback);
 
     void setReceiveCallback(UcxReceiveCallback receiveCallback);
 
