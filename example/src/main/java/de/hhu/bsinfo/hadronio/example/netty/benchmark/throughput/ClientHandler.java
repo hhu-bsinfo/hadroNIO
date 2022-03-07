@@ -62,9 +62,12 @@ public class ClientHandler extends ChannelInboundHandlerAdapter {
             }
 
             if (warmup) {
-                LOGGER.info("Starting benchmark with [{}] messages", originalMessageCount);
+                LOGGER.info("Finished warmup");
                 context.channel().pipeline().removeLast();
                 context.channel().pipeline().addLast(new ClientHandler(messageSize, originalMessageCount, false));
+            } else {
+                LOGGER.info("Finished benchmark");
+                context.channel().close();
             }
         }
     }

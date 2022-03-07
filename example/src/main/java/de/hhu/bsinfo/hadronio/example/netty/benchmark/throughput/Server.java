@@ -89,6 +89,8 @@ public class Server implements Runnable {
                 connectionBarrier.wait();
             }
 
+            serverChannel.close();
+
             for (int i = 0; i < connections; i++) {
                 threads[i].start();
             }
@@ -101,9 +103,6 @@ public class Server implements Runnable {
 
             final ThroughputResult result = combiner.getCombinedResult();
             LOGGER.info("{}", result);
-
-            serverChannel.close();
-            serverChannel.closeFuture().sync();
         } catch (InterruptedException e) {
             LOGGER.error("A sync error occurred", e);
         } finally {

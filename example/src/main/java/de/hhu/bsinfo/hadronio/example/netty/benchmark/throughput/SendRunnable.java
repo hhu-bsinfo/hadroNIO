@@ -41,13 +41,16 @@ public class SendRunnable implements Runnable {
             // Warmup
             final int warmupCount = messageCount / 10 > 0 ? messageCount / 10 : 1;
             LOGGER.info("Starting warmup with [{}] messages", warmupCount);
-            sendMessages(warmupCount);
 
             synchronized (syncLock) {
+                sendMessages(warmupCount);
                 syncLock.wait();
             }
+
+            LOGGER.info("Finished warmup");
         } catch (InterruptedException e) {
             LOGGER.error("Warmup failed", e);
+            channel.close();
             return;
         }
 
@@ -56,15 +59,16 @@ public class SendRunnable implements Runnable {
             benchmarkBarrier.await();
             LOGGER.info("Starting benchmark with [{}] messages", messageCount);
             final long startTime = System.nanoTime();
-            sendMessages(messageCount);
 
             synchronized (syncLock) {
+                sendMessages(messageCount);
                 syncLock.wait();
             }
 
             result.setMeasuredTime(System.nanoTime() - startTime);
         } catch (InterruptedException | BrokenBarrierException e) {
             LOGGER.error("Benchmark failed", e);
+            channel.close();
             return;
         }
 
@@ -75,6 +79,7 @@ public class SendRunnable implements Runnable {
             }
         }
 
+        channel.close();
         LOGGER.info("{}", result);
     }
 
