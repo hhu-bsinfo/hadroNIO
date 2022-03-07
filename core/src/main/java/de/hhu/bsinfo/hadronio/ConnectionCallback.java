@@ -23,7 +23,7 @@ class ConnectionCallback implements UcxSendCallback, UcxReceiveCallback {
 
     @Override
     public void onMessageSent() {
-        LOGGER.debug("Connection callback has been (Sent tag: [0x{}])", Long.toHexString(localTag));
+        LOGGER.debug("Connection callback has been called (Sent tag: [0x{}])", Long.toHexString(localTag));
     }
 
     @Override
@@ -33,10 +33,11 @@ class ConnectionCallback implements UcxSendCallback, UcxReceiveCallback {
         final long expectedChecksum = TagUtil.calculateChecksum(remoteTag);
 
         if (checksum == expectedChecksum) {
-            LOGGER.debug("Connection callback has been (Received tag: [0x{}])", Long.toHexString(remoteTag));
+            LOGGER.debug("Connection callback has been called (Received tag: [0x{}])", Long.toHexString(remoteTag));
             socket.onConnection(true, localTag, remoteTag);
         } else {
-            LOGGER.error("Tags have been exchanged, but checksum is wrong (Expected: [{}], Received: [{}])!", Long.toHexString(expectedChecksum), Long.toHexString(checksum));
+            LOGGER.error("Tags have been exchanged, but checksum is wrong (Expected: [0x{}], Received: [0x{}])!", Long.toHexString(expectedChecksum), Long.toHexString(checksum));
+            socket.onConnection(false, localTag, 0);
         }
     }
 }
