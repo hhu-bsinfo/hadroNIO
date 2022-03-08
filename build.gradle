@@ -1,17 +1,17 @@
 ext {
-    projectVersion = '0.2.0' + (Boolean.valueOf(System.getProperty('release')) ? '' : '-SNAPSHOT')
+    projectVersion = '0.3.0' + (Boolean.valueOf(System.getProperty('release')) ? '' : '-SNAPSHOT')
 
     buildConfigVersion = '1.1.8'
     gitVersionVersion = '0.12.2'
     shadowVersion = '7.1.2'
 
-    jucxVersion = '1.12.1-rc2'
+    jucxVersion = '1.12.1-rc3'
     infinileapVersion = '0.1.0-SNAPSHOT'
     agronaVersion = '1.14.0'
     picocliVersion = '4.6.3'
     nettyVersion = '4.1.74.Final'
     slf4jVersion = '1.7.36'
-    log4jVersion = '2.17.1'
+    log4jVersion = '2.17.2'
     junitJupiterVersion = '5.8.2'
 }
 
