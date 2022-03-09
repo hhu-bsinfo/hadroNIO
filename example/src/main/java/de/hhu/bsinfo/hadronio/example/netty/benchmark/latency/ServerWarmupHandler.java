@@ -6,6 +6,10 @@ import io.netty.channel.ChannelInboundHandlerAdapter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.concurrent.BrokenBarrierException;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.atomic.AtomicInteger;
+
 public class ServerWarmupHandler extends ChannelInboundHandlerAdapter {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ServerWarmupHandler.class);
@@ -13,31 +17,36 @@ public class ServerWarmupHandler extends ChannelInboundHandlerAdapter {
     private final int messageSize;
     private final int messageCount;
     private final int warmupCount;
+    private final int connections;
+    private ByteBuf sendBuffer;
+    private final AtomicInteger warmupCounter;
+    private final AtomicInteger benchmarkCounter;
 
     private int receivedMessages = 0;
     private int receivedBytes = 0;
 
-    private ByteBuf sendBuffer;
 
-    public ServerWarmupHandler(final int messageSize, final int messageCount, final int warmupCount) {
+    public ServerWarmupHandler(final int messageSize, final int messageCount, final int warmupCount, final int connections, final AtomicInteger warmupCounter, final AtomicInteger benchmarkCounter) {
         this.messageSize = messageSize;
         this.messageCount = messageCount;
         this.warmupCount = warmupCount > 0 ? warmupCount : 1;
+        this.connections = connections;
+        this.warmupCounter = warmupCounter;
+        this.benchmarkCounter = benchmarkCounter;
     }
 
-    @Override
-    public void channelRegistered(final ChannelHandlerContext context) {
+    public void start(final ChannelHandlerContext context) {
+        LOGGER.info("Starting warmup with [{}] messages", warmupCount);
         sendBuffer = context.alloc().buffer(messageSize).retain(warmupCount + messageCount);
         for (int i = 0; i < messageSize; i++) {
             sendBuffer.writeByte(i);
         }
+        context.channel().writeAndFlush(sendBuffer);
     }
 
     @Override
     public void channelActive(final ChannelHandlerContext context) {
         LOGGER.info("Accepted incoming connection from [{}]", context.channel().remoteAddress());
-        LOGGER.info("Starting warmup with [{}] messages", warmupCount);
-        context.channel().writeAndFlush(sendBuffer);
     }
 
     @Override
@@ -54,10 +63,16 @@ public class ServerWarmupHandler extends ChannelInboundHandlerAdapter {
             if (receivedMessages < warmupCount) {
                 context.channel().writeAndFlush(sendBuffer);
             } else {
-                ServerHandler handler = new ServerHandler(messageSize, messageCount, sendBuffer);
+                LOGGER.info("Finished warmup");
+                final ServerHandler handler = new ServerHandler(messageSize, messageCount, connections, sendBuffer, benchmarkCounter);
                 context.channel().pipeline().removeLast();
                 context.channel().pipeline().addLast(handler);
-                handler.start(context);
+
+                if (warmupCounter.incrementAndGet() >= connections) {
+                    synchronized (warmupCounter) {
+                        warmupCounter.notify();
+                    }
+                }
             }
         }
     }

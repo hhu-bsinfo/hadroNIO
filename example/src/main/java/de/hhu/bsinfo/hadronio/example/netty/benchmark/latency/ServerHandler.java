@@ -7,24 +7,31 @@ import io.netty.channel.ChannelInboundHandlerAdapter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.concurrent.BrokenBarrierException;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.atomic.AtomicInteger;
+
 public class ServerHandler extends ChannelInboundHandlerAdapter {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ServerHandler.class);
 
     private final int messageSize;
     private final int messageCount;
+    private final int connections;
+    private final ByteBuf sendBuffer;
+    private final AtomicInteger benchmarkCounter;
     private final LatencyResult result;
 
     private int receivedMessages = 0;
     private int receivedBytes = 0;
     private long startTime;
 
-    private final ByteBuf sendBuffer;
-
-    public ServerHandler(final int messageSize, final int messageCount, final ByteBuf sendBuffer) {
+    public ServerHandler(final int messageSize, final int messageCount, final int connections, final ByteBuf sendBuffer, final AtomicInteger benchmarkCounter) {
         this.messageSize = messageSize;
         this.messageCount = messageCount;
+        this.connections = connections;
         this.sendBuffer = sendBuffer;
+        this.benchmarkCounter = benchmarkCounter;
         result = new LatencyResult(messageCount, messageSize);
     }
 
@@ -33,6 +40,10 @@ public class ServerHandler extends ChannelInboundHandlerAdapter {
         startTime = System.nanoTime();
         result.startSingleMeasurement();
         context.channel().writeAndFlush(sendBuffer);
+    }
+
+    public LatencyResult getResult() {
+        return result;
     }
 
     @Override
@@ -53,7 +64,12 @@ public class ServerHandler extends ChannelInboundHandlerAdapter {
             } else {
                 result.finishMeasuring(System.nanoTime() - startTime);
                 LOGGER.info(result.toString());
-                context.channel().close();
+
+                if (benchmarkCounter.incrementAndGet() >= connections) {
+                    synchronized (benchmarkCounter) {
+                        benchmarkCounter.notify();
+                    }
+                }
             }
         }
     }

@@ -17,6 +17,13 @@ public class LatencyResult {
         latencyStatistics = new LatencyStatistics(operationCount);
     }
 
+    public LatencyResult(final int operationCount, final int operationSize, final long[] latencies) {
+        this.operationCount = operationCount;
+        this.operationSize = operationSize;
+        this.totalData = (long) operationCount * (long) operationSize;
+        latencyStatistics = new LatencyStatistics(latencies);
+    }
+
     public void startSingleMeasurement() {
         latencyStatistics.start();
     }
@@ -30,6 +37,18 @@ public class LatencyResult {
 
         operationThroughput = (double) operationCount / totalTime;
         latencyStatistics.sortAscending();
+    }
+
+    public int getOperationCount() {
+        return operationCount;
+    }
+
+    public int getOperationSize() {
+        return operationSize;
+    }
+
+    public LatencyStatistics getStatistics() {
+        return latencyStatistics;
     }
 
     public double getAverageLatency() {

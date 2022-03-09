@@ -27,6 +27,11 @@ public class LatencyBenchmark implements Runnable {
     private InetSocketAddress bindAddress = null;
 
     @CommandLine.Option(
+            names = {"-c", "--connections"},
+            description = "The amount of connections to use for sending/receiving.")
+    private int connections = 1;
+
+    @CommandLine.Option(
         names = {"-r", "--remote"},
         description = "The address to connect to.")
     private InetSocketAddress remoteAddress;
@@ -56,8 +61,8 @@ public class LatencyBenchmark implements Runnable {
             bindAddress = isServer ? bindAddress : new InetSocketAddress(bindAddress.getAddress(), 0);
         }
 
-        final Runnable runnable = isServer ? new Server(bindAddress, messageSize, messageCount) :
-                new Client(bindAddress, remoteAddress, messageSize, messageCount);
+        final Runnable runnable = isServer ? new Server(bindAddress, messageSize, messageCount, connections) :
+                new Client(bindAddress, remoteAddress, messageSize, messageCount, connections);
         runnable.run();
     }
 }

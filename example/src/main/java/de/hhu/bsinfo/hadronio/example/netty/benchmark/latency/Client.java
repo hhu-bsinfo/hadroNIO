@@ -1,5 +1,6 @@
 package de.hhu.bsinfo.hadronio.example.netty.benchmark.latency;
 
+import de.hhu.bsinfo.hadronio.example.netty.benchmark.throughput.ClientHandler;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelInitializer;
@@ -20,12 +21,17 @@ public class Client implements Runnable {
     private final InetSocketAddress remoteAddress;
     private final int messageSize;
     private final int messageCount;
+    private final int connections;
 
-    public Client(final InetSocketAddress bindAddress, final InetSocketAddress remoteAddress, int messageSize, int messageCount) {
+    private final Channel[] channels;
+
+    public Client(final InetSocketAddress bindAddress, final InetSocketAddress remoteAddress, final int messageSize, final int messageCount, final int connections) {
         this.bindAddress = bindAddress;
         this.remoteAddress = remoteAddress;
         this.messageSize = messageSize;
         this.messageCount = messageCount;
+        this.connections = connections;
+        channels = new Channel[connections];
     }
 
     @Override
@@ -35,20 +41,26 @@ public class Client implements Runnable {
         final Bootstrap bootstrap = new Bootstrap();
 
         bootstrap.group(workerGroup)
-            .channel(NioSocketChannel.class)
-            .handler(new ChannelInitializer<SocketChannel>() {
-                @Override
-                protected void initChannel(final SocketChannel channel) {
-                    channel.pipeline().addLast(new ClientWarmupHandler(messageSize, messageCount, messageCount / 10));
-                }
-            });
+                .channel(NioSocketChannel.class)
+                .handler(new ChannelInitializer<SocketChannel>() {
+                    @Override
+                    protected void initChannel(final SocketChannel channel) {
+                        channel.pipeline().addLast(new ClientWarmupHandler(messageSize, messageCount, messageCount / 10));
+                    }
+                });
 
         try {
-            final Channel channel = bootstrap.connect(remoteAddress, bindAddress).sync().channel();
-            channel.closeFuture().addListener(future -> LOGGER.info("Socket channel closed")).sync();
+            for (int i = 0; i < connections; i++) {
+                final Channel channel = bootstrap.connect(remoteAddress, bindAddress).sync().channel();
+                channel.closeFuture().addListener(future -> LOGGER.info("Closed channel connected to [{}]", channel.remoteAddress()));
+                channels[i] = channel;
+            }
+
+            for (int i = 0; i < connections; i++) {
+                channels[i].closeFuture().sync();
+            }
         } catch (InterruptedException e) {
             LOGGER.error("A sync error occurred", e);
-            e.printStackTrace();
         } finally {
             workerGroup.shutdownGracefully();
         }

@@ -23,6 +23,12 @@ class LatencyStatistics {
         pos = 0;
     }
 
+    LatencyStatistics(long[] times) {
+        this.times = times;
+        pos = times.length;
+        sortAscending();
+    }
+
     /**
      * Start measuring time.
      */
@@ -97,5 +103,9 @@ class LatencyStatistics {
         }
 
         return times[(int) Math.ceil(perc * pos) - 1];
+    }
+
+    long[] getTimes() {
+        return times;
     }
 }

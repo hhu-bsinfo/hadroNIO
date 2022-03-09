@@ -26,17 +26,12 @@ public class ClientWarmupHandler extends ChannelInboundHandlerAdapter {
     }
 
     @Override
-    public void channelRegistered(final ChannelHandlerContext context) {
+    public void channelActive(final ChannelHandlerContext context) {
+        LOGGER.info("Successfully connected to [{}]", context.channel().remoteAddress());
         sendBuffer = context.alloc().buffer(messageSize).retain(warmupCount + messageCount);
         for (int i = 0; i < messageSize; i++) {
             sendBuffer.writeByte(i);
         }
-    }
-
-    @Override
-    public void channelActive(final ChannelHandlerContext context) {
-        LOGGER.info("Successfully connected to [{}]", context.channel().remoteAddress());
-        LOGGER.info("Starting warmup with [{}] messages", warmupCount);
     }
 
     @Override
@@ -53,7 +48,7 @@ public class ClientWarmupHandler extends ChannelInboundHandlerAdapter {
         }
 
         if (receivedMessages >= warmupCount) {
-            LOGGER.info("Starting benchmark with [{}] messages", messageCount);
+            LOGGER.info("Finished warmup");
             final ClientHandler handler = new ClientHandler(messageSize, messageCount, sendBuffer);
             context.channel().pipeline().removeLast();
             context.channel().pipeline().addLast(handler);
