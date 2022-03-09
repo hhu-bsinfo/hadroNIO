@@ -23,6 +23,7 @@ class InfinileapEndpoint implements UcxEndpoint {
 
     private Endpoint endpoint;
     private final InfinileapWorker worker;
+    private InetSocketAddress remoteAddress;
     private final EndpointParameters parameters = new EndpointParameters();
     private final RequestParameters sendParameters = new RequestParameters();
     private final RequestParameters receiveParameters = new RequestParameters();
@@ -35,6 +36,7 @@ class InfinileapEndpoint implements UcxEndpoint {
     }
 
     InfinileapEndpoint(final Context context, final ConnectionRequest connectionRequest) throws ControlException {
+        // TODO: Get remote address from connection request, once available in infinileap
         worker = new InfinileapWorker(context, new WorkerParameters());
         endpoint = worker.getWorker().createEndpoint(
                 parameters.setConnectionRequest(connectionRequest)
@@ -49,6 +51,7 @@ class InfinileapEndpoint implements UcxEndpoint {
     @Override
     public void connect(final InetSocketAddress remoteAddress) throws IOException {
         try {
+            this.remoteAddress = remoteAddress;
             endpoint = worker.getWorker().createEndpoint(
                     parameters.setRemoteAddress(remoteAddress)
                     .setErrorHandler((userData, endpoint, status) -> {
@@ -75,38 +78,16 @@ class InfinileapEndpoint implements UcxEndpoint {
     }
 
     @Override
-    public void sendStream(final long address, final long size, final UcxSendCallback callback) {
-        final var retStatus = endpoint.sendStream(MemorySegment.ofAddress(MemoryAddress.ofLong(address), size, ResourceScope.globalScope()), size, new RequestParameters().setSendCallback(
-            (request, status, data) -> {
-                if (status == Status.OK) {
-                    callback.onMessageSent();
-                } else {
-                    LOGGER.error("Failed to send data via streaming (Status: [{}])!", status);
-                    handleError();
-                }
-            }));
-
-        if (checkStatus(retStatus, false)) {
-            callback.onMessageSent();
-        }
+    public boolean sendStream(final long address, final long size, final boolean useCallback, final boolean blocking) {
+        final var status = endpoint.sendStream(MemorySegment.ofAddress(MemoryAddress.ofLong(address), size, ResourceScope.globalScope()), size, useCallback ? sendParameters : emptyParameters);
+        return checkStatus(status, blocking);
     }
 
     @Override
-    public void receiveStream(final long address, final long size, final UcxSendCallback callback) {
+    public boolean receiveStream(final long address, final long size, final boolean useCallback, final boolean blocking) {
         final var receiveSize = new NativeLong();
-        final var retStatus = endpoint.receiveStream(MemorySegment.ofAddress(MemoryAddress.ofLong(address), size, ResourceScope.globalScope()), size, receiveSize, new RequestParameters().setReceiveCallback(
-            (request, status, tagInfo, data) -> {
-                if (status == Status.OK) {
-                    callback.onMessageSent();
-                } else {
-                    LOGGER.error("Failed to receive data via streaming (Status: [{}])!", status);
-                    handleError();
-                }
-            }));
-
-        if (checkStatus(retStatus, false)) {
-            callback.onMessageSent();
-        }
+        final var status = endpoint.receiveStream(MemorySegment.ofAddress(MemoryAddress.ofLong(address), size, ResourceScope.globalScope()), size, receiveSize, useCallback ? receiveParameters : emptyParameters);
+        return checkStatus(status, blocking);
     }
 
     @Override
@@ -146,7 +127,7 @@ class InfinileapEndpoint implements UcxEndpoint {
 
     @Override
     public InetSocketAddress getRemoteAddress() {
-        return null;
+        return remoteAddress;
     }
 
     @Override
