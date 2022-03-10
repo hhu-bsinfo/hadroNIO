@@ -140,7 +140,7 @@ public class LatencyBenchmark implements Runnable {
             LOGGER.info("{}", result);
             if (!resultFileName.isEmpty()) {
                 try {
-                    result.writeToFile(resultFileName, benchmarkName, benchmarkIteration);
+                    result.writeToFile(resultFileName, benchmarkName, benchmarkIteration, 1);
                 } catch (IOException e) {
                     LOGGER.error("Unable to write result to file '{}'", resultFileName, e);
                 }

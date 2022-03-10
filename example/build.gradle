@@ -37,7 +37,7 @@ test {
 
 startScripts {
     doLast {
-        def unixScriptFile    = file getUnixScript()
+        def unixScriptFile = file getUnixScript()
         def line = unixScriptFile.text.lines().find{it.startsWith('CLASSPATH=$APP_HOME')} as CharSequence
         unixScriptFile.text  = unixScriptFile.text.replace(line, line + ':$CLASSPATH')
     }

@@ -118,7 +118,7 @@ public class Server implements Runnable {
             LOGGER.info("{}", result);
             if (!resultFileName.isEmpty()) {
                 try {
-                    result.writeToFile(resultFileName, benchmarkName, benchmarkIteration);
+                    result.writeToFile(resultFileName, benchmarkName, benchmarkIteration, connections);
                 } catch (IOException e) {
                     LOGGER.error("Unable to write result to file '{}'", resultFileName, e);
                 }
