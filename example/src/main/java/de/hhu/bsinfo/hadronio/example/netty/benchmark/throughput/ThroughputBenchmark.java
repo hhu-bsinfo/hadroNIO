@@ -52,6 +52,21 @@ public class ThroughputBenchmark implements Runnable {
         required = true)
     private int messageCount;
 
+    @CommandLine.Option(
+            names = {"-o", "--output"},
+            description = "Path to the result file, to which the CSV data shall be written.")
+    private String resultFileName = "";
+
+    @CommandLine.Option(
+            names = {"-n", "--name"},
+            description = "Benchmark name to use, when writing the result to a file.")
+    private String benchmarkName = "";
+
+    @CommandLine.Option(
+            names = {"-i", "--iteration"},
+            description = "Iteration number to use, when writing the result to a file.")
+    private int benchmarkIteration = 0;
+
     @Override
     public void run() {
         if (!isServer && remoteAddress == null) {
@@ -65,7 +80,7 @@ public class ThroughputBenchmark implements Runnable {
             bindAddress = isServer ? bindAddress : new InetSocketAddress(bindAddress.getAddress(), 0);
         }
 
-        final Runnable runnable = isServer ? new Server(bindAddress, messageSize, messageCount, aggregationThreshold, connections) :
+        final Runnable runnable = isServer ? new Server(bindAddress, messageSize, messageCount, aggregationThreshold, connections, resultFileName, benchmarkName, benchmarkIteration) :
                 new Client(bindAddress, remoteAddress, messageSize, messageCount, connections);
         runnable.run();
     }

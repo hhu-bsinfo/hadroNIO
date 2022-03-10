@@ -26,13 +26,24 @@ public class LatencyCombiner {
     }
 
     public LatencyResult getCombinedResult() {
+        double operationThroughput = 0;
+        double totalTime = 0;
+        long totalData = 0;
         final ArrayList<Long> latencySet = new ArrayList<>();
+
         for (final LatencyResult result : results) {
+            operationThroughput += result.getOperationThroughput();
+            totalData += result.getTotalData();
+
+            if (result.getTotalTime() > totalTime) {
+                totalTime = result.getTotalTime();
+            }
+
             for (final long latency : result.getStatistics().getTimes()) {
                 latencySet.add(latency);
             }
         }
 
-        return new LatencyResult(operationCount, operationSize, latencySet.stream().mapToLong(Long::longValue).toArray());
+        return new LatencyResult(operationCount, operationSize, totalData, totalTime, operationThroughput, latencySet.stream().mapToLong(Long::longValue).toArray());
     }
 }

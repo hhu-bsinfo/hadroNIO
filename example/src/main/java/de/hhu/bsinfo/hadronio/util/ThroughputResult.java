@@ -1,5 +1,9 @@
 package de.hhu.bsinfo.hadronio.util;
 
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+
 public class ThroughputResult {
 
     private final int operationCount;
@@ -16,13 +20,13 @@ public class ThroughputResult {
         totalData = (long) operationCount * (long) operationSize;
     }
 
-    ThroughputResult(int operationCount, int operationSize, double totalTime, double operationThroughput, double dataThroughput) {
+    ThroughputResult(final int operationCount, final int operationSize, final long totalData, final double totalTime, final double operationThroughput, final double dataThroughput) {
         this.operationCount = operationCount;
         this.operationSize = operationSize;
+        this.totalData = totalData;
         this.totalTime = totalTime;
         this.operationThroughput = operationThroughput;
         this.dataThroughput = dataThroughput;
-        totalData = (long) operationCount * (long) operationSize;
     }
 
     public int getOperationCount() {
@@ -45,19 +49,39 @@ public class ThroughputResult {
         return totalTime;
     }
 
+    public long getTotalData() {
+        return totalData;
+    }
+
     public void setMeasuredTime(final long timeInNanos) {
         this.totalTime = timeInNanos / 1000000000d;
-
         operationThroughput = (double) operationCount / totalTime;
         dataThroughput = (double) totalData / totalTime;
     }
 
-    public void setOperationThroughput(double operationThroughput) {
-        this.operationThroughput = operationThroughput;
-    }
+    public void writeToFile(final String fileName, final String benchmarkName, final int iteration) throws IOException {
+        final File file = new File(fileName);
+        FileWriter writer;
 
-    public void setDataThroughput(double dataThroughput) {
-        this.dataThroughput = dataThroughput;
+        if (file.exists()) {
+            writer = new FileWriter(fileName, true);
+        } else {
+            if (!file.createNewFile()) {
+                throw new IOException("Unable to create file '" + fileName + "'");
+            }
+
+            writer = new FileWriter(fileName, false);
+            writer.write("Benchmark,Iteration,Size,DataThroughput,OperationThroughput\n");
+        }
+
+        writer.append(benchmarkName).append(",")
+                .append(String.valueOf(iteration)).append(",")
+                .append(String.valueOf(getOperationSize())).append(",")
+                .append(String.valueOf(getDataThroughput())).append(",")
+                .append(String.valueOf(getOperationThroughput())).append("\n");
+
+        writer.flush();
+        writer.close();
     }
 
     @Override

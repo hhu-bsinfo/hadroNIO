@@ -57,8 +57,7 @@ public class ClientHandler extends ChannelInboundHandlerAdapter {
                 syncBuf.writeCharSequence(SYNC_SIGNAL, StandardCharsets.UTF_8);
                 context.channel().writeAndFlush(syncBuf).sync();
             } catch (InterruptedException e) {
-                LOGGER.error("Failed to send sync signal", e);
-                context.channel().close();
+                exceptionCaught(context, e);
             }
 
             if (warmup) {
@@ -67,7 +66,6 @@ public class ClientHandler extends ChannelInboundHandlerAdapter {
                 context.channel().pipeline().addLast(new ClientHandler(messageSize, originalMessageCount, false));
             } else {
                 LOGGER.info("Finished benchmark");
-                context.channel().close();
             }
         }
     }

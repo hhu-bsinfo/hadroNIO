@@ -54,6 +54,21 @@ public class ThroughputBenchmark implements Runnable {
             required = true)
     private int messageCount;
 
+    @CommandLine.Option(
+            names = {"-o", "--output"},
+            description = "Path to the result file, to which the CSV data shall be written.")
+    private String resultFileName = "";
+
+    @CommandLine.Option(
+            names = {"-n", "--name"},
+            description = "Benchmark name to use, when writing the result to a file.")
+    private String benchmarkName = "";
+
+    @CommandLine.Option(
+            names = {"-i", "--iteration"},
+            description = "Iteration number to use, when writing the result to a file.")
+    private int benchmarkIteration = 0;
+
     private ByteBuffer[] sendBuffers;
     private ByteBuffer receiveBuffer;
     private SocketChannel socket;
@@ -131,7 +146,14 @@ public class ThroughputBenchmark implements Runnable {
         }
 
         if (isServer) {
-            LOGGER.info("Benchmark result:\n{}", result);
+            LOGGER.info("{}", result);
+            if (!resultFileName.isEmpty()) {
+                try {
+                    result.writeToFile(resultFileName, benchmarkName, benchmarkIteration);
+                } catch (IOException e) {
+                    LOGGER.error("Unable to write result to file '{}'", resultFileName, e);
+                }
+            }
         }
     }
 

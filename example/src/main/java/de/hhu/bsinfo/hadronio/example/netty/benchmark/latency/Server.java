@@ -13,6 +13,7 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -25,6 +26,10 @@ public class Server implements Runnable {
     private final int messageCount;
     private final int connections;
 
+    private final String resultFileName;
+    private final String benchmarkName;
+    private final int benchmarkIteration;
+
     private int connectedChannels;
     private final Channel[] channels;
 
@@ -33,11 +38,15 @@ public class Server implements Runnable {
     private final AtomicInteger warmupCounter = new AtomicInteger();
     private final AtomicInteger benchmarkCounter = new AtomicInteger();
 
-    public Server(final InetSocketAddress bindAddress, final int messageSize, final int messageCount, final int connections) {
+    public Server(final InetSocketAddress bindAddress, final int messageSize, final int messageCount, final int connections,
+                  final String resultFileName, final String benchmarkName, final int benchmarkIteration) {
         this.bindAddress = bindAddress;
         this.messageSize = messageSize;
         this.messageCount = messageCount;
         this.connections = connections;
+        this.resultFileName = resultFileName;
+        this.benchmarkName = benchmarkName;
+        this.benchmarkIteration = benchmarkIteration;
         channels = new Channel[connections];
     }
 
@@ -106,11 +115,21 @@ public class Server implements Runnable {
             final LatencyCombiner combiner = new LatencyCombiner();
             for (int i = 0; i < connections; i++) {
                 combiner.addResult(channels[i].pipeline().get(ServerHandler.class).getResult());
-                channels[i].close().sync();
             }
 
             final LatencyResult result = combiner.getCombinedResult();
+            for (int i = 0; i < connections; i++) {
+                channels[i].close().sync();
+            }
+
             LOGGER.info("{}", result);
+            if (!resultFileName.isEmpty()) {
+                try {
+                    result.writeToFile(resultFileName, benchmarkName, benchmarkIteration);
+                } catch (IOException e) {
+                    LOGGER.error("Unable to write result to file '{}'", resultFileName, e);
+                }
+            }
         } catch (InterruptedException e) {
             LOGGER.error("A sync error occurred", e);
         } finally {

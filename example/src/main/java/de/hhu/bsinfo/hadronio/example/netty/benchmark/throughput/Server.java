@@ -10,6 +10,7 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.concurrent.CyclicBarrier;
 
@@ -26,6 +27,10 @@ public class Server implements Runnable {
     private final int aggregationThreshold;
     private final int connections;
 
+    private final String resultFileName;
+    private final String benchmarkName;
+    private final int benchmarkIteration;
+
     private int connectedChannels;
     private final SendRunnable[] runnables;
     private final Thread[] threads;
@@ -34,12 +39,16 @@ public class Server implements Runnable {
     private final Object connectionBarrier = new Object();
     private final CyclicBarrier benchmarkBarrier;
 
-    public Server(final InetSocketAddress bindAddress, final int messageSize, final int messageCount, final int aggregationThreshold, final int connections) {
+    public Server(final InetSocketAddress bindAddress, final int messageSize, final int messageCount, final int aggregationThreshold, final int connections,
+                  final String resultFileName, final String benchmarkName, final int benchmarkIteration) {
         this.bindAddress = bindAddress;
         this.messageSize = messageSize;
         this.messageCount = messageCount;
         this.aggregationThreshold = aggregationThreshold;
         this.connections = connections;
+        this.resultFileName = resultFileName;
+        this.benchmarkName = benchmarkName;
+        this.benchmarkIteration = benchmarkIteration;
         benchmarkBarrier = new CyclicBarrier(connections);
         runnables = new SendRunnable[connections];
         threads = new Thread[connections];
@@ -102,7 +111,18 @@ public class Server implements Runnable {
             }
 
             final ThroughputResult result = combiner.getCombinedResult();
+            for (int i = 0; i < connections; i++) {
+                runnables[i].getChannel().close().sync();
+            }
+
             LOGGER.info("{}", result);
+            if (!resultFileName.isEmpty()) {
+                try {
+                    result.writeToFile(resultFileName, benchmarkName, benchmarkIteration);
+                } catch (IOException e) {
+                    LOGGER.error("Unable to write result to file '{}'", resultFileName, e);
+                }
+            }
         } catch (InterruptedException e) {
             LOGGER.error("A sync error occurred", e);
         } finally {

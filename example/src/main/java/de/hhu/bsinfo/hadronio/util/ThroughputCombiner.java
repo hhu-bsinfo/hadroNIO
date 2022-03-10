@@ -28,14 +28,18 @@ public class ThroughputCombiner {
         double operationThroughput = 0;
         double dataThroughput = 0;
         double totalTime = 0;
+        long totalData = 0;
+
         for (final ThroughputResult result : results) {
             operationThroughput += result.getOperationThroughput();
             dataThroughput += result.getDataThroughput();
+            totalData += result.getTotalData();
+
             if (result.getTotalTime() > totalTime) {
                 totalTime = result.getTotalTime();
             }
         }
 
-        return new ThroughputResult(operationCount, operationSize, totalTime, operationThroughput, dataThroughput);
+        return new ThroughputResult(operationCount, operationSize, totalData, totalTime, operationThroughput, dataThroughput);
     }
 }

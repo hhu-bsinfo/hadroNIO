@@ -43,10 +43,25 @@ public class LatencyBenchmark implements Runnable {
     private int messageSize;
 
     @CommandLine.Option(
-            names = {"-m", "--messages"},
+        names = {"-m", "--messages"},
         description = "The amount of messages to send/receive.",
         required = true)
     private int messageCount;
+
+    @CommandLine.Option(
+            names = {"-o", "--output"},
+            description = "Path to the result file, to which the CSV data shall be written.")
+    private String resultFileName = "";
+
+    @CommandLine.Option(
+            names = {"-n", "--name"},
+            description = "Benchmark name to use, when writing the result to a file.")
+    private String benchmarkName = "";
+
+    @CommandLine.Option(
+            names = {"-i", "--iteration"},
+            description = "Iteration number to use, when writing the result to a file.")
+    private int benchmarkIteration = 0;
 
     @Override
     public void run() {
@@ -61,7 +76,7 @@ public class LatencyBenchmark implements Runnable {
             bindAddress = isServer ? bindAddress : new InetSocketAddress(bindAddress.getAddress(), 0);
         }
 
-        final Runnable runnable = isServer ? new Server(bindAddress, messageSize, messageCount, connections) :
+        final Runnable runnable = isServer ? new Server(bindAddress, messageSize, messageCount, connections, resultFileName, benchmarkName, benchmarkIteration) :
                 new Client(bindAddress, remoteAddress, messageSize, messageCount, connections);
         runnable.run();
     }

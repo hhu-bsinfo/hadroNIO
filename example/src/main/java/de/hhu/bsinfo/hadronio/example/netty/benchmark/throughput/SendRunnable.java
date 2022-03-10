@@ -79,7 +79,6 @@ public class SendRunnable implements Runnable {
             }
         }
 
-        channel.close();
         LOGGER.info("{}", result);
     }
 
@@ -106,5 +105,9 @@ public class SendRunnable implements Runnable {
 
     public ThroughputResult getResult() {
         return result;
+    }
+
+    public Channel getChannel() {
+        return channel;
     }
 }
