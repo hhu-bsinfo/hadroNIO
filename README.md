@@ -189,10 +189,13 @@ The test application can be configured using the following parameters:
 
  - `-s`, `--server`: Start a server instance, waiting for a client to connect.
  - `-r`, `--remote`: The remote address to connect to.
- - `-a`, `--address`: The local address to bind to (Default: `0.0.0.0:2998`)
- - `-m`, `--message`: The iteration count (e.g. number of messages to send/receive).
+ - `-a`, `--address`: The local address to bind to (default: `0.0.0.0:2998`)
+ - `-m`, `--message`: The number of messages to send/receive.
  - `-l`, `--length`: The message size (only valid for benchmark).
- - `-c`, `--connections`: The amount of connections to use (Only available in `netty throughput benchmark`)
+ - `-t`, `--threshold`: The amount of messages to send, before flushing the channel (only available in throughput benchmarks).
+ - `-c`, `--connections`: The amount of connections to use (only available in netty benchmarks).
+
+To run the test application without hadroNIO, set the environment variable `DISABLE_HADRONIO` to `true`.
 
 ## Configuration
 

@@ -22,7 +22,9 @@ public class Application implements Runnable {
     }
 
     public static void main(String... args) {
-        System.setProperty("java.nio.channels.spi.SelectorProvider", "de.hhu.bsinfo.hadronio.HadronioProvider");
+        if (!Boolean.parseBoolean(System.getenv("DISABLE_HADRONIO"))) {
+            System.setProperty("java.nio.channels.spi.SelectorProvider", "de.hhu.bsinfo.hadronio.HadronioProvider");
+        }
 
         final int exitCode = new CommandLine(new Application())
                 .registerConverter(InetSocketAddress.class, new InetSocketAddressConverter(DEFAULT_SERVER_PORT))
