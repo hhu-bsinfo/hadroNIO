@@ -1,5 +1,6 @@
 package de.hhu.bsinfo.hadronio.example.netty.benchmark.throughput;
 
+import de.hhu.bsinfo.hadronio.util.ThroughputCombiner;
 import de.hhu.bsinfo.hadronio.util.ThroughputResult;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
@@ -18,15 +19,17 @@ public class SendRunnable implements Runnable {
     private final Object syncLock;
     private final CyclicBarrier benchmarkBarrier;
     private final Channel channel;
+    private final ThroughputCombiner combiner;
     private final ThroughputResult result;
     private final ByteBuf[] buffers;
 
-    public SendRunnable(final int messageSize, final int messageCount, final int aggregationThreshold, final Object syncLock, final CyclicBarrier syncBarrier, final Channel channel) {
+    public SendRunnable(final int messageSize, final int messageCount, final int aggregationThreshold, final Object syncLock, final CyclicBarrier syncBarrier, final Channel channel, final ThroughputCombiner combiner) {
         this.messageCount = messageCount;
         this.aggregationThreshold = aggregationThreshold;
         this.syncLock = syncLock;
         this.benchmarkBarrier = syncBarrier;
         this.channel = channel;
+        this.combiner = combiner;
 
         result = new ThroughputResult(messageCount, messageSize);
         buffers = new ByteBuf[aggregationThreshold];
@@ -79,7 +82,10 @@ public class SendRunnable implements Runnable {
             }
         }
 
+        combiner.addResult(result);
         LOGGER.info("{}", result);
+
+        channel.close();
     }
 
     private void sendMessages(int messageCount) throws InterruptedException {
@@ -101,10 +107,6 @@ public class SendRunnable implements Runnable {
         final ByteBuf buffer = buffers[messageCount % aggregationThreshold];
         buffer.setIndex(0, buffer.capacity());
         channel.writeAndFlush(buffer).sync();
-    }
-
-    public ThroughputResult getResult() {
-        return result;
     }
 
     public Channel getChannel() {

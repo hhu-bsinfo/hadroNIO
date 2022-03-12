@@ -3,26 +3,32 @@ package de.hhu.bsinfo.hadronio.util;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class LatencyCombiner {
 
     private final Collection<LatencyResult> results = new HashSet<>();
+    private final Lock lock = new ReentrantLock();
     private int operationCount;
     private int operationSize;
 
     public void addResult(final LatencyResult newResult) {
+        lock.lock();
         if (results.isEmpty()) {
             operationCount = newResult.getOperationCount();
             operationSize = newResult.getOperationSize();
         } else {
             for (final LatencyResult result : results) {
                 if (operationCount != result.getOperationCount() || operationSize != result.getOperationSize()) {
+                    lock.unlock();
                     throw new IllegalArgumentException("Incompatible result!");
                 }
             }
         }
 
         results.add(newResult);
+        lock.unlock();
     }
 
     public LatencyResult getCombinedResult() {

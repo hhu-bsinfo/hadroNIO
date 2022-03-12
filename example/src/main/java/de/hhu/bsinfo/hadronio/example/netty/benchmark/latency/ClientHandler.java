@@ -40,6 +40,7 @@ public class ClientHandler extends ChannelInboundHandlerAdapter {
 
         if (receivedMessages >= messageCount) {
             LOGGER.info("Finished benchmark");
+            context.channel().close();
         }
     }
 

@@ -56,6 +56,7 @@ public class Server implements Runnable {
         final EventLoopGroup acceptorGroup = new NioEventLoopGroup();
         final EventLoopGroup workerGroup = new NioEventLoopGroup();
         final ServerBootstrap bootstrap = new ServerBootstrap();
+        final LatencyCombiner combiner = new LatencyCombiner();
 
         bootstrap.group(acceptorGroup, workerGroup)
             .channel(NioServerSocketChannel.class)
@@ -64,7 +65,7 @@ public class Server implements Runnable {
                 @Override
                 protected void initChannel(SocketChannel channel) {
                     channel.closeFuture().addListener(future -> LOGGER.info("Closed channel connected to [{}]", channel.remoteAddress()));
-                    channel.pipeline().addLast(new ServerWarmupHandler(messageSize, messageCount, messageCount / 10, connections, warmupCounter, benchmarkCounter));
+                    channel.pipeline().addLast(new ServerWarmupHandler(messageSize, messageCount, messageCount / 10, connections, warmupCounter, benchmarkCounter, combiner));
 
                     synchronized (connectionLock) {
                         channels[connectedChannels] = channel;
@@ -112,17 +113,13 @@ public class Server implements Runnable {
                 benchmarkCounter.wait();
             }
 
-            final LatencyCombiner combiner = new LatencyCombiner();
             for (int i = 0; i < connections; i++) {
-                combiner.addResult(channels[i].pipeline().get(ServerHandler.class).getResult());
+                channels[i].closeFuture().sync();
             }
 
             final LatencyResult result = combiner.getCombinedResult();
-            for (int i = 0; i < connections; i++) {
-                channels[i].close().sync();
-            }
-
             LOGGER.info("{}", result);
+
             if (!resultFileName.isEmpty()) {
                 try {
                     result.writeToFile(resultFileName, benchmarkName, benchmarkIteration, connections);

@@ -66,6 +66,7 @@ public class ClientHandler extends ChannelInboundHandlerAdapter {
                 context.channel().pipeline().addLast(new ClientHandler(messageSize, originalMessageCount, false));
             } else {
                 LOGGER.info("Finished benchmark");
+                context.channel().close();
             }
         }
     }

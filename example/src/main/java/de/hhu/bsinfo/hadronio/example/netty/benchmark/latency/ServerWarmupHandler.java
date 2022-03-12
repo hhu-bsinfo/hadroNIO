@@ -1,5 +1,6 @@
 package de.hhu.bsinfo.hadronio.example.netty.benchmark.latency;
 
+import de.hhu.bsinfo.hadronio.util.LatencyCombiner;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
@@ -18,21 +19,23 @@ public class ServerWarmupHandler extends ChannelInboundHandlerAdapter {
     private final int messageCount;
     private final int warmupCount;
     private final int connections;
-    private ByteBuf sendBuffer;
     private final AtomicInteger warmupCounter;
     private final AtomicInteger benchmarkCounter;
+    private final LatencyCombiner combiner;
+    private ByteBuf sendBuffer;
 
     private int receivedMessages = 0;
     private int receivedBytes = 0;
 
 
-    public ServerWarmupHandler(final int messageSize, final int messageCount, final int warmupCount, final int connections, final AtomicInteger warmupCounter, final AtomicInteger benchmarkCounter) {
+    public ServerWarmupHandler(final int messageSize, final int messageCount, final int warmupCount, final int connections, final AtomicInteger warmupCounter, final AtomicInteger benchmarkCounter, final LatencyCombiner combiner) {
         this.messageSize = messageSize;
         this.messageCount = messageCount;
         this.warmupCount = warmupCount > 0 ? warmupCount : 1;
         this.connections = connections;
         this.warmupCounter = warmupCounter;
         this.benchmarkCounter = benchmarkCounter;
+        this.combiner = combiner;
     }
 
     public void start(final ChannelHandlerContext context) {
@@ -64,7 +67,7 @@ public class ServerWarmupHandler extends ChannelInboundHandlerAdapter {
                 context.channel().writeAndFlush(sendBuffer);
             } else {
                 LOGGER.info("Finished warmup");
-                final ServerHandler handler = new ServerHandler(messageSize, messageCount, connections, sendBuffer, benchmarkCounter);
+                final ServerHandler handler = new ServerHandler(messageSize, messageCount, connections, sendBuffer, benchmarkCounter, combiner);
                 context.channel().pipeline().removeLast();
                 context.channel().pipeline().addLast(handler);
 

@@ -60,6 +60,7 @@ public class Server implements Runnable {
         final EventLoopGroup acceptorGroup = new NioEventLoopGroup();
         final EventLoopGroup workerGroup = new NioEventLoopGroup();
         final ServerBootstrap bootstrap = new ServerBootstrap();
+        final ThroughputCombiner combiner = new ThroughputCombiner();
 
         bootstrap.group(acceptorGroup, workerGroup)
             .channel(NioServerSocketChannel.class)
@@ -72,7 +73,7 @@ public class Server implements Runnable {
                     channel.pipeline().addLast(new ServerHandler(syncLock));
 
                     synchronized (connectionLock) {
-                        runnables[connectedChannels] = new SendRunnable(messageSize, messageCount, aggregationThreshold, syncLock, benchmarkBarrier, channel);
+                        runnables[connectedChannels] = new SendRunnable(messageSize, messageCount, aggregationThreshold, syncLock, benchmarkBarrier, channel, combiner);
                         threads[connectedChannels] = new Thread(runnables[connectedChannels]);
 
                         if (++connectedChannels == connections) {
@@ -104,18 +105,13 @@ public class Server implements Runnable {
                 threads[i].start();
             }
 
-            final ThroughputCombiner combiner = new ThroughputCombiner();
             for (int i = 0; i < connections; i++) {
                 threads[i].join();
-                combiner.addResult(runnables[i].getResult());
             }
 
             final ThroughputResult result = combiner.getCombinedResult();
-            for (int i = 0; i < connections; i++) {
-                runnables[i].getChannel().close().sync();
-            }
-
             LOGGER.info("{}", result);
+
             if (!resultFileName.isEmpty()) {
                 try {
                     result.writeToFile(resultFileName, benchmarkName, benchmarkIteration, connections);
