@@ -6,21 +6,21 @@ import java.io.IOException;
 
 public class ThroughputResult {
 
-    private final int operationCount;
-    private final int operationSize;
+    private final long operationCount;
+    private final long operationSize;
     private final long totalData;
 
     private double totalTime;
     private double operationThroughput;
     private double dataThroughput;
 
-    public ThroughputResult(final int operationCount, final int operationSize) {
+    public ThroughputResult(final long operationCount, final long operationSize) {
         this.operationCount = operationCount;
         this.operationSize = operationSize;
-        totalData = (long) operationCount * (long) operationSize;
+        totalData = operationCount * operationSize;
     }
 
-    ThroughputResult(final int operationCount, final int operationSize, final long totalData, final double totalTime, final double operationThroughput, final double dataThroughput) {
+    ThroughputResult(final long operationCount, final long operationSize, final long totalData, final double totalTime, final double operationThroughput, final double dataThroughput) {
         this.operationCount = operationCount;
         this.operationSize = operationSize;
         this.totalData = totalData;
@@ -29,11 +29,11 @@ public class ThroughputResult {
         this.dataThroughput = dataThroughput;
     }
 
-    public int getOperationCount() {
+    public long getOperationCount() {
         return operationCount;
     }
 
-    public int getOperationSize() {
+    public long getOperationSize() {
         return operationSize;
     }
 

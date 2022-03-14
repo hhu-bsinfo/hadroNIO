@@ -6,8 +6,8 @@ import java.io.IOException;
 
 public class LatencyResult {
 
-    private final int operationCount;
-    private final int operationSize;
+    private final long operationCount;
+    private final long operationSize;
     private final long totalData;
     private final LatencyStatistics latencyStatistics;
 
@@ -21,7 +21,7 @@ public class LatencyResult {
         latencyStatistics = new LatencyStatistics(operationCount);
     }
 
-    public LatencyResult(final int operationCount, final int operationSize, final long totalData, final double totalTime, final double operationThroughput, final long[] latencies) {
+    public LatencyResult(final long operationCount, final long operationSize, final long totalData, final double totalTime, final double operationThroughput, final long[] latencies) {
         this.operationCount = operationCount;
         this.operationSize = operationSize;
         this.totalTime = totalTime;
@@ -44,11 +44,11 @@ public class LatencyResult {
         latencyStatistics.sortAscending();
     }
 
-    public int getOperationCount() {
+    public long getOperationCount() {
         return operationCount;
     }
 
-    public int getOperationSize() {
+    public long getOperationSize() {
         return operationSize;
     }
 

@@ -10,8 +10,8 @@ public class LatencyCombiner {
 
     private final Collection<LatencyResult> results = new HashSet<>();
     private final Lock lock = new ReentrantLock();
-    private int operationCount;
-    private int operationSize;
+    private long operationCount;
+    private long operationSize;
 
     public void addResult(final LatencyResult newResult) {
         lock.lock();
@@ -35,11 +35,13 @@ public class LatencyCombiner {
         double operationThroughput = 0;
         double totalTime = 0;
         long totalData = 0;
+        long operationCount = 0;
         final ArrayList<Long> latencySet = new ArrayList<>();
 
         for (final LatencyResult result : results) {
             operationThroughput += result.getOperationThroughput();
             totalData += result.getTotalData();
+            operationCount += result.getOperationCount();
 
             if (result.getTotalTime() > totalTime) {
                 totalTime = result.getTotalTime();

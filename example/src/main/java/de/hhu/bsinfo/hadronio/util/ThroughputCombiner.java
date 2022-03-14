@@ -9,8 +9,8 @@ public class ThroughputCombiner {
 
     private final Collection<ThroughputResult> results = new HashSet<>();
     private final Lock lock = new ReentrantLock();
-    private int operationCount;
-    private int operationSize;
+    private long operationCount;
+    private long operationSize;
 
     public void addResult(final ThroughputResult newResult) {
         lock.lock();
@@ -35,11 +35,13 @@ public class ThroughputCombiner {
         double dataThroughput = 0;
         double totalTime = 0;
         long totalData = 0;
+        long operationCount = 0;
 
         for (final ThroughputResult result : results) {
             operationThroughput += result.getOperationThroughput();
             dataThroughput += result.getDataThroughput();
             totalData += result.getTotalData();
+            operationCount += result.getOperationCount();
 
             if (result.getTotalTime() > totalTime) {
                 totalTime = result.getTotalTime();
