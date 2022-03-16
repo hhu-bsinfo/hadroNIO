@@ -2,6 +2,7 @@ package de.hhu.bsinfo.hadronio.example.netty.benchmark.latency;
 
 import de.hhu.bsinfo.hadronio.util.LatencyCombiner;
 import de.hhu.bsinfo.hadronio.util.LatencyResult;
+import de.hhu.bsinfo.hadronio.util.NettyUtil;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
@@ -10,21 +11,26 @@ import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
+import net.openhft.affinity.AffinityStrategies;
+import net.openhft.affinity.AffinityThreadFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class Server implements Runnable {
 
+    private static final int ACCEPTOR_THREADS = 1;
     private static final Logger LOGGER = LoggerFactory.getLogger(Server.class);
 
     private final InetSocketAddress bindAddress;
     private final int messageSize;
     private final int messageCount;
     private final int connections;
+    private final boolean pinThreads;
 
     private final String resultFileName;
     private final String benchmarkName;
@@ -39,11 +45,12 @@ public class Server implements Runnable {
     private final AtomicInteger benchmarkCounter = new AtomicInteger();
 
     public Server(final InetSocketAddress bindAddress, final int messageSize, final int messageCount, final int connections,
-                  final String resultFileName, final String benchmarkName, final int benchmarkIteration) {
+                  final boolean pinThreads, final String resultFileName, final String benchmarkName, final int benchmarkIteration) {
         this.bindAddress = bindAddress;
         this.messageSize = messageSize;
         this.messageCount = messageCount;
         this.connections = connections;
+        this.pinThreads = pinThreads;
         this.resultFileName = resultFileName;
         this.benchmarkName = benchmarkName;
         this.benchmarkIteration = benchmarkIteration;
@@ -53,8 +60,8 @@ public class Server implements Runnable {
     @Override
     public void run() {
         LOGGER.info("Starting server on [{}]", bindAddress);
-        final EventLoopGroup acceptorGroup = new NioEventLoopGroup();
-        final EventLoopGroup workerGroup = new NioEventLoopGroup();
+        final EventLoopGroup acceptorGroup = new NioEventLoopGroup(ACCEPTOR_THREADS);
+        final EventLoopGroup workerGroup = NettyUtil.createWorkerGroup(connections, pinThreads);
         final ServerBootstrap bootstrap = new ServerBootstrap();
         final LatencyCombiner combiner = new LatencyCombiner();
 

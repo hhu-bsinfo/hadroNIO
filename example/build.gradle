@@ -26,6 +26,7 @@ dependencies {
     implementation "info.picocli:picocli:${picocliVersion}"
     implementation "io.netty:netty-transport:${nettyVersion}"
     implementation "io.netty:netty-buffer:${nettyVersion}"
+    implementation "net.openhft:affinity:${threadAffinityVersion}"
 
     testImplementation "org.junit.jupiter:junit-jupiter-api:${junitJupiterVersion}"
     testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:${junitJupiterVersion}"

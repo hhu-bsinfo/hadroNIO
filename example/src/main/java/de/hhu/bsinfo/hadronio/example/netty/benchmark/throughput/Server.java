@@ -1,5 +1,7 @@
 package de.hhu.bsinfo.hadronio.example.netty.benchmark.throughput;
 
+import de.hhu.bsinfo.hadronio.example.netty.Netty;
+import de.hhu.bsinfo.hadronio.util.NettyUtil;
 import de.hhu.bsinfo.hadronio.util.ThroughputCombiner;
 import de.hhu.bsinfo.hadronio.util.ThroughputResult;
 import io.netty.bootstrap.ServerBootstrap;
@@ -13,12 +15,18 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
 
+import net.openhft.affinity.AffinityStrategies;
+import net.openhft.affinity.AffinityThreadFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class Server implements Runnable {
 
+    private static final int ACCEPTOR_THREADS = 1;
+    private static final int WORKER_THREADS = 1;
     private static final Logger LOGGER = LoggerFactory.getLogger(Server.class);
 
     private final InetSocketAddress bindAddress;
@@ -26,12 +34,14 @@ public class Server implements Runnable {
     private final int messageCount;
     private final int aggregationThreshold;
     private final int connections;
+    private final boolean pinThreads;
 
     private final String resultFileName;
     private final String benchmarkName;
     private final int benchmarkIteration;
 
     private int connectedChannels;
+    private final ThreadFactory threadFactory;
     private final SendRunnable[] runnables;
     private final Thread[] threads;
 
@@ -40,27 +50,35 @@ public class Server implements Runnable {
     private final CyclicBarrier benchmarkBarrier;
 
     public Server(final InetSocketAddress bindAddress, final int messageSize, final int messageCount, final int aggregationThreshold, final int connections,
-                  final String resultFileName, final String benchmarkName, final int benchmarkIteration) {
+                  final boolean pinThreads, final String resultFileName, final String benchmarkName, final int benchmarkIteration) {
         this.bindAddress = bindAddress;
         this.messageSize = messageSize;
         this.messageCount = messageCount;
         this.aggregationThreshold = aggregationThreshold;
         this.connections = connections;
+        this.pinThreads = pinThreads;
         this.resultFileName = resultFileName;
         this.benchmarkName = benchmarkName;
         this.benchmarkIteration = benchmarkIteration;
-        benchmarkBarrier = new CyclicBarrier(connections);
+        threadFactory = pinThreads ? new AffinityThreadFactory("senderFactory", AffinityStrategies.DIFFERENT_CORE) : Executors.defaultThreadFactory();
         runnables = new SendRunnable[connections];
         threads = new Thread[connections];
+        benchmarkBarrier = new CyclicBarrier(connections);
     }
 
     @Override
     public void run() {
         LOGGER.info("Starting server on [{}]", bindAddress);
-        final EventLoopGroup acceptorGroup = new NioEventLoopGroup();
-        final EventLoopGroup workerGroup = new NioEventLoopGroup();
+        final EventLoopGroup acceptorGroup = new NioEventLoopGroup(ACCEPTOR_THREADS);
+        final EventLoopGroup workerGroup = new NioEventLoopGroup(WORKER_THREADS);
         final ServerBootstrap bootstrap = new ServerBootstrap();
         final ThroughputCombiner combiner = new ThroughputCombiner();
+
+        if (pinThreads) {
+            LOGGER.info("Thread pinning is activated for sender threads");
+        } else {
+            LOGGER.info("Thread pinning is not activated");
+        }
 
         bootstrap.group(acceptorGroup, workerGroup)
             .channel(NioServerSocketChannel.class)
@@ -74,7 +92,7 @@ public class Server implements Runnable {
 
                     synchronized (connectionLock) {
                         runnables[connectedChannels] = new SendRunnable(messageSize, messageCount, aggregationThreshold, syncLock, benchmarkBarrier, channel, combiner);
-                        threads[connectedChannels] = new Thread(runnables[connectedChannels]);
+                        threads[connectedChannels] = threadFactory.newThread(runnables[connectedChannels]);
 
                         if (++connectedChannels == connections) {
                             synchronized (connectionBarrier) {

@@ -10,6 +10,7 @@ ext {
     agronaVersion = '1.14.0'
     picocliVersion = '4.6.3'
     nettyVersion = '4.1.74.Final'
+    threadAffinityVersion = '3.20.0'
     slf4jVersion = '1.7.36'
     log4jVersion = '2.17.2'
     junitJupiterVersion = '5.8.2'

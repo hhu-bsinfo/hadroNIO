@@ -1,6 +1,7 @@
 package de.hhu.bsinfo.hadronio.example.netty.benchmark.latency;
 
 import de.hhu.bsinfo.hadronio.example.netty.benchmark.throughput.ClientHandler;
+import de.hhu.bsinfo.hadronio.util.NettyUtil;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelInitializer;
@@ -22,22 +23,24 @@ public class Client implements Runnable {
     private final int messageSize;
     private final int messageCount;
     private final int connections;
+    private final boolean pinThreads;
 
     private final Channel[] channels;
 
-    public Client(final InetSocketAddress bindAddress, final InetSocketAddress remoteAddress, final int messageSize, final int messageCount, final int connections) {
+    public Client(final InetSocketAddress bindAddress, final InetSocketAddress remoteAddress, final int messageSize, final int messageCount, final int connections, final boolean pinThreads) {
         this.bindAddress = bindAddress;
         this.remoteAddress = remoteAddress;
         this.messageSize = messageSize;
         this.messageCount = messageCount;
         this.connections = connections;
+        this.pinThreads = pinThreads;
         channels = new Channel[connections];
     }
 
     @Override
     public void run() {
         LOGGER.info("Connecting to server [{}]", remoteAddress);
-        final EventLoopGroup workerGroup = new NioEventLoopGroup();
+        final EventLoopGroup workerGroup = NettyUtil.createWorkerGroup(connections, pinThreads);
         final Bootstrap bootstrap = new Bootstrap();
 
         bootstrap.group(workerGroup)
