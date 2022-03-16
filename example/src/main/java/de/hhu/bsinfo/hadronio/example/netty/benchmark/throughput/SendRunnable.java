@@ -104,7 +104,7 @@ public class SendRunnable implements Runnable {
             }
         }
 
-        final ByteBuf buffer = buffers[messageCount % aggregationThreshold];
+        final ByteBuf buffer = buffers[(messageCount - 1) % aggregationThreshold];
         buffer.setIndex(0, buffer.capacity());
         channel.writeAndFlush(buffer).sync();
     }
