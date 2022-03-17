@@ -12,6 +12,8 @@ import org.slf4j.LoggerFactory;
 
 public class Server implements Runnable {
 
+    private static final int ACCEPTOR_THREADS = 1;
+    private static final int WORKER_THREADS = 1;
     private static final Logger LOGGER = LoggerFactory.getLogger(Server.class);
 
     private final InetSocketAddress bindAddress;
@@ -23,8 +25,8 @@ public class Server implements Runnable {
     @Override
     public void run() {
         LOGGER.info("Starting server on [{}]", bindAddress);
-        final EventLoopGroup acceptorGroup = new NioEventLoopGroup();
-        final EventLoopGroup workerGroup = new NioEventLoopGroup();
+        final EventLoopGroup acceptorGroup = new NioEventLoopGroup(ACCEPTOR_THREADS);
+        final EventLoopGroup workerGroup = new NioEventLoopGroup(WORKER_THREADS);
         final ServerBootstrap bootstrap = new ServerBootstrap();
 
         bootstrap.group(acceptorGroup, workerGroup)
