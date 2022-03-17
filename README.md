@@ -203,11 +203,10 @@ It is possible to configure hadroNIO via system properties. These can be set by 
 The following properties are supported:
 
 - `de.hhu.bsinfo.hadronio.Configuration.PROVIDER_CLASS`: Set the UCX provider class (Default: `de.hhu.bsinfo.hadronio.jucx.JucxProvider`). hadroNIO can support different Java bindings for UCX. However, at the moment only `JUCX` is supported, and this value should not be changed.
-- `de.hhu.bsinfo.hadronio.Configuration.SEND_BUFFER_LENGTH`: Set the size of the send ring buffer in byte (Default: `4194304`).
-- `de.hhu.bsinfo.hadronio.Configuration.RECEIVE_BUFFER_LENGTH`: Set the size of the receive ring buffer in byte (Default: `4194304`).
-- `de.hhu.bsinfo.hadronio.Configuration.BUFFER_SLICE_LENGTH`: Set the size of the buffer slices used for sending/receiving data (Default: `32768`). This value can have a huge performance impact, since it determines the maximum amount of data, that is send/received at once per channel.
+- `de.hhu.bsinfo.hadronio.Configuration.SEND_BUFFER_LENGTH`: Set the size of the send ring buffer in byte (Default: `8388608`).
+- `de.hhu.bsinfo.hadronio.Configuration.RECEIVE_BUFFER_LENGTH`: Set the size of the receive ring buffer in byte (Default: `8388608`).
+- `de.hhu.bsinfo.hadronio.Configuration.BUFFER_SLICE_LENGTH`: Set the size of the buffer slices used for sending/receiving data (Default: `65536`). This value can have a huge performance impact, since it determines the maximum amount of data, that is send/received at once per channel.
 - `de.hhu.bsinfo.hadronio.Configuration.FLUSH_INTERVAL_SIZE`: Set the interval in which channels should be flushed (Default: `1024`). Every time, the set amount of messages has been sent, the channel will stop signalling `OP_WRITE`, until it has received an automatic acknowledgment message from the receiving side. This is done to prevent a receiver from being overloaded by too many messages. The default value did work fine in our tests, and there should be no need to alter it.
-- `de.hhu.bsinfo.hadronio.Configuration.USE_WORKER_POLL_THREAD`: Use a separate thread to poll the UCX worker (Default: `false`). Enabling this feature should improve throughput at the cost of higher latencies, when using blocking socket channels. It is still *highly experimental* and should not be activated at the moment.
 
 ## Include in other projects
 

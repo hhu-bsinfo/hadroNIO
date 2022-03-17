@@ -70,7 +70,7 @@ public class Server implements Runnable {
     public void run() {
         LOGGER.info("Starting server on [{}]", bindAddress);
         final EventLoopGroup acceptorGroup = new NioEventLoopGroup(ACCEPTOR_THREADS);
-        final EventLoopGroup workerGroup = new NioEventLoopGroup(WORKER_THREADS);
+        final EventLoopGroup workerGroup = new NioEventLoopGroup(connections);
         final ServerBootstrap bootstrap = new ServerBootstrap();
         final ThroughputCombiner combiner = new ThroughputCombiner();
 

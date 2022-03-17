@@ -20,7 +20,7 @@ ext {
     buildConfigVersion = '1.1.8'
     shadowVersion = '7.1.2'
 
-    jucxVersion = '1.12.1-rc3'
+    jucxVersion = '1.12.1'
     infinileapVersion = '0.1.0-SNAPSHOT'
     agronaVersion = '1.14.0'
     picocliVersion = '4.6.3'

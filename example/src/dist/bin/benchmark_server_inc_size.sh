@@ -1,23 +1,27 @@
 #!/bin/bash
 
-readonly BENCHMARK_MODE=$1
-readonly BIND_ADDRESS=$2
-readonly MESSAGE_COUNT=$3
-readonly CONNECTIONS=$4
-readonly RESULT_FILE=$5
-readonly BENCHMARK_NAME=$6
-readonly THRESHOLDS=("1024" "1024" "1024" "1024" "1024" "1024" "1024" "256" "256" "256" "256" "256" "64" "64" "16" "4" "4" "4" "1" "1" "1")
+readonly BENCHMARK_MODE=${1}
+readonly BIND_ADDRESS=${2}
+readonly MESSAGE_COUNT=${3}
+readonly MIN_MESSAGE_SIZE_EXPONENT=${4}
+readonly MAX_MESSAGE_SIZE_EXPONENT=${5}
+readonly CONNECTIONS=${6}
+readonly RESULT_FILE=${7}
+readonly BENCHMARK_NAME=${8}
+readonly THRESHOLD=${9}
+readonly PIN_THREADS=${10}
 
 port=3000
 
-for i in {0..20}; do
-    message_size=$((2 ** $i))
-    if [ $i -ge 13 ]; then
-        message_count=$((message_count / 2))
+for (( i=MIN_MESSAGE_SIZE_EXPONENT; i<=MAX_MESSAGE_SIZE_EXPONENT; i++ )); do
+    message_size=$((2 ** i))
+    message_count=${MESSAGE_COUNT}
+    if [ "${i}" -ge 13 ]; then
+      message_count=$((message_count / 2 ** (i - 12) ))
     fi
 
     for j in {0..4}; do
         port=$((port + 1))
-        ./bin/hadronio netty benchmark "${BENCHMARK_MODE}" -s -a "${BIND_ADDRESS}:${port}" -m "${MESSAGE_COUNT}" -l "${message_size}" -c "${CONNECTIONS}" -o "${RESULT_FILE}" -n "${BENCHMARK_NAME}" -i "${j}" $([ "${BENCHMARK_MODE}" = "throughput" ] && echo "-t ${THRESHOLDS[$i]}")
+        ./bin/hadronio netty benchmark "${BENCHMARK_MODE}" -s -a "${BIND_ADDRESS}:${port}" -m "${message_count}" -l "${message_size}" -c "${CONNECTIONS}" -o "${RESULT_FILE}" -n "${BENCHMARK_NAME}" -i "${j}" $([ "${BENCHMARK_MODE}" = "throughput" ] && echo "-t ${THRESHOLD}")  $([ "${PIN_THREADS}" = "true" ] && echo "-p")
     done
 done
