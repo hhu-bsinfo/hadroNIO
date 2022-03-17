@@ -1,8 +1,23 @@
+buildscript {
+    repositories {
+        mavenCentral()
+
+        maven {
+            url "https://plugins.gradle.org/m2/"
+        }
+    }
+}
+
+plugins {
+    // git-version plugin needs to be loaded in root project
+    // https://github.com/palantir/gradle-git-version/issues/353#issuecomment-1069657210
+    id 'com.palantir.git-version' version '0.13.0'
+}
+
 ext {
     projectVersion = '0.3.1' + (Boolean.valueOf(System.getProperty('release')) ? '' : '-SNAPSHOT')
 
     buildConfigVersion = '1.1.8'
-    gitVersionVersion = '0.12.2'
     shadowVersion = '7.1.2'
 
     jucxVersion = '1.12.1-rc3'
@@ -14,16 +29,6 @@ ext {
     slf4jVersion = '1.7.36'
     log4jVersion = '2.17.2'
     junitJupiterVersion = '5.8.2'
-}
-
-buildscript {
-    repositories {
-        mavenCentral()
-
-        maven {
-            url "https://plugins.gradle.org/m2/"
-        }
-    }
 }
 
 subprojects {
