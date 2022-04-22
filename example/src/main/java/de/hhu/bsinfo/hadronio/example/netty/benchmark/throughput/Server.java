@@ -26,7 +26,6 @@ import org.slf4j.LoggerFactory;
 public class Server implements Runnable {
 
     private static final int ACCEPTOR_THREADS = 1;
-    private static final int WORKER_THREADS = 1;
     private static final Logger LOGGER = LoggerFactory.getLogger(Server.class);
 
     private final InetSocketAddress bindAddress;
