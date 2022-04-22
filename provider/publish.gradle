@@ -54,6 +54,23 @@ publishing {
                 root.appendNode('name', 'hadroNIO')
                 root.appendNode('url', 'https://github.com/hhu-bsinfo/hadronio')
                 root.children().last() + pomConfig
+
+                def dependenciesNode = root.appendNode('dependencies')
+
+                def slf4jNode = dependenciesNode.appendNode('dependency')
+                slf4jNode.appendNode('groupId', 'org.slf4j')
+                slf4jNode.appendNode('artifactId', 'slf4j-api')
+                slf4jNode.appendNode('version', "${slf4jVersion}")
+
+                def agronaNode = dependenciesNode.appendNode('dependency')
+                agronaNode.appendNode('groupId', 'org.agrona')
+                agronaNode.appendNode('artifactId', 'agrona')
+                agronaNode.appendNode('version', "${agronaVersion}")
+
+                def jucxNode = dependenciesNode.appendNode('dependency')
+                jucxNode.appendNode('groupId', 'org.openucx')
+                jucxNode.appendNode('artifactId', 'jucx')
+                jucxNode.appendNode('version', "${jucxVersion}")
             }
         }
     }
