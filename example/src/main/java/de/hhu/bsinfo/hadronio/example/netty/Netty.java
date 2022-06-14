@@ -2,13 +2,12 @@ package de.hhu.bsinfo.hadronio.example.netty;
 
 import de.hhu.bsinfo.hadronio.example.netty.benchmark.Benchmark;
 import de.hhu.bsinfo.hadronio.example.netty.echo.EchoDemo;
-import de.hhu.bsinfo.hadronio.example.netty.hello.HelloDemo;
 import picocli.CommandLine;
 
 @CommandLine.Command(
         name = "netty",
         description = "Example applications using netty",
-        subcommands = { HelloDemo.class, EchoDemo.class, Benchmark.class }
+        subcommands = { EchoDemo.class, Benchmark.class }
 )
 public class Netty implements Runnable {
 

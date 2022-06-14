@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory;
 
 public class Client implements Runnable {
 
+    private static final int WORKER_THREADS = 1;
     private static final Logger LOGGER = LoggerFactory.getLogger(Client.class);
 
     private final InetSocketAddress bindAddress;
@@ -30,7 +31,7 @@ public class Client implements Runnable {
     @Override
     public void run() {
         LOGGER.info("Connecting to server [{}]", remoteAddress);
-        final EventLoopGroup workerGroup = new NioEventLoopGroup();
+        final EventLoopGroup workerGroup = new NioEventLoopGroup(WORKER_THREADS);
         final Bootstrap bootstrap = new Bootstrap();
 
         bootstrap.group(workerGroup)
