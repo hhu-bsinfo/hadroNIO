@@ -1,5 +1,8 @@
 package de.hhu.bsinfo.hadronio;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -10,6 +13,8 @@ import java.net.SocketAddress;
 import java.nio.channels.SocketChannel;
 
 public class WrappingSocket extends Socket {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(WrappingSocket.class);
 
     private final HadronioSocketChannel channel;
 
@@ -185,52 +190,52 @@ public class WrappingSocket extends Socket {
 
     @Override
     public void setKeepAlive(boolean on) {
-        throw new UnsupportedOperationException("Setting keep alive is not supported!");
+        LOGGER.warn("Trying to set keep alive to [{}], but setting socket options is not supported!", on);
     }
 
     @Override
     public void setOOBInline(boolean on) {
-        throw new UnsupportedOperationException("Setting OOB inline is not supported!");
+        LOGGER.warn("Trying to set oob inline to [{}], but setting socket options is not supported!", on);
     }
 
     @Override
     public void setPerformancePreferences(int connectionTime, int latency, int bandwidth) {
-        throw new UnsupportedOperationException("Setting performance preferences is not supported!");
+        LOGGER.warn("Trying to set performance preferences to [connectionTime: [{}], latency: [{}], bandwidth[{}]], but setting socket options is not supported!", connectionTime, latency, bandwidth);
     }
 
     @Override
     public void setReceiveBufferSize(int size) {
-        throw new UnsupportedOperationException("Setting receive buffer size is not supported!");
+        LOGGER.warn("Trying to set receive buffer size to [{}], but setting socket options is not supported!", size);
     }
 
     @Override
     public void setReuseAddress(boolean on) {
-        throw new UnsupportedOperationException("Setting reuse address is not supported!");
+        LOGGER.warn("Trying to set reuse address to [{}], but setting socket options is not supported!", on);
     }
 
     @Override
     public void setSendBufferSize(int size) {
-        throw new UnsupportedOperationException("Setting send buffer size is not supported!");
+        LOGGER.warn("Trying to set send buffer size to [{}], but setting socket options is not supported!", size);
     }
 
     @Override
     public void setSoLinger(boolean on, int linger) {
-        throw new UnsupportedOperationException("Setting so linger size is not supported!");
+        LOGGER.warn("Trying to set so linger to [{}], but setting socket options is not supported!", on);
     }
 
     @Override
     public void setSoTimeout(int timeout) {
-        throw new UnsupportedOperationException("Setting so timeout is not supported!");
+        LOGGER.warn("Trying to set timeout to [{}], but setting socket options is not supported!", timeout);
     }
 
     @Override
     public void setTcpNoDelay(boolean on) {
-        throw new UnsupportedOperationException("Setting tcp no delay is not supported!");
+        LOGGER.warn("Trying to set tcp no delay to [{}], but setting socket options is not supported!", on);
     }
 
     @Override
     public void setTrafficClass(int trafficClass) {
-        throw new UnsupportedOperationException("Setting traffic class is not supported!");
+        LOGGER.warn("Trying to set traffic class to [{}], but setting socket options is not supported!", trafficClass);
     }
 
     @Override

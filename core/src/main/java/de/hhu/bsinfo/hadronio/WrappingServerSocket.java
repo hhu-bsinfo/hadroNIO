@@ -1,5 +1,8 @@
 package de.hhu.bsinfo.hadronio;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -9,6 +12,8 @@ import java.net.SocketAddress;
 import java.nio.channels.ServerSocketChannel;
 
 public class WrappingServerSocket extends ServerSocket {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(WrappingServerSocket.class);
 
     private final HadronioServerSocketChannel channel;
 
@@ -78,22 +83,22 @@ public class WrappingServerSocket extends ServerSocket {
 
     @Override
     public void setPerformancePreferences(int connectionTime, int latency, int bandwidth) {
-        throw new UnsupportedOperationException("Setting performance preferences is not supported!");
+        LOGGER.warn("Trying to set performance preferences to [connectionTime: [{}], latency: [{}], bandwidth[{}]], but setting socket options is not supported!", connectionTime, latency, bandwidth);
     }
 
     @Override
     public void setReceiveBufferSize(int size) {
-        throw new UnsupportedOperationException("Setting receive buffer size is not supported!");
+        LOGGER.warn("Trying to set receive buffer size to [{}], but setting socket options is not supported!", size);
     }
 
     @Override
     public void setReuseAddress(boolean on) {
-        throw new UnsupportedOperationException("Setting reuse address is not supported!");
+        LOGGER.warn("Trying to set reuse address to [{}], but setting socket options is not supported!", on);
     }
 
     @Override
     public void setSoTimeout(int timeout) {
-        throw new UnsupportedOperationException("Setting so timeout is not supported!");
+        LOGGER.warn("Trying to set timeout to [{}], but setting socket options is not supported!", timeout);
     }
 
     @Override
