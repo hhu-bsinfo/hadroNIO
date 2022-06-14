@@ -114,7 +114,7 @@ These commands use blocking socket channels for communication.
 
 #### Counter
 
-The counter command starts a simple test, which sends an increasing number to the remote side, while also receiving an increasing from the remote side.
+The counter command starts a simple test, which sends an increasing number to the remote side, while also receiving an increasing number from the remote side.
 
 Start a server:
 ```shell
@@ -143,19 +143,6 @@ Start a client:
 
 These commands use [netty](https://netty.io/) and thus non-blocking socket channels for communication.
 
-#### Hello
-
-A simple test, where the client sends a short message and terminates, once it has received an answer from the server.
-
-Start a server:
-```shell
-./build/example/install/hadronio/bin/hadronio netty hello --server
-```
-Start a client:
-```shell
-./build/example/install/hadronio/bin/hadronio netty hello --remote <server address>
-```
-
 #### Echo
 
 This command implements the echo protocol, meaning that the server always answers with a copy of everything it receives.  
@@ -181,6 +168,24 @@ Start a server:
 Start a client:
 ```shell
 ./build/example/install/hadronio/bin/hadronio netty benchmark throughput --remote <server address>
+```
+
+### Tests using gRPC
+
+These commands use [gRPC](https://grpc.io/) for communication.
+
+#### Echo
+
+This command implements the echo protocol, meaning that the server always answers with a copy of everything it receives.  
+The client reads lines from standard input, sends each line to the server and waits for an answer.
+
+Start a server:
+```shell
+./build/example/install/hadronio/bin/hadronio grpc echo --server
+```
+Start a client:
+```shell
+./build/example/install/hadronio/bin/hadronio grpc echo --remote <server address>
 ```
 
 ### Parameters

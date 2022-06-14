@@ -1,6 +1,8 @@
 plugins {
+    id 'idea'
     id 'java'
     id 'application'
+    id 'com.google.protobuf' version "${protobufPluginVersion}"
 }
 
 group 'de.hhu.bsinfo'
@@ -27,9 +29,29 @@ dependencies {
     implementation "io.netty:netty-transport:${nettyVersion}"
     implementation "io.netty:netty-buffer:${nettyVersion}"
     implementation "net.openhft:affinity:${threadAffinityVersion}"
+    implementation "io.grpc:grpc-protobuf:${grpcVersion}"
+    implementation "io.grpc:grpc-stub:${grpcVersion}"
+    implementation "io.grpc:grpc-netty-shaded:${grpcVersion}"
+    compileOnly "org.apache.tomcat:annotations-api:${tomcatVersion}"
 
     testImplementation "org.junit.jupiter:junit-jupiter-api:${junitJupiterVersion}"
     testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:${junitJupiterVersion}"
+}
+
+protobuf {
+    protoc {
+        artifact = "com.google.protobuf:protoc:${protobufVersion}"
+    }
+    plugins {
+        grpc {
+            artifact = "io.grpc:protoc-gen-grpc-java:${grpcVersion}"
+        }
+    }
+    generateProtoTasks {
+        all()*.plugins {
+            grpc {}
+        }
+    }
 }
 
 test {

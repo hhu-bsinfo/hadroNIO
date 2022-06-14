@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "de.hhu.bsinfo.hadronio.example.grpc.echo";
+option java_outer_classname = "EchoProto";
+
+import "google/protobuf/empty.proto";
+package echo;
+
+service Echo {
+  rpc echo (EchoMessage) returns (EchoMessage) {}
+}
+
+message EchoMessage {
+  string message = 1;
+}
