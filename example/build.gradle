@@ -26,6 +26,7 @@ dependencies {
 
     implementation "org.apache.logging.log4j:log4j-slf4j-impl:${log4jVersion}"
     implementation "info.picocli:picocli:${picocliVersion}"
+    implementation "com.esotericsoftware:kryo:${kryoVersion}"
     implementation "io.netty:netty-transport:${nettyVersion}"
     implementation "io.netty:netty-buffer:${nettyVersion}"
     implementation "net.openhft:affinity:${threadAffinityVersion}"

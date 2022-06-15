@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "de.hhu.bsinfo.hadronio.example.grpc.kv";
+option java_outer_classname = "BenchmarkProto";
+
+package kvs;
+
+service KeyValueStore {
+  rpc insert (KeyValueRequest) returns (StatusResponse) {}
+  rpc update (KeyValueRequest) returns (StatusResponse) {}
+  rpc get (KeyRequest) returns (ValueResponse) {}
+  rpc delete (KeyRequest) returns (StatusResponse) {}
+}
+
+message KeyValueRequest {
+  bytes key = 1;
+  bytes value = 2;
+}
+
+message KeyRequest {
+  bytes key = 1;
+}
+
+message ValueResponse {
+  int32 status = 1;
+  optional bytes value = 2;
+}
+
+message StatusResponse {
+  int32 status = 1;
+}

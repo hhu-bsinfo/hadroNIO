@@ -188,6 +188,26 @@ Start a client:
 ./build/example/install/hadronio/bin/hadronio grpc echo --remote <server address>
 ```
 
+#### kvs
+
+This command implements a simple key-value store, based on the [example by Carl Mastrangelo](https://github.com/carl-mastrangelo/kvstore).
+
+Start a server:
+```shell
+./build/example/install/hadronio/bin/hadronio grpc kvs --server
+```
+Start a client:
+```shell
+./build/example/install/hadronio/bin/hadronio grpc kvs --remote <server address>
+```
+
+The client reads commands from stdin and sends these to the server. Valid commands are:
+
+ - `insert <key> <value>`
+ - `update <key> <value>`
+ - `get <key>`
+ - `delete <key>`
+
 ### Parameters
 
 The test application can be configured using the following parameters:

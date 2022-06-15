@@ -19,6 +19,7 @@ ext {
     infinileapVersion = '0.1.0-SNAPSHOT'
     agronaVersion = '1.15.1'
     picocliVersion = '4.6.3'
+    kryoVersion = '5.3.0'
     nettyVersion = '4.1.76.Final'
     threadAffinityVersion = '3.20.0'
     grpcVersion = '1.47.0'
