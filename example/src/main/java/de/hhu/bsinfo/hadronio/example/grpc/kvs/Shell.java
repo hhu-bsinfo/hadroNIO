@@ -34,8 +34,12 @@ public class Shell implements Runnable {
     }
 
     private void parseLine(final String line) {
+        Status status;
+        String value = null;
         final String[] split = line.split(" ");
         final String command = split[0].toLowerCase();
+        final long startTime = System.nanoTime();
+
         switch (command) {
             case "insert": {
                 if (split.length < 3) {
@@ -43,13 +47,7 @@ public class Shell implements Runnable {
                     return;
                 }
 
-                final Status status = client.insert(split[1], split[2]);
-                if (status.isOk()) {
-                    LOGGER.info("OK");
-                } else {
-                    LOGGER.error("Insert failed with status [{}]", status.getCode());
-                }
-
+                status = client.insert(split[1], split[2]);
                 break;
             }
             case "update": {
@@ -58,13 +56,7 @@ public class Shell implements Runnable {
                     return;
                 }
 
-                final Status status = client.update(split[1], split[2]);
-                if (status.isOk()) {
-                    LOGGER.info("OK");
-                } else {
-                    LOGGER.error("Update failed with status [{}]", status.getCode());
-                }
-
+                status = client.update(split[1], split[2]);
                 break;
             }
             case "get": {
@@ -73,13 +65,8 @@ public class Shell implements Runnable {
                     return;
                 }
 
-                final String value = client.get(split[1]);
-                if (value == null) {
-                    LOGGER.error("Get failed with status [NOT_FOUND]");
-                } else {
-                    LOGGER.info(value);
-                }
-
+                value = client.get(split[1]);
+                status = value == null ? Status.NOT_FOUND : Status.OK;
                 break;
             }
             case "delete": {
@@ -88,17 +75,19 @@ public class Shell implements Runnable {
                     return;
                 }
 
-                final Status status = client.delete(split[1]);
-                if (status.isOk()) {
-                    LOGGER.info("OK");
-                } else {
-                    LOGGER.error("Delete failed with status [{}]", status.getCode());
-                }
-
+                status = client.delete(split[1]);
                 break;
             }
             default:
                 LOGGER.error("Invalid command! Use 'insert', 'update', 'get' or 'delete'");
+                return;
+        }
+
+        final double time = (System.nanoTime() - startTime) / (double) 1000000;
+        if (status.isOk()) {
+            LOGGER.info("{} ({} ms)", value == null ? status.getCode() : value, String.format("%.03f", time));
+        } else {
+            LOGGER.error("{} failed with status [{}]", Character.toUpperCase(command.charAt(0)) + command.substring(1), status.getCode());
         }
     }
 }
