@@ -145,3 +145,5 @@ gradle-app.setting
 .classpath
 
 # End of https://www.toptal.com/developers/gitignore/api/gradle,java,intellij+all
+
+/home/fabian/Projekte/hadroNIO/example/src/dist/workloads/workload*

@@ -37,5 +37,8 @@
 			<Logger name="io.grpc.netty.shaded.io.netty" level="info" additivity="false">
 				<AppenderRef ref="ConsoleAsync" />
 			</Logger>
+		<Logger name="site.ycsb" level="info" additivity="false">
+			<AppenderRef ref="ConsoleAsync" />
+		</Logger>
   	</Loggers>
 </Configuration>

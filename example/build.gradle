@@ -33,7 +33,7 @@ dependencies {
     implementation "io.grpc:grpc-protobuf:${grpcVersion}"
     implementation "io.grpc:grpc-stub:${grpcVersion}"
     implementation "io.grpc:grpc-netty-shaded:${grpcVersion}"
-    compileOnly "org.apache.tomcat:annotations-api:${tomcatVersion}"
+    implementation "site.ycsb:core:${ycsbVersion}"
 
     testImplementation "org.junit.jupiter:junit-jupiter-api:${junitJupiterVersion}"
     testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:${junitJupiterVersion}"

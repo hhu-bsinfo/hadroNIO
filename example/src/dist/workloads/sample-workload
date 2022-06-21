@@ -1,0 +1,27 @@
+# Workload class to use
+workload=site.ycsb.workloads.CoreWorkload
+
+# The number of records in the dataset at the start of the workload.
+recordcount=1000
+
+# The number of operations to perform in the workload.
+operationcount=1000
+
+# Should reads read all fields (true) or just one (false).
+readallfields=true
+
+# What proportion of operations should be reads.
+readproportion=0.5
+
+# What proportion of operations should be updates.
+updateproportion=0.5
+
+# What proportion of operations should be scans.
+scanproportion=0
+
+# What proportion of operations should be inserts.
+insertproportion=0
+
+# What distribution should be used to select the records to operate
+# on – uniform, zipfian, hotspot, sequential, exponential or latest
+requestdistribution=zipfian

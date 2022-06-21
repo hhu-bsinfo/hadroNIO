@@ -1,9 +1,9 @@
 plugins {
     id 'java-library'
     id 'maven-publish'
-    id 'de.fuerstenau.buildconfig' version "${buildConfigVersion}"
-    id 'com.palantir.git-version' version "${gitVersionVersion}"
-    id 'com.github.johnrengelman.shadow' version "${shadowVersion}"
+    id 'de.fuerstenau.buildconfig' version "${buildConfigPluginVersion}"
+    id 'com.palantir.git-version' version "${gitVersionPluginVersion}"
+    id 'com.github.johnrengelman.shadow' version "${shadowPluginVersion}"
 }
 
 group 'de.hhu.bsinfo'

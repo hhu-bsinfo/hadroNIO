@@ -1,10 +1,12 @@
 package de.hhu.bsinfo.hadronio.example.grpc.kvs;
 
+import de.hhu.bsinfo.hadronio.example.grpc.kvs.ycsb.YcsbRunner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import picocli.CommandLine;
 
 import java.net.InetSocketAddress;
+import java.nio.file.Path;
 
 @CommandLine.Command(
         name = "kvs",
@@ -31,6 +33,38 @@ public class KeyValueStoreDemo implements Runnable {
             description = "The address to connect to.")
     private InetSocketAddress remoteAddress;
 
+    @CommandLine.Option(
+            names = {"-b", "--benchmark"},
+            description = "Run the YCSB client."
+    )
+    private boolean benchmark = false;
+
+    @CommandLine.Option(
+            names = {"-w", "--workload"},
+            description = "The workload file for the YCSB client.")
+    private Path workload;
+
+    @CommandLine.Option(
+            names = {"-e", "--export"},
+            description = "The export file for the YCSB client.")
+    private Path export;
+
+    @CommandLine.Option(
+            names = {"-p", "--phase"},
+            description = "The benchmark phase to execute (LOAD/RUN).")
+    private YcsbRunner.Phase phase;
+
+    @CommandLine.Option(
+            names = {"-t", "--threads"},
+            description = "The amount of threads to use for the YCSB client.")
+    private int threads = 1;
+
+    @CommandLine.Option(
+            names = {"-l", "--live-status"},
+            description = "Enable YCSB status reports during the benchmark"
+    )
+    private boolean status = false;
+
     @Override
     public void run() {
         if (!isServer && remoteAddress == null) {
@@ -44,7 +78,25 @@ public class KeyValueStoreDemo implements Runnable {
             bindAddress = isServer ? bindAddress : new InetSocketAddress(bindAddress.getAddress(), 0);
         }
 
-        final Runnable runnable = isServer ? new Server(bindAddress) : new Shell(remoteAddress);
+        Runnable runnable;
+        if (isServer) {
+            runnable = new Server(bindAddress);
+        } else if (benchmark) {
+            if (workload == null) {
+                LOGGER.error("Please specify the YCSB properties file");
+                return;
+            }
+
+            if (phase == null) {
+                LOGGER.error("Please specify the YCSB phase to execute");
+                return;
+            }
+
+            runnable = new YcsbRunner(remoteAddress, workload, export, phase, threads, status);
+        } else {
+            runnable = new Shell(remoteAddress);
+        }
+
         runnable.run();
     }
 }

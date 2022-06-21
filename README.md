@@ -9,7 +9,7 @@ Transparent acceleration for Java NIO applications via [UCX](https://openucx.org
 <p align="center">
   <a href="https://travis-ci.com/github/hhu-bsinfo/hadroNIO"><img src="https://www.travis-ci.com/hhu-bsinfo/hadroNIO.svg?branch=main"></a>
   <a href="https://openjdk.java.net/"><img src="https://img.shields.io/badge/java-8+-blue.svg"></a>
-  <a href="https://openucx.org/"><img src="https://img.shields.io/badge/ucx-1.12.1-blue.svg"></a>
+  <a href="https://openucx.org/"><img src="https://img.shields.io/badge/ucx-1.13.0_rc1-blue.svg"></a>
   <a href="https://github.com/hhu-bsinfo/hadroNIO/blob/master/LICENSE"><img src="https://img.shields.io/badge/license-GPLv3-orange.svg"></a>
 </p>
 
@@ -45,11 +45,11 @@ The JAR-file should now be located at `build/provider/libs/hadronio-0.3.2-SNAPSH
 
 ### Known issues
 
- - Building hadroNIO with a Java version higher than 8, but then running it with Java 8 JVM results in a `java.lang.NoSuchMethodError`, regarding the class `java.nio.ByteBuffer`. This happens, because the `ByteBuffer` overrides methods of its super class `Buffer` in Java 9+, while it relies on the implementations provided by `Buffer` in Java 8. If you come across this error, make sure to both build an run hadroNIO using Java 8, or use a newer version of Java altogether.
+ - Building hadroNIO with a Java version higher than 8, but then running it with a Java 8 JVM results in a `java.lang.NoSuchMethodError`, regarding the class `java.nio.ByteBuffer`. This happens, because the `ByteBuffer` overrides methods of its super class `Buffer` in Java 9+, while it relies on the implementations provided by `Buffer` in Java 8. If you come across this error, make sure to both build an run hadroNIO using Java 8, or use a newer version of Java altogether.
 
 ## Run instructions
 
-To run hadroNIO, **UCX 1.12.1** needs to be installed on your system. See the [OpenUCX GitHub Repository](https://github.com/openucx/ucx) for information on how to build and install UCX.
+To run hadroNIO, **UCX 1.13.0-rc1** needs to be installed on your system. See the [OpenUCX GitHub Repository](https://github.com/openucx/ucx) for information on how to build and install UCX.
 
 To accelerate an existing Java application (e.g. `application.jar`), the hadroNIO JAR-file needs to be included in the classpath. Additionally, the property `java.nio.channels.spi.SelectorProvider` must be set to `de.hhu.bsinfo.hadronio.HadronioProvider`:
 ```shell
@@ -188,7 +188,7 @@ Start a client:
 ./build/example/install/hadronio/bin/hadronio grpc echo --remote <server address>
 ```
 
-#### kvs
+#### Key-Value Store
 
 This command implements a simple key-value store, based on the [example by Carl Mastrangelo](https://github.com/carl-mastrangelo/kvstore).
 
@@ -207,6 +207,21 @@ The client reads commands from stdin and sends these to the server. Valid comman
  - `update <key> <value>`
  - `get <key>`
  - `delete <key>`
+
+It is also possible, to benchmark the key-value store using the [Yahoo! Cloud Serving Benchmark](https://github.com/brianfrankcooper/YCSB), by adding the parameter `-b` or `--benchmark`. The YCSB client takes the following additional parameters:
+
+ - `-w`, `--workload`: The YCSB workload file to use for configuring the benchmark. A sample configuration is provided in the `workloads` folder, additional configurations may be found in the official [YCSB repository](https://github.com/brianfrankcooper/YCSB/tree/master/workloads).
+ - `-p`, `--phase`: The benchmark phase to execute (LOAD/RUN).
+ - `-t`, `--threads`: The amount of threads, executing the benchmark.
+ - `-e`, `--export`: Export the results in JSON-format to a given file.
+ - `-l`, `--live-status`: Enable status reports, while the benchmark is running.
+
+Run the YCSB load- and run-phases:
+
+```shell
+./build/example/install/hadronio/bin/hadronio grpc kvs --remote <server address> -b -w workloads/sample-workload -p load
+./build/example/install/hadronio/bin/hadronio grpc kvs --remote <server address> -b -w workloads/sample-workload -p run
+```
 
 ### Parameters
 

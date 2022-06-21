@@ -1,6 +1,5 @@
 package de.hhu.bsinfo.hadronio.util;
 
-import de.hhu.bsinfo.hadronio.example.netty.benchmark.latency.Client;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import net.openhft.affinity.AffinityStrategies;
