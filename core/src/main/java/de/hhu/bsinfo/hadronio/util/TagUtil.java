@@ -42,7 +42,7 @@ public class TagUtil {
 
     private TagUtil() {}
 
-    public static long generateId() {
+    public static synchronized long generateId() {
         return tagIterator.nextLong();
     }
 
