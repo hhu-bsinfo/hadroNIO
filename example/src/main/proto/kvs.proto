@@ -2,7 +2,7 @@ syntax = "proto3";
 
 option java_multiple_files = true;
 option java_package = "de.hhu.bsinfo.hadronio.example.grpc.kv";
-option java_outer_classname = "BenchmarkProto";
+option java_outer_classname = "KeyValueStoreProto";
 
 package kvs;
 
