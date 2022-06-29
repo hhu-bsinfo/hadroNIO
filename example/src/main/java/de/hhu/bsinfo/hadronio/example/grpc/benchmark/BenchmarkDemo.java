@@ -38,6 +38,11 @@ public class BenchmarkDemo implements Runnable {
     private int answerSize;
 
     @CommandLine.Option(
+            names = {"-t", "--threshold"},
+            description = "The maximum amount of RPCs to perform before flushing.")
+    private int aggregationThreshold = 64;
+
+    @CommandLine.Option(
             names = {"-b", "--blocking"},
             description = "Whether to perform a blocking (latency optimised) or non-blocking (throughput optimised) benchmark.")
     private boolean blocking = false;
@@ -80,7 +85,7 @@ public class BenchmarkDemo implements Runnable {
             bindAddress = isServer ? bindAddress : new InetSocketAddress(bindAddress.getAddress(), 0);
         }
 
-        final Runnable runnable = isServer ? new Server(bindAddress, answerSize) : new Client(remoteAddress, requestCount, requestSize, answerSize, connections, blocking);
+        final Runnable runnable = isServer ? new Server(bindAddress, answerSize) : new Client(remoteAddress, requestCount, requestSize, answerSize, connections, aggregationThreshold, blocking);
         runnable.run();
     }
 }

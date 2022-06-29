@@ -24,17 +24,19 @@ public class Client implements Runnable {
     private final int requestSize;
     private final int answerSize;
     private final int connections;
+    private final int aggregationThreshold;
     private final boolean blocking;
     private final CyclicBarrier benchmarkBarrier;
 
-    public Client(final InetSocketAddress remoteAddress, final int requestCount, final int requestSize, final int answerSize, final int connections, boolean blocking) {
+    public Client(final InetSocketAddress remoteAddress, final int requestCount, final int requestSize, final int answerSize, final int connections, final int aggregationThreshold, final boolean blocking) {
         this.remoteAddress = remoteAddress;
         this.requestCount = requestCount;
         this.requestSize = requestSize;
         this.answerSize = answerSize;
         this.connections = connections;
-        benchmarkBarrier = new CyclicBarrier(connections);
+        this.aggregationThreshold = aggregationThreshold;
         this.blocking = blocking;
+        benchmarkBarrier = new CyclicBarrier(connections);
     }
 
     @Override
@@ -50,7 +52,7 @@ public class Client implements Runnable {
                     .channelType(NioSocketChannel.class)
                     .usePlaintext()
                     .build();
-            runnables[i] = blocking ? new BlockingRunnable(channel, benchmarkBarrier, (LatencyCombiner) combiner, requestCount, requestSize, answerSize) : new NonBlockingRunnable(channel, benchmarkBarrier, (ThroughputCombiner) combiner, requestCount, requestSize, answerSize);
+            runnables[i] = blocking ? new BlockingRunnable(channel, benchmarkBarrier, (LatencyCombiner) combiner, requestCount, requestSize, answerSize) : new NonBlockingRunnable(channel, benchmarkBarrier, (ThroughputCombiner) combiner, requestCount, requestSize, answerSize, aggregationThreshold);
             threads[i] = new Thread(runnables[i]);
         }
 
