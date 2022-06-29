@@ -5,14 +5,19 @@ import java.util.HashSet;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-public class ThroughputCombiner {
+public class ThroughputCombiner implements Combiner {
 
     private final Collection<ThroughputResult> results = new HashSet<>();
     private final Lock lock = new ReentrantLock();
     private long operationCount;
     private long operationSize;
 
-    public void addResult(final ThroughputResult newResult) {
+    @Override
+    public void addResult(final Result newResult) {
+        if (!(newResult instanceof ThroughputResult)) {
+            throw new IllegalArgumentException("Throughput combiner can only combine throughput results!");
+        }
+
         lock.lock();
         if (results.isEmpty()) {
             operationCount = newResult.getOperationCount();
@@ -26,10 +31,11 @@ public class ThroughputCombiner {
             }
         }
 
-        results.add(newResult);
+        results.add((ThroughputResult) newResult);
         lock.unlock();
     }
 
+    @Override
     public ThroughputResult getCombinedResult() {
         double operationThroughput = 0;
         double dataThroughput = 0;

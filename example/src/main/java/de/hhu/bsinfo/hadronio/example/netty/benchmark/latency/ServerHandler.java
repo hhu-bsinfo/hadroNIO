@@ -59,7 +59,7 @@ public class ServerHandler extends ChannelInboundHandlerAdapter {
                 result.startSingleMeasurement();
                 context.channel().writeAndFlush(sendBuffer);
             } else {
-                result.finishMeasuring(System.nanoTime() - startTime);
+                result.setMeasuredTime(System.nanoTime() - startTime);
                 combiner.addResult(result);
                 LOGGER.info(result.toString());
 

@@ -4,37 +4,21 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 
-public class ThroughputResult {
-
-    private final long operationCount;
-    private final long operationSize;
-    private final long totalData;
+public class ThroughputResult extends Result {
 
     private double totalTime;
     private double operationThroughput;
     private double dataThroughput;
 
     public ThroughputResult(final long operationCount, final long operationSize) {
-        this.operationCount = operationCount;
-        this.operationSize = operationSize;
-        totalData = operationCount * operationSize;
+        super(operationCount, operationSize);
     }
 
     ThroughputResult(final long operationCount, final long operationSize, final long totalData, final double totalTime, final double operationThroughput, final double dataThroughput) {
-        this.operationCount = operationCount;
-        this.operationSize = operationSize;
-        this.totalData = totalData;
+        super(operationCount, operationSize, totalData);
         this.totalTime = totalTime;
         this.operationThroughput = operationThroughput;
         this.dataThroughput = dataThroughput;
-    }
-
-    public long getOperationCount() {
-        return operationCount;
-    }
-
-    public long getOperationSize() {
-        return operationSize;
     }
 
     public double getOperationThroughput() {
@@ -49,14 +33,10 @@ public class ThroughputResult {
         return totalTime;
     }
 
-    public long getTotalData() {
-        return totalData;
-    }
-
     public void setMeasuredTime(final long timeInNanos) {
         this.totalTime = timeInNanos / 1000000000d;
-        operationThroughput = (double) operationCount / totalTime;
-        dataThroughput = (double) totalData / totalTime;
+        operationThroughput = (double) getOperationCount() / totalTime;
+        dataThroughput = (double) getTotalData() / totalTime;
     }
 
     public void writeToFile(final String fileName, final String benchmarkName, final int iteration, final int connections) throws IOException {
@@ -88,9 +68,9 @@ public class ThroughputResult {
     @Override
     public String toString() {
         return "ThroughputResult {" +
-                "\n\t" + ValueFormatter.formatValue("operationCount", operationCount) +
-                ",\n\t" + ValueFormatter.formatValue("operationSize", operationSize, "Byte") +
-                ",\n\t" + ValueFormatter.formatValue("totalData", totalData, "Byte") +
+                "\n\t" + ValueFormatter.formatValue("operationCount", getOperationCount()) +
+                ",\n\t" + ValueFormatter.formatValue("operationSize", getOperationSize(), "Byte") +
+                ",\n\t" + ValueFormatter.formatValue("totalData", getTotalData(), "Byte") +
                 ",\n\t" + ValueFormatter.formatValue("totalTime", totalTime, "s") +
                 ",\n\t" + ValueFormatter.formatValue("operationThroughput", operationThroughput, "Operations/s") +
                 ",\n\t" + ValueFormatter.formatValue("dataThroughput", dataThroughput, "Byte/s") +

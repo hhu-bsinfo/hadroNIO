@@ -38,6 +38,11 @@ public class BenchmarkDemo implements Runnable {
     private int answerSize;
 
     @CommandLine.Option(
+            names = {"-b", "--blocking"},
+            description = "Whether to perform a blocking (latency optimised) or non-blocking (throughput optimised) benchmark.")
+    private boolean blocking = false;
+
+    @CommandLine.Option(
             names = {"-rs", "--request-size"},
             description = "The request parameter size.")
     private int requestSize = -1;
@@ -75,7 +80,7 @@ public class BenchmarkDemo implements Runnable {
             bindAddress = isServer ? bindAddress : new InetSocketAddress(bindAddress.getAddress(), 0);
         }
 
-        final Runnable runnable = isServer ? new Server(bindAddress, answerSize) : new Client(remoteAddress, requestCount, requestSize, answerSize, connections);
+        final Runnable runnable = isServer ? new Server(bindAddress, answerSize) : new Client(remoteAddress, requestCount, requestSize, answerSize, connections, blocking);
         runnable.run();
     }
 }

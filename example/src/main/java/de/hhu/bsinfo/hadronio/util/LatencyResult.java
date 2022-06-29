@@ -4,29 +4,22 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 
-public class LatencyResult {
+public class LatencyResult extends Result {
 
-    private final long operationCount;
-    private final long operationSize;
-    private final long totalData;
     private final LatencyStatistics latencyStatistics;
 
     private double totalTime;
     private double operationThroughput;
 
     public LatencyResult(final int operationCount, final int operationSize) {
-        this.operationCount = operationCount;
-        this.operationSize = operationSize;
-        this.totalData = (long) operationCount * (long) operationSize;
+        super(operationCount, operationSize);
         latencyStatistics = new LatencyStatistics(operationCount);
     }
 
     public LatencyResult(final long operationCount, final long operationSize, final long totalData, final double totalTime, final double operationThroughput, final long[] latencies) {
-        this.operationCount = operationCount;
-        this.operationSize = operationSize;
+        super(operationCount, operationSize, totalData);
         this.totalTime = totalTime;
         this.operationThroughput = operationThroughput;
-        this.totalData = totalData;
         latencyStatistics = new LatencyStatistics(latencies);
     }
 
@@ -38,26 +31,14 @@ public class LatencyResult {
         latencyStatistics.stop();
     }
 
-    public void finishMeasuring(final long timeInNanos) {
+    public void setMeasuredTime(final long timeInNanos) {
         totalTime = timeInNanos / 1000000000d;
-        operationThroughput = (double) operationCount / totalTime;
+        operationThroughput = (double) getOperationCount() / totalTime;
         latencyStatistics.sortAscending();
-    }
-
-    public long getOperationCount() {
-        return operationCount;
-    }
-
-    public long getOperationSize() {
-        return operationSize;
     }
 
     public double getTotalTime() {
         return totalTime;
-    }
-
-    public long getTotalData() {
-        return totalData;
     }
 
     public LatencyStatistics getStatistics() {
@@ -120,9 +101,9 @@ public class LatencyResult {
     @Override
     public String toString() {
         return "LatencyResult {" +
-                "\n\t" + ValueFormatter.formatValue("operationCount", operationCount) +
-                ",\n\t" + ValueFormatter.formatValue("operationSize", operationSize, "Byte") +
-                ",\n\t" + ValueFormatter.formatValue("totalData", totalData, "Byte") +
+                "\n\t" + ValueFormatter.formatValue("operationCount", getOperationCount()) +
+                ",\n\t" + ValueFormatter.formatValue("operationSize", getOperationSize(), "Byte") +
+                ",\n\t" + ValueFormatter.formatValue("totalData", getTotalData(), "Byte") +
                 ",\n\t" + ValueFormatter.formatValue("totalTime", totalTime, "s") +
                 ",\n\t" + ValueFormatter.formatValue("operationThroughput", operationThroughput, "Operations/s") +
                 ",\n\t" + ValueFormatter.formatValue("averageLatency", getAverageLatency(), "s") +

@@ -8,6 +8,7 @@ import de.hhu.bsinfo.hadronio.example.grpc.kv.KeyValueStoreGrpc;
 import de.hhu.bsinfo.hadronio.example.grpc.kv.ValueResponse;
 import de.hhu.bsinfo.hadronio.util.ObjectConverter;
 import io.grpc.Channel;
+import io.grpc.ManagedChannel;
 import io.grpc.Status;
 import io.grpc.netty.shaded.io.grpc.netty.NettyChannelBuilder;
 import io.grpc.netty.shaded.io.netty.channel.EventLoopGroup;
@@ -16,11 +17,14 @@ import io.grpc.netty.shaded.io.netty.channel.socket.nio.NioSocketChannel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.Closeable;
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 
-public class Client {
+public class Client implements Closeable {
 
     private static final int WORKER_THREADS = 1;
     private static final Logger LOGGER = LoggerFactory.getLogger(Client.class);
@@ -70,5 +74,16 @@ public class Client {
         final ByteString keyBytes = UnsafeByteOperations.unsafeWrap(converter.serialize(key));
         final KeyRequest request = KeyRequest.newBuilder().setKey(keyBytes).build();
         return Status.fromCodeValue(blockingStub.delete(request).getStatus());
+    }
+
+    @Override
+    public void close() throws IOException {
+        try {
+            final ManagedChannel channel = (ManagedChannel) blockingStub.getChannel();
+            channel.shutdown();
+            channel.awaitTermination(5, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            throw new IOException(e);
+        }
     }
 }

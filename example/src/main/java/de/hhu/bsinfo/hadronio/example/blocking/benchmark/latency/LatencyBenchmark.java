@@ -118,7 +118,7 @@ public class LatencyBenchmark implements Runnable {
                 performPingPongIterationsServer(messageCount);
                 closeSignal.exchange();
 
-                result.finishMeasuring(System.nanoTime() - startTime);
+                result.setMeasuredTime(System.nanoTime() - startTime);
             } else {
                 LOGGER.info("Starting warmup with [{}] messages", warmupCount);
 

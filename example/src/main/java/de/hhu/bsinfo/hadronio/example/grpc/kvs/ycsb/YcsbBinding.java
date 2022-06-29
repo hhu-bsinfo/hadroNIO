@@ -5,6 +5,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import site.ycsb.*;
 
+import java.io.IOException;
 import java.util.*;
 
 public class YcsbBinding extends DB {
@@ -79,6 +80,15 @@ public class YcsbBinding extends DB {
     public Status scan(String table, String startkey, int recordcount, Set<String> fields, Vector<HashMap<String, ByteIterator>> result) {
         LOGGER.error("Operation [SCAN] is not supported");
         return Status.NOT_IMPLEMENTED;
+    }
+
+    @Override
+    public void cleanup() {
+        try {
+            client.close();
+        } catch (IOException e) {
+            LOGGER.error("Failed to close channel", e);
+        }
     }
 
     private static String generateKey(String table, String key) {

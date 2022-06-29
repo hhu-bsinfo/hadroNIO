@@ -16,7 +16,7 @@ ext {
     shadowPluginVersion = '7.1.2'
     protobufPluginVersion = '0.8.18'
 
-    jucxVersion = '1.13.0-rc1'
+    jucxVersion = '1.13.0-rc2'
     infinileapVersion = '0.1.0-SNAPSHOT'
     agronaVersion = '1.15.2'
     picocliVersion = '4.6.3'

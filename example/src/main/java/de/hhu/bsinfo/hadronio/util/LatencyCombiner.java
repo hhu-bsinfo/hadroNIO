@@ -6,14 +6,19 @@ import java.util.HashSet;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-public class LatencyCombiner {
+public class LatencyCombiner implements Combiner {
 
     private final Collection<LatencyResult> results = new HashSet<>();
     private final Lock lock = new ReentrantLock();
     private long operationCount;
     private long operationSize;
 
-    public void addResult(final LatencyResult newResult) {
+    @Override
+    public void addResult(final Result newResult) {
+        if (!(newResult instanceof LatencyResult)) {
+            throw new IllegalArgumentException("Latency combiner can only combine latency results!");
+        }
+
         lock.lock();
         if (results.isEmpty()) {
             operationCount = newResult.getOperationCount();
@@ -27,10 +32,11 @@ public class LatencyCombiner {
             }
         }
 
-        results.add(newResult);
+        results.add((LatencyResult) newResult);
         lock.unlock();
     }
 
+    @Override
     public LatencyResult getCombinedResult() {
         double operationThroughput = 0;
         double totalTime = 0;
