@@ -9,7 +9,7 @@ Transparent acceleration for Java NIO applications via [UCX](https://openucx.org
 <p align="center">
   <a href="https://travis-ci.com/github/hhu-bsinfo/hadroNIO"><img src="https://www.travis-ci.com/hhu-bsinfo/hadroNIO.svg?branch=main"></a>
   <a href="https://openjdk.java.net/"><img src="https://img.shields.io/badge/java-8+-blue.svg"></a>
-  <a href="https://openucx.org/"><img src="https://img.shields.io/badge/ucx-1.13.0_rc1-blue.svg"></a>
+  <a href="https://openucx.org/"><img src="https://img.shields.io/badge/ucx-1.13.0-blue.svg"></a>
   <a href="https://github.com/hhu-bsinfo/hadroNIO/blob/master/LICENSE"><img src="https://img.shields.io/badge/license-GPLv3-orange.svg"></a>
 </p>
 
@@ -41,7 +41,7 @@ cd hadroNIO/
 ./gradlew shadowJar
 ```
 
-The JAR-file should now be located at `build/provider/libs/hadronio-0.3.2-SNAPSHOT-all.jar`.
+The JAR-file should now be located at `build/provider/libs/hadronio-0.3.3-SNAPSHOT-all.jar`.
 
 ### Known issues
 
@@ -49,11 +49,11 @@ The JAR-file should now be located at `build/provider/libs/hadronio-0.3.2-SNAPSH
 
 ## Run instructions
 
-To run hadroNIO, **UCX 1.13.0-rc1** needs to be installed on your system. See the [OpenUCX GitHub Repository](https://github.com/openucx/ucx) for information on how to build and install UCX.
+To run hadroNIO, **UCX 1.13.0** needs to be installed on your system. See the [OpenUCX GitHub Repository](https://github.com/openucx/ucx) for information on how to build and install UCX.
 
 To accelerate an existing Java application (e.g. `application.jar`), the hadroNIO JAR-file needs to be included in the classpath. Additionally, the property `java.nio.channels.spi.SelectorProvider` must be set to `de.hhu.bsinfo.hadronio.HadronioProvider`:
 ```shell
-java -cp path/to/hadronio-0.3.2-SNAPSHOT-all.jar -Djava.nio.channels.spi.SelectorProvider=de.hhu.bsinfo.hadronio.HadronioProvider -jar application.jar
+java -cp path/to/hadronio-0.3.3-SNAPSHOT-all.jar -Djava.nio.channels.spi.SelectorProvider=de.hhu.bsinfo.hadronio.HadronioProvider -jar application.jar
 ```
 
 ### Enable logging
@@ -266,7 +266,7 @@ repositories {
 }
 
 dependencies {
-    implementation 'de.hhu.bsinfo:hadronio:0.3.2'
+    implementation 'de.hhu.bsinfo:hadronio:0.3.3'
 }
 ```
 

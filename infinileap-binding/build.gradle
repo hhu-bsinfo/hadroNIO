@@ -1,4 +1,5 @@
-plugins {
+// TODO: Reactive, once infinileap is compatible with Java 20
+/*plugins {
     id 'java-library'
 }
 
@@ -30,4 +31,4 @@ dependencies {
 
 test {
     useJUnitPlatform()
-}
+}*/
