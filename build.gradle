@@ -25,9 +25,11 @@ ext {
     threadAffinityVersion = '3.20.0'
     grpcVersion = '1.48.1'
     protobufVersion = '3.21.4'
+    tomcatVersion = '6.0.53'
     ycsbVersion = '0.17.0'
     slf4jVersion = '1.7.36'
     log4jVersion = '2.18.0'
+    linuxEpollVersion = '1.0.1'
     junitJupiterVersion = '5.9.0'
 }
 

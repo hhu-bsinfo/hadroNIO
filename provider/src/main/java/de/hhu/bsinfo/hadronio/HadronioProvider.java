@@ -53,10 +53,10 @@ public class HadronioProvider extends SelectorProvider implements Closeable {
     }
 
     @Override
-    public AbstractSelector openSelector() {
+    public AbstractSelector openSelector() throws IOException {
         LOGGER.info("Creating new HadronioSelector");
 
-        return new HadronioSelector(this);
+        return new HadronioSelector(this, Configuration.getInstance().getPollMethod());
     }
 
     @Override

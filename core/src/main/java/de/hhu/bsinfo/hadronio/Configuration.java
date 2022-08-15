@@ -5,6 +5,11 @@ import org.agrona.BitUtil;
 
 class Configuration {
 
+    enum PollMethod {
+        BUSY_POLLING,
+        EPOLL
+    }
+
     private static final Configuration instance = getInstance();
 
     private static final int MIN_SEND_BUFFER_LENGTH = 128;
@@ -16,12 +21,14 @@ class Configuration {
     private static final int DEFAULT_RECEIVE_BUFFER_LENGTH = 8 * 1024 * 1024;
     private static final int DEFAULT_BUFFER_SLICE_LENGTH = 64 * 1024;
     private static final int DEFAULT_FLUSH_INTERVAL_SIZE = 1024;
+    private static final String DEFAULT_POLL_METHOD = "EPOLL";
     private static final String DEFAULT_PROVIDER_CLASS = "de.hhu.bsinfo.hadronio.jucx.JucxProvider";
 
     private final int sendBufferLength;
     private final int receiveBufferLength;
     private final int bufferSliceLength;
     private final int flushIntervalSize;
+    private final PollMethod pollMethod;
     private final String providerClass;
 
     static Configuration getInstance() throws IllegalArgumentException {
@@ -33,10 +40,11 @@ class Configuration {
         final int receiveBufferLength = Integer.parseInt(System.getProperty("de.hhu.bsinfo.hadronio.Configuration.RECEIVE_BUFFER_LENGTH", String.valueOf(DEFAULT_RECEIVE_BUFFER_LENGTH)));
         final int bufferSliceLength = Integer.parseInt(System.getProperty("de.hhu.bsinfo.hadronio.Configuration.BUFFER_SLICE_LENGTH", String.valueOf(DEFAULT_BUFFER_SLICE_LENGTH)));
         final int flushIntervalSize = Integer.parseInt(System.getProperty("de.hhu.bsinfo.hadronio.Configuration.FLUSH_INTERVAL_SIZE", String.valueOf(DEFAULT_FLUSH_INTERVAL_SIZE)));
+        final PollMethod pollMethod = PollMethod.valueOf(System.getProperty("de.hhu.bsinfo.hadronio.Configuration.POLL_METHOD", DEFAULT_POLL_METHOD));
         final String providerClass = System.getProperty("de.hhu.bsinfo.hadronio.Configuration.PROVIDER_CLASS", DEFAULT_PROVIDER_CLASS);
 
         checkConfiguration(sendBufferLength, receiveBufferLength, bufferSliceLength, flushIntervalSize, providerClass);
-        return new Configuration(sendBufferLength, receiveBufferLength, bufferSliceLength + MessageUtil.HEADER_LENGTH, flushIntervalSize, providerClass);
+        return new Configuration(sendBufferLength, receiveBufferLength, bufferSliceLength + MessageUtil.HEADER_LENGTH, flushIntervalSize, pollMethod, providerClass);
     }
 
     private static void checkConfiguration(final int sendBufferLength, final int receiveBufferLength, final int bufferSliceLength, final int flushIntervalSize, final String providerClass) throws IllegalArgumentException {
@@ -83,11 +91,12 @@ class Configuration {
         }
     }
 
-    private Configuration(final int sendBufferLength, final int receiveBufferLength, final int bufferSliceLength, final int flushIntervalSize, final String providerClass) {
+    private Configuration(final int sendBufferLength, final int receiveBufferLength, final int bufferSliceLength, final int flushIntervalSize, final PollMethod pollMethod, final String providerClass) {
         this.sendBufferLength = sendBufferLength;
         this.receiveBufferLength = receiveBufferLength;
         this.bufferSliceLength = bufferSliceLength;
         this.flushIntervalSize = flushIntervalSize;
+        this.pollMethod = pollMethod;
         this.providerClass = providerClass;
     }
 
@@ -107,6 +116,10 @@ class Configuration {
         return flushIntervalSize;
     }
 
+    PollMethod getPollMethod() {
+        return pollMethod;
+    }
+
     String getProviderClass() {
         return providerClass;
     }
@@ -118,6 +131,7 @@ class Configuration {
                 ",receiveBufferSize=" + receiveBufferLength +
                 ",bufferSliceLength=" + bufferSliceLength +
                 ",flushIntervalSize=" + flushIntervalSize +
+                ",pollMethod=" + pollMethod +
                 ",providerClass=" + providerClass +
                 ")";
     }

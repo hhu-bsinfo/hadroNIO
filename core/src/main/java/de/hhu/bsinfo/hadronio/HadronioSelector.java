@@ -1,8 +1,14 @@
 package de.hhu.bsinfo.hadronio;
 
+import de.hhu.bsinfo.hadronio.binding.UcxWorker;
+import io.helins.linux.epoll.Epoll;
+import io.helins.linux.epoll.EpollEvent;
+import io.helins.linux.epoll.EpollEvents;
+import org.agrona.collections.Long2ObjectHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.nio.channels.ClosedSelectorException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
@@ -17,13 +23,17 @@ class HadronioSelector extends AbstractSelector {
 
     private final Set<SelectionKey> keys = new HashSet<>();
     private final FixedSelectionKeySet selectedKeys = new FixedSelectionKeySet();
+    private final Epoll epoll = new Epoll();
+    private final Long2ObjectHashMap<HadronioSelectableChannel> epollMap = new Long2ObjectHashMap<>();
     private final Object wakeupLock = new Object();
+    private final Configuration.PollMethod pollMethod;
 
     private boolean wakeupStatus = true;
     private boolean selectorClosed = false;
 
-    HadronioSelector(final SelectorProvider selectorProvider) {
+    HadronioSelector(final SelectorProvider selectorProvider, Configuration.PollMethod pollMethod) throws IOException {
         super(selectorProvider);
+        this.pollMethod = pollMethod;
     }
 
     @Override
@@ -62,6 +72,17 @@ class HadronioSelector extends AbstractSelector {
 
         synchronized (keys) {
             synchronized (wakeupLock) {
+                try {
+                    final int channelDescriptor = ((HadronioSelectableChannel) channel).getWorker().getEventFileDescriptor();
+                    final EpollEvent event = new EpollEvent()
+                            .setFlags(new EpollEvent.Flags().set(EpollEvent.Flag.EPOLLIN).set(EpollEvent.Flag.EPOLLERR))
+                            .setUserData(channelDescriptor);
+                    epoll.add(channelDescriptor, event);
+                    epollMap.put(channelDescriptor, (HadronioSelectableChannel) channel);
+                } catch (IOException e) {
+                    LOGGER.error("Unable to add file descriptor to epoll instance", e);
+                }
+
                 keys.add(key);
                 wakeupLock.notifyAll();
 
@@ -89,17 +110,17 @@ class HadronioSelector extends AbstractSelector {
     }
 
     @Override
-    public int selectNow() {
+    public int selectNow() throws IOException {
         return select(false, 0);
     }
 
     @Override
-    public int select(final long timeout) {
+    public int select(final long timeout) throws IOException {
         return select(true, timeout);
     }
 
     @Override
-    public int select() {
+    public int select() throws IOException {
         return select(true, 0);
     }
 
@@ -108,13 +129,16 @@ class HadronioSelector extends AbstractSelector {
         LOGGER.trace("Waking up worker");
         synchronized (wakeupLock) {
             wakeupStatus = true;
+            for (final SelectionKey key : keys) {
+                ((HadronioSelectableChannel) key.channel()).getWorker().interrupt();
+            }
             wakeupLock.notifyAll();
         }
 
         return this;
     }
 
-    private int select(final boolean blocking, final long timeout) {
+    private int select(final boolean blocking, final long timeout) throws IOException {
         if (selectorClosed) {
             throw new ClosedSelectorException();
         }
@@ -129,7 +153,7 @@ class HadronioSelector extends AbstractSelector {
         synchronized (this) {
             synchronized (keys) {
                 synchronized (selectedKeys) {
-                    pollWorker(false, 0);
+                    pollWorkers(false, 0);
 
                     int updatedKeys = 0;
                     do {
@@ -140,7 +164,7 @@ class HadronioSelector extends AbstractSelector {
                         LOGGER.trace("Finished select iteration (blocking: [{}], keys: [{}], selectedKeys: [{}])", blocking, keys.size(), selectedKeys.size());
 
                         if (blocking && keys.size() > 0 && selectedKeys.size() == 0) {
-                            pollWorker(true, timeout);
+                            pollWorkers(true, timeout);
 
                             synchronized (wakeupLock) {
                                 if (wakeupStatus) {
@@ -159,8 +183,21 @@ class HadronioSelector extends AbstractSelector {
         }
     }
 
-    private void pollWorker(final boolean blocking, final long timeout) {
-            LOGGER.trace("Polling worker (blocking: [{}], timeout: [{}])", blocking, timeout);
+    private void pollWorkers(final boolean blocking, final long timeout) throws IOException {
+        if (pollMethod == Configuration.PollMethod.EPOLL) {
+            final boolean eventsDrained = busyPollWorkers(false, 0);
+            if (blocking && !eventsDrained) {
+                epollWorkers(timeout);
+            }
+        } else if (pollMethod == Configuration.PollMethod.BUSY_POLLING) {
+            busyPollWorkers(false, 0);
+        } else {
+            throw new IllegalStateException("Illegal poll method '" + pollMethod + "'!");
+        }
+    }
+
+    private boolean busyPollWorkers(final boolean blocking, final long timeout) {
+            LOGGER.trace("Busy polling workers (blocking: [{}], timeout: [{}])", blocking, timeout);
             boolean eventsPolled = false;
             final long endTime = System.nanoTime() + timeout * 1000000;
 
@@ -170,12 +207,37 @@ class HadronioSelector extends AbstractSelector {
                     eventsPolled |= channel.getWorker().progress();
                 }
 
-                if (timeout > 0 && System.nanoTime() > endTime) {
-                    LOGGER.trace("Timeout of [{}] has been reached while polling worker", timeout);
+                if (!eventsPolled && timeout > 0 && System.nanoTime() > endTime) {
+                    LOGGER.trace("Timeout of [{}] has been reached while polling workers", timeout);
                     break;
                 }
             } while(blocking && !eventsPolled && !wakeupStatus);
-            LOGGER.trace("Finished polling worker (eventsPolled: [{}])", eventsPolled);
+
+            LOGGER.trace("Finished polling workers (eventsPolled: [{}])", eventsPolled);
+            return eventsPolled;
+    }
+
+    private void epollWorkers(final long timeout) throws IOException {
+        LOGGER.trace("Polling workers using epoll (timeout: [{}])", timeout);
+        final EpollEvents events = new EpollEvents(keys().size());
+        final int eventCount = epoll.wait(events, timeout <= 0 ? -1 : (int) timeout);
+        LOGGER.trace("Epoll wait() finished (eventCount: [{}])", eventCount);
+
+        for (int i = 0; i < eventCount; i++) {
+            final UcxWorker worker = epollMap.get(events.getEpollEvent(i).getUserData()).getWorker();
+            worker.waitForEvents();
+
+            boolean armed = false;
+            do {
+                try {
+                    worker.drain();
+                    worker.arm();
+                    armed = true;
+                } catch (Exception e) {
+                    LOGGER.trace("Failed to arm worker");
+                }
+            } while (!armed);
+        }
     }
 
     private boolean selectKey(final HadronioSelectionKey key) {
@@ -236,6 +298,16 @@ class HadronioSelector extends AbstractSelector {
         synchronized (cancelledKeys()) {
             if (!cancelledKeys().isEmpty()) {
                 LOGGER.trace("Removing [{}] cancelled {}", cancelledKeys().size(), cancelledKeys().size() == 1 ? "key" : "keys");
+                for (final SelectionKey key : cancelledKeys()) {
+                    try {
+                        final int channelDescriptor = ((HadronioSelectableChannel) key.channel()).getWorker().getEventFileDescriptor();
+                        epoll.remove(channelDescriptor);
+                        epollMap.remove(channelDescriptor);
+                    } catch (IOException e) {
+                        LOGGER.error("Failed to remove file descriptor from epoll", e);
+                    }
+                }
+
                 keys.removeAll(cancelledKeys());
                 selectedKeys.removeAll(cancelledKeys());
                 cancelledKeys().clear();

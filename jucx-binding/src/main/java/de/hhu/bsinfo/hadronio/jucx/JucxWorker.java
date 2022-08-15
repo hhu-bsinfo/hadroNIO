@@ -43,6 +43,16 @@ class JucxWorker implements UcxWorker {
     }
 
     @Override
+    public void arm() {
+        worker.arm();
+    }
+
+    @Override
+    public int getEventFileDescriptor() {
+        return worker.getEventFD();
+    }
+
+    @Override
     public void close() {
         LOGGER.info("Closing worker");
         worker.close();

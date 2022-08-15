@@ -1,4 +1,4 @@
-// TODO: Reactive, once infinileap is compatible with Java 20
+// TODO: Reactivate, once infinileap is compatible with the panama preview
 /*plugins {
     id 'java-library'
 }

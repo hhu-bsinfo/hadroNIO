@@ -10,7 +10,7 @@ version = getProperty('projectVersion')
 
 java {
     toolchain {
-        languageVersion.set(JavaLanguageVersion.of(8))
+        languageVersion.set(JavaLanguageVersion.of(11))
     }
 }
 
@@ -33,6 +33,7 @@ dependencies {
     implementation "io.grpc:grpc-protobuf:${grpcVersion}"
     implementation "io.grpc:grpc-stub:${grpcVersion}"
     implementation "io.grpc:grpc-netty-shaded:${grpcVersion}"
+    implementation "org.apache.tomcat:annotations-api:${tomcatVersion}"
     implementation "site.ycsb:core:${ycsbVersion}"
 
     testImplementation "org.junit.jupiter:junit-jupiter-api:${junitJupiterVersion}"

@@ -7,7 +7,7 @@ version = getProperty('projectVersion')
 
 java {
     toolchain {
-        languageVersion.set(JavaLanguageVersion.of(8))
+        languageVersion.set(JavaLanguageVersion.of(11))
     }
 }
 
@@ -17,7 +17,8 @@ repositories {
 
 dependencies {
     implementation project(':core')
-    implementation "org.openucx:jucx:${jucxVersion}"
+    // implementation "org.openucx:jucx:${jucxVersion}"
+    implementation files("jucx-${jucxVersion}.jar")
     implementation "org.slf4j:slf4j-api:${slf4jVersion}"
 
     testImplementation "org.junit.jupiter:junit-jupiter-api:${junitJupiterVersion}"

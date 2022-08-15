@@ -7,6 +7,7 @@ import de.hhu.bsinfo.hadronio.util.MemoryUtil.Alignment;
 import de.hhu.bsinfo.hadronio.util.MessageUtil;
 import de.hhu.bsinfo.hadronio.util.RingBuffer;
 import de.hhu.bsinfo.hadronio.util.TagUtil;
+import io.helins.linux.epoll.Epoll;
 import org.agrona.concurrent.AtomicBuffer;
 import org.agrona.concurrent.UnsafeBuffer;
 import org.slf4j.Logger;
@@ -317,7 +318,6 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
         inputClosed = true;
         outputClosed = true;
         connected = false;
-
         endpoint.close();
     }
 

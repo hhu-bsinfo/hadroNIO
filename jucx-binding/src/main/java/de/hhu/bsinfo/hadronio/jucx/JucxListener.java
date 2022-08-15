@@ -56,7 +56,7 @@ class JucxListener implements UcxListener {
     }
 
     @Override
-    public void close() {
+    public void close() throws IOException {
         LOGGER.info("Closing listener");
         listener.close();
     }
