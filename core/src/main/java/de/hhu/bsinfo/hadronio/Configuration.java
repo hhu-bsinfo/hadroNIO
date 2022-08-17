@@ -7,7 +7,8 @@ class Configuration {
 
     enum PollMethod {
         BUSY_POLLING,
-        EPOLL
+        EPOLL,
+        DYNAMIC
     }
 
     private static final Configuration instance = getInstance();
@@ -21,7 +22,7 @@ class Configuration {
     private static final int DEFAULT_RECEIVE_BUFFER_LENGTH = 8 * 1024 * 1024;
     private static final int DEFAULT_BUFFER_SLICE_LENGTH = 64 * 1024;
     private static final int DEFAULT_FLUSH_INTERVAL_SIZE = 1024;
-    private static final String DEFAULT_POLL_METHOD = "EPOLL";
+    private static final String DEFAULT_POLL_METHOD = "DYNAMIC";
     private static final String DEFAULT_PROVIDER_CLASS = "de.hhu.bsinfo.hadronio.jucx.JucxProvider";
 
     private final int sendBufferLength;

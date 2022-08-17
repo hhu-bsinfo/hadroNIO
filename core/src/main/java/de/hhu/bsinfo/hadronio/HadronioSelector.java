@@ -4,7 +4,7 @@ import de.hhu.bsinfo.hadronio.binding.UcxWorker;
 import io.helins.linux.epoll.Epoll;
 import io.helins.linux.epoll.EpollEvent;
 import io.helins.linux.epoll.EpollEvents;
-import org.agrona.collections.Long2ObjectHashMap;
+import org.agrona.collections.Int2ObjectHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,15 +20,19 @@ import java.util.*;
 class HadronioSelector extends AbstractSelector {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(HadronioSelector.class);
+    private static final int BUSY_POLL_TIMEOUT = 3000;
 
     private final Set<SelectionKey> keys = new HashSet<>();
     private final FixedSelectionKeySet selectedKeys = new FixedSelectionKeySet();
     private final Epoll epoll = new Epoll();
-    private final Long2ObjectHashMap<HadronioSelectableChannel> epollMap = new Long2ObjectHashMap<>();
+    private final Int2ObjectHashMap<HadronioSelectableChannel> epollMap = new Int2ObjectHashMap<>();
     private final Object wakeupLock = new Object();
     private final Configuration.PollMethod pollMethod;
 
-    private boolean wakeupStatus = true;
+    private EpollEvents epollEvents;
+    private int currentBusyPollTimeout = BUSY_POLL_TIMEOUT;
+    private boolean lastPollHadEvents = true;
+    private boolean wakeupStatus = false;
     private boolean selectorClosed = false;
 
     HadronioSelector(final SelectorProvider selectorProvider, Configuration.PollMethod pollMethod) throws IOException {
@@ -37,7 +41,7 @@ class HadronioSelector extends AbstractSelector {
     }
 
     @Override
-    protected void implCloseSelector() {
+    protected void implCloseSelector() throws IOException {
         LOGGER.info("Closing selector");
         selectorClosed = true;
 
@@ -53,6 +57,7 @@ class HadronioSelector extends AbstractSelector {
 
                         selectedKeys.clear();
                         keys.clear();
+                        epoll.close();
                     }
                 }
             }
@@ -74,6 +79,7 @@ class HadronioSelector extends AbstractSelector {
             synchronized (wakeupLock) {
                 try {
                     final int channelDescriptor = ((HadronioSelectableChannel) channel).getWorker().getEventFileDescriptor();
+
                     final EpollEvent event = new EpollEvent()
                             .setFlags(new EpollEvent.Flags().set(EpollEvent.Flag.EPOLLIN).set(EpollEvent.Flag.EPOLLERR))
                             .setUserData(channelDescriptor);
@@ -84,6 +90,7 @@ class HadronioSelector extends AbstractSelector {
                 }
 
                 keys.add(key);
+                epollEvents = new EpollEvents(keys.size());
                 wakeupLock.notifyAll();
 
                 return key;
@@ -153,14 +160,21 @@ class HadronioSelector extends AbstractSelector {
         synchronized (this) {
             synchronized (keys) {
                 synchronized (selectedKeys) {
+                    boolean firstIteration = true;
                     pollWorkers(false, 0);
 
                     int updatedKeys = 0;
                     do {
                         removeCancelledKeys();
-                        updatedKeys += performSelectOperation();
-                        removeCancelledKeys();
 
+                        final int selectCount = performSelectOperation();
+                        updatedKeys += selectCount;
+
+                        if (!firstIteration) {
+                            lastPollHadEvents = selectCount > 0;
+                        }
+
+                        removeCancelledKeys();
                         LOGGER.trace("Finished select iteration (blocking: [{}], keys: [{}], selectedKeys: [{}])", blocking, keys.size(), selectedKeys.size());
 
                         if (blocking && keys.size() > 0 && selectedKeys.size() == 0) {
@@ -168,12 +182,13 @@ class HadronioSelector extends AbstractSelector {
 
                             synchronized (wakeupLock) {
                                 if (wakeupStatus) {
-                                    LOGGER.trace("Selector has been interrupted by wakeup");
                                     wakeupStatus = false;
                                     break;
                                 }
                             }
                         }
+
+                        firstIteration = false;
                     } while (blocking && keys.size() > 0 && selectedKeys.size() == 0);
 
                     LOGGER.trace("Finished select operation (blocking: [{}], timeout: [{}], updatedKeys: [{}])", blocking, timeout, updatedKeys);
@@ -184,15 +199,51 @@ class HadronioSelector extends AbstractSelector {
     }
 
     private void pollWorkers(final boolean blocking, final long timeout) throws IOException {
-        if (pollMethod == Configuration.PollMethod.EPOLL) {
-            final boolean eventsDrained = busyPollWorkers(false, 0);
-            if (blocking && !eventsDrained) {
-                epollWorkers(timeout);
-            }
-        } else if (pollMethod == Configuration.PollMethod.BUSY_POLLING) {
+        if (!blocking) {
             busyPollWorkers(false, 0);
-        } else {
-            throw new IllegalStateException("Illegal poll method '" + pollMethod + "'!");
+            return;
+        }
+
+        switch (pollMethod) {
+            case BUSY_POLLING:
+                busyPollWorkers(true, timeout);
+                break;
+            case EPOLL: {
+                final boolean eventsPolled = drainWorkers();
+                if (!eventsPolled) {
+                    epollWorkers(timeout);
+                }
+
+                break;
+            }
+            case DYNAMIC: {
+                long timeLeft = timeout;
+                boolean eventsPolled = false;
+                if (lastPollHadEvents) {
+                    eventsPolled = busyPollWorkers(true, (BUSY_POLL_TIMEOUT < timeLeft || timeLeft == 0) ? BUSY_POLL_TIMEOUT : timeLeft);
+                }
+
+                if (timeout > 0) {
+                    timeLeft -= BUSY_POLL_TIMEOUT;
+                }
+
+                synchronized (wakeupLock) {
+                    if (wakeupStatus || (timeout > 0 && timeLeft <= 0)) {
+                        lastPollHadEvents = wakeupStatus;
+                        break;
+                    }
+                }
+
+                if (!eventsPolled) {
+                    eventsPolled = drainWorkers();
+                    if (!eventsPolled) {
+                        epollWorkers(timeLeft);
+                    }
+                }
+                break;
+            }
+            default:
+                throw new IllegalStateException("Illegal poll method '" + pollMethod + "'!");
         }
     }
 
@@ -213,24 +264,29 @@ class HadronioSelector extends AbstractSelector {
                 }
             } while(blocking && !eventsPolled && !wakeupStatus);
 
-            LOGGER.trace("Finished polling workers (eventsPolled: [{}])", eventsPolled);
+            LOGGER.trace("Finished busy polling workers (eventsPolled: [{}])", eventsPolled);
             return eventsPolled;
     }
 
-    private void epollWorkers(final long timeout) throws IOException {
+    private boolean epollWorkers(final long timeout) throws IOException {
         LOGGER.trace("Polling workers using epoll (timeout: [{}])", timeout);
-        final EpollEvents events = new EpollEvents(keys().size());
-        final int eventCount = epoll.wait(events, timeout <= 0 ? -1 : (int) timeout);
+        final int eventCount = epoll.wait(epollEvents, timeout <= 0 ? -1 : (int) timeout);
         LOGGER.trace("Epoll wait() finished (eventCount: [{}])", eventCount);
 
+        boolean eventsPolled = false;
         for (int i = 0; i < eventCount; i++) {
-            final UcxWorker worker = epollMap.get(events.getEpollEvent(i).getUserData()).getWorker();
+            final HadronioSelectableChannel channel = epollMap.get((int) epollEvents.getEpollEvent(i).getUserData());
+            if (channel == null) {
+                continue;
+            }
+
+            final UcxWorker worker = channel.getWorker();
             worker.waitForEvents();
 
             boolean armed = false;
             do {
                 try {
-                    worker.drain();
+                    eventsPolled |= worker.drain();
                     worker.arm();
                     armed = true;
                 } catch (Exception e) {
@@ -238,6 +294,23 @@ class HadronioSelector extends AbstractSelector {
                 }
             } while (!armed);
         }
+
+        LOGGER.trace("Finished polling workers using epoll (eventsPolled: [{}])", eventsPolled);
+        return eventsPolled;
+    }
+
+    private boolean drainWorkers() {
+        LOGGER.trace("Draining workers");
+        boolean eventsPolled = false;
+        for (final SelectionKey key : keys) {
+            final UcxWorker worker = ((HadronioSelectableChannel) key.channel()).getWorker();
+            if (worker.drain()) {
+                eventsPolled = true;
+            }
+        }
+
+        LOGGER.trace("Finished draining worker (eventsPolled: [{}])", eventsPolled);
+        return eventsPolled;
     }
 
     private boolean selectKey(final HadronioSelectionKey key) {
@@ -301,8 +374,8 @@ class HadronioSelector extends AbstractSelector {
                 for (final SelectionKey key : cancelledKeys()) {
                     try {
                         final int channelDescriptor = ((HadronioSelectableChannel) key.channel()).getWorker().getEventFileDescriptor();
-                        epoll.remove(channelDescriptor);
                         epollMap.remove(channelDescriptor);
+                        epoll.remove(channelDescriptor);
                     } catch (IOException e) {
                         LOGGER.error("Failed to remove file descriptor from epoll", e);
                     }
@@ -311,6 +384,7 @@ class HadronioSelector extends AbstractSelector {
                 keys.removeAll(cancelledKeys());
                 selectedKeys.removeAll(cancelledKeys());
                 cancelledKeys().clear();
+                epollEvents = keys.size() == 0 ? null : new EpollEvents(keys.size());
             }
         }
     }

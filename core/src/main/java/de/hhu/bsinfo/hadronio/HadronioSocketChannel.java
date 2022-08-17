@@ -7,7 +7,6 @@ import de.hhu.bsinfo.hadronio.util.MemoryUtil.Alignment;
 import de.hhu.bsinfo.hadronio.util.MessageUtil;
 import de.hhu.bsinfo.hadronio.util.RingBuffer;
 import de.hhu.bsinfo.hadronio.util.TagUtil;
-import io.helins.linux.epoll.Epoll;
 import org.agrona.concurrent.AtomicBuffer;
 import org.agrona.concurrent.UnsafeBuffer;
 import org.slf4j.Logger;
@@ -667,6 +666,10 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
         }
 
         return messageLength - MessageUtil.HEADER_LENGTH;
+    }
+
+    public boolean isFlushing() {
+        return isFlushing.get();
     }
 
     private boolean isNotReadable() throws ClosedChannelException {
