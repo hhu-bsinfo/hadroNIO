@@ -23,24 +23,22 @@ public class Client implements Runnable {
     private final int messageSize;
     private final int messageCount;
     private final int connections;
-    private final boolean pinThreads;
 
     private final Channel[] channels;
 
-    public Client(final InetSocketAddress bindAddress, final InetSocketAddress remoteAddress, final int messageSize, final int messageCount, final int connections, final boolean pinThreads) {
+    public Client(final InetSocketAddress bindAddress, final InetSocketAddress remoteAddress, final int messageSize, final int messageCount, final int connections) {
         this.bindAddress = bindAddress;
         this.remoteAddress = remoteAddress;
         this.messageSize = messageSize;
         this.messageCount = messageCount;
         this.connections = connections;
-        this.pinThreads = pinThreads;
         channels = new Channel[connections];
     }
 
     @Override
     public void run() {
         LOGGER.info("Connecting to server [{}]", remoteAddress);
-        final EventLoopGroup workerGroup = NettyUtil.createWorkerGroup(connections, pinThreads);
+        final EventLoopGroup workerGroup = new NioEventLoopGroup();
         final Bootstrap bootstrap = new Bootstrap();
 
         bootstrap.group(workerGroup)

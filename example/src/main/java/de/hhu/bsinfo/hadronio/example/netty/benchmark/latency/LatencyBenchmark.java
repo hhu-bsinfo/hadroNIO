@@ -49,11 +49,6 @@ public class LatencyBenchmark implements Runnable {
     private int messageCount;
 
     @CommandLine.Option(
-            names = {"-p", "--pin-threads"},
-            description = "Pin threads.")
-    private boolean pinThreads = false;
-
-    @CommandLine.Option(
             names = {"-o", "--output"},
             description = "Path to the result file, to which the CSV data shall be written.")
     private String resultFileName = "";
@@ -81,8 +76,8 @@ public class LatencyBenchmark implements Runnable {
             bindAddress = isServer ? bindAddress : new InetSocketAddress(bindAddress.getAddress(), 0);
         }
 
-        final Runnable runnable = isServer ? new Server(bindAddress, messageSize, messageCount, connections, pinThreads, resultFileName, benchmarkName, benchmarkIteration) :
-                new Client(bindAddress, remoteAddress, messageSize, messageCount, connections, pinThreads);
+        final Runnable runnable = isServer ? new Server(bindAddress, messageSize, messageCount, connections, resultFileName, benchmarkName, benchmarkIteration) :
+                new Client(bindAddress, remoteAddress, messageSize, messageCount, connections);
         runnable.run();
     }
 }
