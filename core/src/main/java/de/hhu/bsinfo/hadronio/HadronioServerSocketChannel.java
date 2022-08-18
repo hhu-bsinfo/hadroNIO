@@ -1,12 +1,10 @@
 package de.hhu.bsinfo.hadronio;
 
 import de.hhu.bsinfo.hadronio.binding.UcxConnectionRequest;
-import de.hhu.bsinfo.hadronio.binding.UcxEndpoint;
 import de.hhu.bsinfo.hadronio.binding.UcxListener;
 import de.hhu.bsinfo.hadronio.binding.UcxWorker;
 import java.util.Stack;
 
-import io.helins.linux.epoll.Epoll;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,7 +48,6 @@ public class HadronioServerSocketChannel extends ServerSocketChannel implements 
         }
 
         InetSocketAddress localAddress;
-
         if (socketAddress == null) {
             localAddress = new InetSocketAddress(DEFAULT_SERVER_PORT);
         } else if (!(socketAddress instanceof InetSocketAddress)) {
@@ -131,8 +128,8 @@ public class HadronioServerSocketChannel extends ServerSocketChannel implements 
         }
 
         LOGGER.info("Accepting connection request");
-        final UcxEndpoint endpoint = listener.accept(pendingRequests.pop());
-        final HadronioSocketChannel socket = new HadronioSocketChannel(provider(), endpoint);
+        final var endpoint = listener.accept(pendingRequests.pop());
+        final var socket = new HadronioSocketChannel(provider(), endpoint);
 
         socket.establishConnection();
         while (!socket.isConnected()) {

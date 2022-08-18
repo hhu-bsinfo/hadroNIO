@@ -28,7 +28,7 @@ class JucxListener implements UcxListener {
 
     @Override
     public void bind(final InetSocketAddress localAddress, final UcxListenerCallback callback) throws IOException {
-        final UcpListenerParams listenerParams = new UcpListenerParams().setSockAddr(localAddress)
+        final var listenerParams = new UcpListenerParams().setSockAddr(localAddress)
                 .setConnectionHandler(request -> callback.onConnectionRequest(new JucxConnectionRequest(request)));
 
         try {
@@ -56,7 +56,7 @@ class JucxListener implements UcxListener {
     }
 
     @Override
-    public void close() throws IOException {
+    public void close() {
         LOGGER.info("Closing listener");
         listener.close();
     }

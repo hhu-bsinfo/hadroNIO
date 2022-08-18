@@ -12,7 +12,7 @@ class SendCallback extends org.openucx.jucx.UcxCallback {
     private final JucxEndpoint endpoint;
     private final UcxSendCallback callback;
 
-    public SendCallback(JucxEndpoint endpoint, final UcxSendCallback callback) {
+    public SendCallback(final JucxEndpoint endpoint, final UcxSendCallback callback) {
         this.endpoint = endpoint;
         this.callback = callback;
     }

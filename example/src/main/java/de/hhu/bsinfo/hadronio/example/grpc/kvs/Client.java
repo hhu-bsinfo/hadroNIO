@@ -1,17 +1,13 @@
 package de.hhu.bsinfo.hadronio.example.grpc.kvs;
 
-import com.google.protobuf.ByteString;
 import com.google.protobuf.UnsafeByteOperations;
 import de.hhu.bsinfo.hadronio.example.grpc.kv.KeyRequest;
 import de.hhu.bsinfo.hadronio.example.grpc.kv.KeyValueRequest;
 import de.hhu.bsinfo.hadronio.example.grpc.kv.KeyValueStoreGrpc;
-import de.hhu.bsinfo.hadronio.example.grpc.kv.ValueResponse;
 import de.hhu.bsinfo.hadronio.util.ObjectConverter;
-import io.grpc.Channel;
 import io.grpc.ManagedChannel;
 import io.grpc.Status;
 import io.grpc.netty.shaded.io.grpc.netty.NettyChannelBuilder;
-import io.grpc.netty.shaded.io.netty.channel.EventLoopGroup;
 import io.grpc.netty.shaded.io.netty.channel.nio.NioEventLoopGroup;
 import io.grpc.netty.shaded.io.netty.channel.socket.nio.NioSocketChannel;
 import org.slf4j.Logger;
@@ -20,8 +16,6 @@ import org.slf4j.LoggerFactory;
 import java.io.Closeable;
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.nio.ByteBuffer;
-import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 public class Client implements Closeable {
@@ -34,8 +28,8 @@ public class Client implements Closeable {
 
     public void connect(final InetSocketAddress remoteAddress) {
         LOGGER.info("Connecting to server [{}]", remoteAddress);
-        final EventLoopGroup workerGroup = new NioEventLoopGroup(WORKER_THREADS);
-        final Channel channel = NettyChannelBuilder.forAddress(remoteAddress.getHostString(), remoteAddress.getPort())
+        final var workerGroup = new NioEventLoopGroup(WORKER_THREADS);
+        final var channel = NettyChannelBuilder.forAddress(remoteAddress.getHostString(), remoteAddress.getPort())
                 .eventLoopGroup(workerGroup)
                 .channelType(NioSocketChannel.class)
                 .usePlaintext()
@@ -45,23 +39,23 @@ public class Client implements Closeable {
     }
 
     public Status insert(final Object key, final Object value) {
-        final ByteString keyBytes = UnsafeByteOperations.unsafeWrap(converter.serialize(key));
-        final ByteString valueBytes = UnsafeByteOperations.unsafeWrap(converter.serialize(value));
-        final KeyValueRequest request = KeyValueRequest.newBuilder().setKey(keyBytes).setValue(valueBytes).build();
+        final var keyBytes = UnsafeByteOperations.unsafeWrap(converter.serialize(key));
+        final var valueBytes = UnsafeByteOperations.unsafeWrap(converter.serialize(value));
+        final var request = KeyValueRequest.newBuilder().setKey(keyBytes).setValue(valueBytes).build();
         return Status.fromCodeValue(blockingStub.insert(request).getStatus());
     }
 
     public Status update(final Object key, final Object value) {
-        final ByteString keyBytes = UnsafeByteOperations.unsafeWrap(converter.serialize(key));
-        final ByteString valueBytes = UnsafeByteOperations.unsafeWrap(converter.serialize(value));
-        final KeyValueRequest request = KeyValueRequest.newBuilder().setKey(keyBytes).setValue(valueBytes).build();
+        final var keyBytes = UnsafeByteOperations.unsafeWrap(converter.serialize(key));
+        final var valueBytes = UnsafeByteOperations.unsafeWrap(converter.serialize(value));
+        final var request = KeyValueRequest.newBuilder().setKey(keyBytes).setValue(valueBytes).build();
         return Status.fromCodeValue(blockingStub.update(request).getStatus());
     }
 
     public <T> T get(final Object key) {
-        final ByteString keyBytes = UnsafeByteOperations.unsafeWrap(converter.serialize(key));
-        final KeyRequest request = KeyRequest.newBuilder().setKey(keyBytes).build();
-        final ValueResponse response = blockingStub.get(request);
+        final var keyBytes = UnsafeByteOperations.unsafeWrap(converter.serialize(key));
+        final var request = KeyRequest.newBuilder().setKey(keyBytes).build();
+        final var response = blockingStub.get(request);
 
         if (Status.fromCodeValue(response.getStatus()).isOk()) {
             return converter.deserialize(response.getValue().asReadOnlyByteBuffer());
@@ -71,15 +65,15 @@ public class Client implements Closeable {
     }
 
     public Status delete(final Object key) {
-        final ByteString keyBytes = UnsafeByteOperations.unsafeWrap(converter.serialize(key));
-        final KeyRequest request = KeyRequest.newBuilder().setKey(keyBytes).build();
+        final var keyBytes = UnsafeByteOperations.unsafeWrap(converter.serialize(key));
+        final var request = KeyRequest.newBuilder().setKey(keyBytes).build();
         return Status.fromCodeValue(blockingStub.delete(request).getStatus());
     }
 
     @Override
     public void close() throws IOException {
         try {
-            final ManagedChannel channel = (ManagedChannel) blockingStub.getChannel();
+            final var channel = (ManagedChannel) blockingStub.getChannel();
             channel.shutdown();
             channel.awaitTermination(5, TimeUnit.SECONDS);
         } catch (InterruptedException e) {

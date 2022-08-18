@@ -17,7 +17,7 @@ public class YcsbProperties {
     YcsbProperties(final Properties properties) {
         fieldsPerKey = Integer.parseInt(properties.getProperty(CoreWorkload.FIELD_COUNT_PROPERTY, CoreWorkload.FIELD_COUNT_PROPERTY_DEFAULT));
         fieldSize = Integer.parseInt(properties.getProperty(CoreWorkload.FIELD_LENGTH_PROPERTY, CoreWorkload.FIELD_LENGTH_PROPERTY_DEFAULT));
-        final String remoteAddress = properties.getProperty(REMOTE_ADDRESS_PROPERTY);
+        final var remoteAddress = properties.getProperty(REMOTE_ADDRESS_PROPERTY);
 
         try {
             this.remoteAddress = new InetSocketAddressConverter(0).convert(remoteAddress);

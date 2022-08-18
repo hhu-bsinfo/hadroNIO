@@ -40,7 +40,7 @@ public class ThroughputResult extends Result {
     }
 
     public void writeToFile(final String fileName, final String benchmarkName, final int iteration, final int connections) throws IOException {
-        final File file = new File(fileName);
+        final var file = new File(fileName);
         FileWriter writer;
 
         if (file.exists()) {

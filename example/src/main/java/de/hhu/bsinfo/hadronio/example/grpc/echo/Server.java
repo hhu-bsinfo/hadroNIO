@@ -1,7 +1,6 @@
 package de.hhu.bsinfo.hadronio.example.grpc.echo;
 
 import io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder;
-import io.grpc.netty.shaded.io.netty.channel.EventLoopGroup;
 import io.grpc.netty.shaded.io.netty.channel.nio.NioEventLoopGroup;
 import io.grpc.netty.shaded.io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.grpc.stub.StreamObserver;
@@ -26,9 +25,9 @@ public class Server implements Runnable {
     @Override
     public void run() {
         LOGGER.info("Starting server on port [{}]", bindAddress.getPort());
-        final EventLoopGroup acceptorGroup = new NioEventLoopGroup(ACCEPTOR_THREADS);
-        final EventLoopGroup workerGroup = new NioEventLoopGroup(WORKER_THREADS);
-        final io.grpc.Server server = NettyServerBuilder.forPort(bindAddress.getPort())
+        final var acceptorGroup = new NioEventLoopGroup(ACCEPTOR_THREADS);
+        final var workerGroup = new NioEventLoopGroup(WORKER_THREADS);
+        final var server = NettyServerBuilder.forPort(bindAddress.getPort())
                 .bossEventLoopGroup(acceptorGroup)
                 .workerEventLoopGroup(workerGroup)
                 .channelType(NioServerSocketChannel.class)
@@ -56,7 +55,7 @@ public class Server implements Runnable {
         @Override
         public void echo(final EchoMessage request, final StreamObserver<EchoMessage> responseObserver) {
             LOGGER.info("Received echo request [{}]", request.getMessage());
-            final EchoMessage reply = EchoMessage.newBuilder().setMessage(request.getMessage()).build();
+            final var reply = EchoMessage.newBuilder().setMessage(request.getMessage()).build();
             responseObserver.onNext(reply);
             responseObserver.onCompleted();
         }

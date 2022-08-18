@@ -61,7 +61,7 @@ public class CounterDemo implements Runnable {
 
         try {
             if (isServer) {
-                final ServerSocketChannel serverSocket = ServerSocketChannel.open();
+                final var serverSocket = ServerSocketChannel.open();
                 serverSocket.configureBlocking(true);
                 serverSocket.bind(bindAddress);
 
@@ -77,7 +77,7 @@ public class CounterDemo implements Runnable {
             return;
         }
 
-        SyncSignal closeSignal = new SyncSignal(socket);
+        final var closeSignal = new SyncSignal(socket);
 
         try {
             while (sendCounter < count || receiveCounter < count) {

@@ -1,11 +1,8 @@
 package de.hhu.bsinfo.hadronio.example.grpc.benchmark;
 
-import de.hhu.bsinfo.hadronio.util.Combiner;
 import de.hhu.bsinfo.hadronio.util.LatencyCombiner;
 import de.hhu.bsinfo.hadronio.util.ThroughputCombiner;
-import io.grpc.Channel;
 import io.grpc.netty.shaded.io.grpc.netty.NettyChannelBuilder;
-import io.grpc.netty.shaded.io.netty.channel.EventLoopGroup;
 import io.grpc.netty.shaded.io.netty.channel.nio.NioEventLoopGroup;
 import io.grpc.netty.shaded.io.netty.channel.socket.nio.NioSocketChannel;
 import org.slf4j.Logger;
@@ -16,7 +13,6 @@ import java.util.concurrent.CyclicBarrier;
 
 public class Client implements Runnable {
 
-    private static final int WORKER_THREADS = 1;
     private static final Logger LOGGER = LoggerFactory.getLogger(Client.class);
 
     private final InetSocketAddress remoteAddress;
@@ -42,12 +38,13 @@ public class Client implements Runnable {
     @Override
     public void run() {
         LOGGER.info("Connecting to server [{}]", remoteAddress);
-        final Combiner combiner = blocking ? new LatencyCombiner() : new ThroughputCombiner();
-        final Runnable[] runnables = new Runnable[connections];
-        final Thread[] threads = new Thread[connections];
-        final EventLoopGroup workerGroup = new NioEventLoopGroup(connections);
+        final var combiner = blocking ? new LatencyCombiner() : new ThroughputCombiner();
+        final var runnables = new Runnable[connections];
+        final var threads = new Thread[connections];
+        final var workerGroup = new NioEventLoopGroup(connections);
+
         for (int i = 0; i < connections; i++) {
-            final Channel channel = NettyChannelBuilder.forAddress(remoteAddress.getHostString(), remoteAddress.getPort())
+            final var channel = NettyChannelBuilder.forAddress(remoteAddress.getHostString(), remoteAddress.getPort())
                     .eventLoopGroup(workerGroup)
                     .channelType(NioSocketChannel.class)
                     .usePlaintext()

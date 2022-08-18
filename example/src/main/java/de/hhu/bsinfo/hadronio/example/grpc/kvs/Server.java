@@ -1,8 +1,6 @@
 package de.hhu.bsinfo.hadronio.example.grpc.kvs;
 
-import io.grpc.ServerBuilder;
 import io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder;
-import io.grpc.netty.shaded.io.netty.channel.EventLoopGroup;
 import io.grpc.netty.shaded.io.netty.channel.nio.NioEventLoopGroup;
 import io.grpc.netty.shaded.io.netty.channel.socket.nio.NioServerSocketChannel;
 import org.slf4j.Logger;
@@ -25,9 +23,9 @@ public class Server implements Runnable {
     @Override
     public void run() {
         LOGGER.info("Starting server on port [{}]", bindAddress.getPort());
-        final EventLoopGroup acceptorGroup = new NioEventLoopGroup(ACCEPTOR_THREADS);
-        final EventLoopGroup workerGroup = new NioEventLoopGroup();
-        final io.grpc.Server server = NettyServerBuilder.forPort(bindAddress.getPort())
+        final var acceptorGroup = new NioEventLoopGroup(ACCEPTOR_THREADS);
+        final var workerGroup = new NioEventLoopGroup();
+        final var server = NettyServerBuilder.forPort(bindAddress.getPort())
                 .bossEventLoopGroup(acceptorGroup)
                 .workerEventLoopGroup(workerGroup)
                 .channelType(NioServerSocketChannel.class)

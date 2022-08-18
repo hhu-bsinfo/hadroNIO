@@ -36,7 +36,7 @@ class ReceiveCallback implements UcxReceiveCallback {
     @Override
     public void onMessageReceived(long tag) {
         final long id = TagUtil.getTargetId(tag);
-        final TagUtil.MessageType messageType = TagUtil.getMessageType(tag);
+        final var messageType = TagUtil.getMessageType(tag);
         LOGGER.debug("hadroNIO ReceiveCallback called (id: [0x{}], messageType: [{}])", Long.toHexString(id), messageType);
 
         if (messageType == TagUtil.MessageType.FLUSH) {

@@ -57,7 +57,7 @@ class JucxEndpoint implements UcxEndpoint {
 
     @Override
     public boolean sendTaggedMessage(final long address, final long size, final long tag, final boolean useCallback, final boolean blocking) {
-        final UcpRequest request = endpoint.sendTaggedNonBlocking(address, size, tag, useCallback ? sendCallback : null);
+        final var request = endpoint.sendTaggedNonBlocking(address, size, tag, useCallback ? sendCallback : null);
         while (blocking && !request.isCompleted()) {
             try {
                 worker.getWorker().progressRequest(request);
@@ -72,7 +72,7 @@ class JucxEndpoint implements UcxEndpoint {
 
     @Override
     public boolean receiveTaggedMessage(final long address, final long size, final long tag, final long tagMask, final boolean useCallback, final boolean blocking) {
-        final UcpRequest request = worker.getWorker().recvTaggedNonBlocking(address, size, tag, tagMask, useCallback ? receiveCallback : null);
+        final var request = worker.getWorker().recvTaggedNonBlocking(address, size, tag, tagMask, useCallback ? receiveCallback : null);
         while (blocking && !request.isCompleted()) {
             try {
                 worker.getWorker().progressRequest(request);
@@ -85,8 +85,8 @@ class JucxEndpoint implements UcxEndpoint {
         return request.isCompleted();
     }
 
-    public boolean sendStream(final long address, final long size, final boolean useCallback, final boolean blocking) {
-        final UcpRequest request = endpoint.sendStreamNonBlocking(address, size, useCallback ? sendCallback : null);
+    public void sendStream(final long address, final long size, final boolean useCallback, final boolean blocking) {
+        final var request = endpoint.sendStreamNonBlocking(address, size, useCallback ? sendCallback : null);
         while (blocking && !request.isCompleted()) {
             try {
                 worker.getWorker().progressRequest(request);
@@ -95,12 +95,10 @@ class JucxEndpoint implements UcxEndpoint {
                 throw new IllegalStateException(e);
             }
         }
-
-        return request.isCompleted();
     }
 
-    public boolean receiveStream(final long address, final long size, final boolean useCallback, final boolean blocking) {
-        final UcpRequest request = endpoint.recvStreamNonBlocking(address, size, UcpConstants.UCP_STREAM_RECV_FLAG_WAITALL, useCallback ? receiveCallback : null);
+    public void receiveStream(final long address, final long size, final boolean useCallback, final boolean blocking) {
+        final var request = endpoint.recvStreamNonBlocking(address, size, UcpConstants.UCP_STREAM_RECV_FLAG_WAITALL, useCallback ? receiveCallback : null);
         while (blocking && !request.isCompleted()) {
             try {
                 worker.getWorker().progressRequest(request);
@@ -109,8 +107,6 @@ class JucxEndpoint implements UcxEndpoint {
                 throw new IllegalStateException(e);
             }
         }
-
-        return request.isCompleted();
     }
 
     @Override

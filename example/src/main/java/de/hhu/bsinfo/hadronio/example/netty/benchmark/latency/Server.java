@@ -1,24 +1,18 @@
 package de.hhu.bsinfo.hadronio.example.netty.benchmark.latency;
 
 import de.hhu.bsinfo.hadronio.util.LatencyCombiner;
-import de.hhu.bsinfo.hadronio.util.LatencyResult;
-import de.hhu.bsinfo.hadronio.util.NettyUtil;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;
-import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInitializer;
-import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
-import net.openhft.affinity.AffinityStrategies;
-import net.openhft.affinity.AffinityThreadFactory;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class Server implements Runnable {
@@ -58,17 +52,17 @@ public class Server implements Runnable {
     @Override
     public void run() {
         LOGGER.info("Starting server on [{}]", bindAddress);
-        final EventLoopGroup acceptorGroup = new NioEventLoopGroup(ACCEPTOR_THREADS);
-        final EventLoopGroup workerGroup = new NioEventLoopGroup();
-        final ServerBootstrap bootstrap = new ServerBootstrap();
-        final LatencyCombiner combiner = new LatencyCombiner();
+        final var acceptorGroup = new NioEventLoopGroup(ACCEPTOR_THREADS);
+        final var workerGroup = new NioEventLoopGroup();
+        final var bootstrap = new ServerBootstrap();
+        final var combiner = new LatencyCombiner();
 
         bootstrap.group(acceptorGroup, workerGroup)
             .channel(NioServerSocketChannel.class)
             .childHandler(
             new ChannelInitializer<SocketChannel>() {
                 @Override
-                protected void initChannel(SocketChannel channel) {
+                protected void initChannel(@NotNull SocketChannel channel) {
                     channel.closeFuture().addListener(future -> LOGGER.info("Closed channel connected to [{}]", channel.remoteAddress()));
                     channel.pipeline().addLast(new ServerWarmupHandler(messageSize, messageCount, messageCount / 10, connections, warmupCounter, benchmarkCounter, combiner));
 
@@ -84,7 +78,7 @@ public class Server implements Runnable {
                 }
             });
 
-        final Channel serverChannel = bootstrap.bind(bindAddress).addListener(future -> {
+        final var serverChannel = bootstrap.bind(bindAddress).addListener(future -> {
             if (future.isSuccess()) {
                 LOGGER.info("Server is running");
             } else {
@@ -102,7 +96,7 @@ public class Server implements Runnable {
 
             synchronized (warmupCounter) {
                 for (int i = 0; i < connections; i++) {
-                    final ChannelHandlerContext context = channels[i].pipeline().context(ServerWarmupHandler.class);
+                    final var context = channels[i].pipeline().context(ServerWarmupHandler.class);
                     channels[i].pipeline().get(ServerWarmupHandler.class).start(context);
                 }
 
@@ -111,7 +105,7 @@ public class Server implements Runnable {
 
             synchronized (benchmarkCounter) {
                 for (int i = 0; i < connections; i++) {
-                    final ChannelHandlerContext context = channels[i].pipeline().context(ServerHandler.class);
+                    final var context = channels[i].pipeline().context(ServerHandler.class);
                     channels[i].pipeline().get(ServerHandler.class).start(context);
                 }
 
@@ -122,7 +116,7 @@ public class Server implements Runnable {
                 channels[i].closeFuture().sync();
             }
 
-            final LatencyResult result = combiner.getCombinedResult();
+            final var result = combiner.getCombinedResult();
             LOGGER.info("{}", result);
 
             if (!resultFileName.isEmpty()) {

@@ -25,7 +25,7 @@ public class NonBlockingRunnable implements Runnable {
     private final ThroughputCombiner combiner;
     private final BenchmarkMessage message;
     private final int requestCount;
-    private final int aggregationTreshold;
+    private final int aggregationThreshold;
     private final Queue<ListenableFuture<BenchmarkMessage>> futureQueue;
 
     public NonBlockingRunnable(final Channel channel, final CyclicBarrier syncBarrier, final ThroughputCombiner combiner, final int requestCount, final int requestSize, final int answerSize, int aggregationTreshold) {
@@ -34,10 +34,10 @@ public class NonBlockingRunnable implements Runnable {
         this.benchmarkBarrier = syncBarrier;
         this.combiner = combiner;
         this.requestCount = requestCount;
-        this.aggregationTreshold = aggregationTreshold;
+        this.aggregationThreshold = aggregationTreshold;
         futureQueue = new ArrayBlockingQueue<>(aggregationTreshold);
 
-        final byte[] requestBytes = new byte[requestSize];
+        final var requestBytes = new byte[requestSize];
         for (int i = 0; i < requestSize; i++) {
             requestBytes[i] = (byte) i;
         }
@@ -51,7 +51,7 @@ public class NonBlockingRunnable implements Runnable {
         LOGGER.info("Starting warmup with [{}] requests", warmupCount);
         performCalls(warmupCount);
 
-        ListenableFuture<BenchmarkMessage> finalFuture = futureStub.benchmark(message);
+        final var finalFuture = futureStub.benchmark(message);
         while (!finalFuture.isDone()) {
             if (finalFuture.isCancelled()) {
                 throw new IllegalStateException("Warmup failed!");
@@ -69,7 +69,7 @@ public class NonBlockingRunnable implements Runnable {
             performCalls(requestCount);
             result.setMeasuredTime(System.nanoTime() - startTime);
 
-            final ManagedChannel channel = (ManagedChannel) futureStub.getChannel();
+            final var channel = (ManagedChannel) futureStub.getChannel();
             channel.shutdown();
             channel.awaitTermination(5, TimeUnit.SECONDS);
         } catch (InterruptedException | BrokenBarrierException e) {
@@ -81,24 +81,24 @@ public class NonBlockingRunnable implements Runnable {
     }
 
     private void performCalls(final int operationCount) {
-        for (int i = 0; i < aggregationTreshold; i++) {
+        for (int i = 0; i < aggregationThreshold; i++) {
             futureQueue.add(futureStub.benchmark(message));
         }
 
-        int performedOperations = aggregationTreshold;
+        int performedOperations = aggregationThreshold;
         while (performedOperations < operationCount) {
             while (futureQueue.size() > 0 && futureQueue.peek().isDone()) {
                 futureQueue.poll();
             }
 
-            while (futureQueue.size() < aggregationTreshold && performedOperations < operationCount) {
+            while (futureQueue.size() < aggregationThreshold && performedOperations < operationCount) {
                 futureQueue.add(futureStub.benchmark(message));
                 performedOperations++;
             }
         }
 
         while (futureQueue.size() > 0) {
-            ListenableFuture<BenchmarkMessage> future = futureQueue.poll();
+            final var future = futureQueue.poll();
             while (!future.isDone()) {
                 if (future.isCancelled()) {
                     throw new IllegalStateException("Benchmark failed!");

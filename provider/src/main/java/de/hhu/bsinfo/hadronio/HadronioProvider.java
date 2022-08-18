@@ -1,7 +1,5 @@
 package de.hhu.bsinfo.hadronio;
 
-import de.hhu.bsinfo.hadronio.binding.UcxEndpoint;
-import de.hhu.bsinfo.hadronio.binding.UcxListener;
 import de.hhu.bsinfo.hadronio.binding.UcxProvider;
 import de.hhu.bsinfo.hadronio.generated.BuildConfig;
 import org.slf4j.Logger;
@@ -26,7 +24,7 @@ public class HadronioProvider extends SelectorProvider implements Closeable {
 
     public HadronioProvider() {
         LOGGER.info("Initializing HadronioProvider\n\n{}\n", getBanner());
-        final Configuration configuration = Configuration.getInstance();
+        final var configuration = Configuration.getInstance();
         LOGGER.info("hadroNIO configuration: [{}]", configuration);
 
         try {
@@ -60,27 +58,27 @@ public class HadronioProvider extends SelectorProvider implements Closeable {
     @Override
     public ServerSocketChannel openServerSocketChannel() throws IOException {
         LOGGER.info("Creating new HadronioServerSocketChannel");
-        final UcxListener serverSocketChannel = provider.createListener();
-        return new HadronioServerSocketChannel(this, serverSocketChannel);
+        final var listener = provider.createListener();
+        return new HadronioServerSocketChannel(this, listener);
     }
 
     @Override
     public SocketChannel openSocketChannel() throws IOException {
         LOGGER.info("Creating new HadronioSocketChannel");
-        final UcxEndpoint socketChannel = provider.createEndpoint();
-        return new HadronioSocketChannel(this, socketChannel);
+        final var endpoint = provider.createEndpoint();
+        return new HadronioSocketChannel(this, endpoint);
     }
 
     public static String getBanner() {
-        final InputStream inputStream = HadronioProvider.class.getClassLoader().getResourceAsStream("banner.txt");
+        final var inputStream = HadronioProvider.class.getClassLoader().getResourceAsStream("banner.txt");
 
         if (inputStream == null) {
             return "";
         }
 
-        final BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
-        final String banner = reader.lines().collect(Collectors.joining(System.lineSeparator()));
-        final String[] providerClass = Configuration.getInstance().getProviderClass().split("\\.");
+        final var reader = new BufferedReader(new InputStreamReader(inputStream));
+        final var banner = reader.lines().collect(Collectors.joining(System.lineSeparator()));
+        final var providerClass = Configuration.getInstance().getProviderClass().split("\\.");
 
         return String.format(banner, BuildConfig.VERSION, BuildConfig.BUILD_DATE, BuildConfig.GIT_BRANCH, BuildConfig.GIT_COMMIT, providerClass[providerClass.length - 1]);
     }

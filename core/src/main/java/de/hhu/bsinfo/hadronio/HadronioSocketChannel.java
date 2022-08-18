@@ -109,7 +109,6 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
         }
         
         LOGGER.info("Closing connection for input");
-
         inputClosed = true;
         return this;
     }
@@ -125,7 +124,6 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
         }
 
         LOGGER.info("Closing connection for output");
-
         outputClosed = true;
         return this;
     }
@@ -411,7 +409,6 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
             });
 
             endpoint.setReceiveCallback(new ReceiveCallback(this, readableMessages, isFlushing, configuration.getFlushIntervalSize()));
-
             LOGGER.info("SocketChannel connected successfully (localTag: [0x{}], remoteTag: [0x{}])", Long.toHexString(localTag), Long.toHexString(remoteTag));
 
             if (isBlocking()) {
@@ -460,15 +457,15 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
     }
 
     void establishConnection() {
-        final AtomicBuffer sendBuffer = MemoryUtil.allocateAligned(2 * Long.BYTES, Alignment.PAGE);
-        final AtomicBuffer receiveBuffer = MemoryUtil.allocateAligned(2 * Long.BYTES, Alignment.PAGE);
+        final var sendBuffer = MemoryUtil.allocateAligned(2 * Long.BYTES, Alignment.PAGE);
+        final var receiveBuffer = MemoryUtil.allocateAligned(2 * Long.BYTES, Alignment.PAGE);
 
         final long localId = TagUtil.generateId();
         final long checksum = TagUtil.calculateChecksum(localId);
         sendBuffer.putLong(0, localId);
         sendBuffer.putLong(Long.BYTES, checksum);
 
-        final ConnectionCallback connectionCallback = new ConnectionCallback(this, receiveBuffer, localId);
+        final var connectionCallback = new ConnectionCallback(this, receiveBuffer, localId);
         endpoint.setSendCallback(connectionCallback);
         endpoint.setReceiveCallback(connectionCallback);
 
@@ -499,9 +496,9 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
     }
 
     private int readFromReceiveBuffer(final ByteBuffer target) {
-        final AtomicBoolean padding = new AtomicBoolean(true);
-        final AtomicBoolean messageCompleted = new AtomicBoolean(false);
-        final AtomicInteger readBytes = new AtomicInteger();
+        final var padding = new AtomicBoolean(true);
+        final var messageCompleted = new AtomicBoolean(false);
+        final var readBytes = new AtomicInteger();
         int readFromBuffer;
 
         LOGGER.debug("Trying to read [{}] bytes (Readable messages: [{}])", target.remaining(), readableMessages.get());
@@ -530,61 +527,6 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
         }
 
         return readBytes.get();
-    }
-
-    private int writeBlocking(final ByteBuffer source) throws IOException {
-        int written = 0;
-
-        do {
-            while (isFlushing.get()) {
-                endpoint.getWorker().progress();
-            }
-
-            final int length = Math.min(Math.min(source.remaining() + MessageUtil.HEADER_LENGTH, sendBuffer.maxMessageLength()), configuration.getBufferSliceLength());
-            if (length <= MessageUtil.HEADER_LENGTH) {
-                LOGGER.debug("Unable to claim space in the send buffer (Error: [{}])", INSUFFICIENT_CAPACITY);
-                endpoint.getWorker().progress();
-
-                if (endpoint.getErrorState()) {
-                    throw new IOException("UCX endpoint has moved to error state!");
-                }
-
-                continue;
-            }
-
-            final int index = sendBuffer.tryClaim(length);
-
-            if (index < 0) {
-                LOGGER.debug("Unable to claim space in the send buffer (Error: [{}])", index);
-                endpoint.getWorker().progress();
-
-                if (endpoint.getErrorState()) {
-                    throw new IOException("UCX endpoint has moved to error state!");
-                }
-
-                continue;
-            }
-
-            MessageUtil.writeMessage(sendBuffer.buffer(), index, source, length - MessageUtil.HEADER_LENGTH);
-            source.position(source.position() + length - MessageUtil.HEADER_LENGTH);
-            sendBuffer.commitWrite(index);
-
-            final long tag = TagUtil.setMessageType(remoteTag, TagUtil.MessageType.DEFAULT);
-            final boolean blocking = isBlocking() && !source.hasRemaining();
-            endpoint.sendTaggedMessage(sendBuffer.memoryAddress() + index, length, tag, true, blocking);
-
-            if (endpoint.getErrorState()) {
-                throw new IOException("UCX endpoint has moved to error state!");
-            }
-
-            if (++sendCounter % configuration.getFlushIntervalSize() == 0) {
-                flush();
-            }
-
-            written += length - MessageUtil.HEADER_LENGTH;
-        } while (source.hasRemaining());
-
-        return written;
     }
 
     private int write(final ByteBuffer[] sources, final int offset, final int length, final boolean blocking) {
@@ -666,10 +608,6 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
         }
 
         return messageLength - MessageUtil.HEADER_LENGTH;
-    }
-
-    public boolean isFlushing() {
-        return isFlushing.get();
     }
 
     private boolean isNotReadable() throws ClosedChannelException {

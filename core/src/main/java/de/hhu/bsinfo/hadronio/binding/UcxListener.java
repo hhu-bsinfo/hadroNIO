@@ -7,7 +7,7 @@ public interface UcxListener extends UcxProgressable {
 
     void bind(InetSocketAddress socketAddress, UcxListenerCallback callback) throws IOException;
 
-    UcxEndpoint accept(UcxConnectionRequest connectionRequest) throws IOException;
+    UcxEndpoint accept(UcxConnectionRequest connectionRequest);
 
     UcxWorker getWorker();
 

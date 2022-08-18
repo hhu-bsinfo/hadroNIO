@@ -18,11 +18,11 @@ public class ObjectConverter {
     private static final ThreadLocal<ByteBufferInput> LOCAL_INPUT = ThreadLocal.withInitial(ObjectConverter::newInput);
 
     public ByteBuffer serialize(Object object) {
-        Kryo kryo = LOCAL_KRYO.get();
-        Output output = LOCAL_OUTPUT.get();
+        final var kryo = LOCAL_KRYO.get();
+        final var output = LOCAL_OUTPUT.get();
 
         kryo.writeClassAndObject(output, object);
-        final ByteBuffer result = ByteBuffer.wrap(Arrays.copyOfRange(output.getBuffer(), 0, output.position()));
+        final var result = ByteBuffer.wrap(Arrays.copyOfRange(output.getBuffer(), 0, output.position()));
         output.reset();
 
         return result;
@@ -30,15 +30,15 @@ public class ObjectConverter {
 
     @SuppressWarnings("unchecked")
     public <T> T deserialize(ByteBuffer buffer) {
-        final Kryo kryo = LOCAL_KRYO.get();
-        final ByteBufferInput input = LOCAL_INPUT.get();
+        final var kryo = LOCAL_KRYO.get();
+        final var input = LOCAL_INPUT.get();
 
         input.setBuffer(buffer);
         return (T) kryo.readClassAndObject(input);
     }
 
     private static Kryo newKryo() {
-        Kryo kryo = new Kryo();
+        final var kryo = new Kryo();
         kryo.setRegistrationRequired(false);
         return kryo;
     }

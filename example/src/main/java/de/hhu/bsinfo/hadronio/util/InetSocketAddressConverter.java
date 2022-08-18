@@ -14,18 +14,18 @@ public class InetSocketAddressConverter implements CommandLine.ITypeConverter<In
     @Override
     public InetSocketAddress convert(final String address) throws Exception {
 
-        final String[] splittedAddress = address.split(":");
+        final var splitAddress = address.split(":");
 
-        if (splittedAddress.length == 0 || splittedAddress.length > 2) {
+        if (splitAddress.length == 0 || splitAddress.length > 2) {
             throw new CommandLine.TypeConversionException("Invalid connection string specified");
         }
 
-        final String hostname = splittedAddress[0].length() == 0 ? "0.0.0.0" : splittedAddress[0];
+        final var hostname = splitAddress[0].length() == 0 ? "0.0.0.0" : splitAddress[0];
 
         int port = defaultPort;
-        if (splittedAddress.length > 1) {
+        if (splitAddress.length > 1) {
             try {
-                port = Integer.parseInt(splittedAddress[1]);
+                port = Integer.parseInt(splitAddress[1]);
             } catch (NumberFormatException e) {
                 throw new CommandLine.TypeConversionException("Invalid port specified");
             }

@@ -18,12 +18,12 @@ class LatencyStatistics {
      *
      * @param size Total number of measurements to record.
      */
-    LatencyStatistics(int size) {
+    LatencyStatistics(final int size) {
         times = new long[size];
         pos = 0;
     }
 
-    LatencyStatistics(long[] times) {
+    LatencyStatistics(final long[] times) {
         this.times = times;
         pos = times.length;
         sortAscending();
@@ -97,12 +97,12 @@ class LatencyStatistics {
      *
      * @return Value in ns.
      */
-    double getPercentilesNs(float perc) {
-        if (perc < 0.0 || perc > 1.0) {
+    double getPercentilesNs(final float percentage) {
+        if (percentage < 0.0 || percentage > 1.0) {
             throw new IllegalArgumentException("Percentage must be between 0 and 1");
         }
 
-        return times[(int) Math.ceil(perc * pos) - 1];
+        return times[(int) Math.ceil(percentage * pos) - 1];
     }
 
     long[] getTimes() {

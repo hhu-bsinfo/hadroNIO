@@ -31,7 +31,7 @@ public class SyncSignal {
         LOGGER.info("Received sync signal!");
 
         closeBuffer.flip();
-        final String receivedCloseSignal = StandardCharsets.UTF_8.decode(closeBuffer).toString();
+        final var receivedCloseSignal = StandardCharsets.UTF_8.decode(closeBuffer).toString();
         if (!receivedCloseSignal.equals(SYNC_SIGNAL)) {
             throw new IOException("Got wrong close signal! Expected: [" + SYNC_SIGNAL + "], Got: [" + receivedCloseSignal + "]");
         }

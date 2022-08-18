@@ -13,7 +13,7 @@ class ReceiveCallback extends UcxCallback {
     private final JucxEndpoint endpoint;
     private final UcxReceiveCallback callback;
 
-    public ReceiveCallback(JucxEndpoint endpoint, final UcxReceiveCallback callback) {
+    public ReceiveCallback(final JucxEndpoint endpoint, final UcxReceiveCallback callback) {
         this.endpoint = endpoint;
         this.callback = callback;
     }

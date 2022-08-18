@@ -28,9 +28,9 @@ public class MessageUtil {
     }
 
     public static int readMessage(final MutableDirectBuffer sourceBuffer, final int sourceIndex, final ByteBuffer targetBuffer) {
-        final int messageLength = getMessageLength(sourceBuffer, sourceIndex);
-        final int offset = getReadBytes(sourceBuffer, sourceIndex);
-        final int length = Math.min(targetBuffer.remaining(), messageLength - offset);
+        final var messageLength = getMessageLength(sourceBuffer, sourceIndex);
+        final var offset = getReadBytes(sourceBuffer, sourceIndex);
+        final var length = Math.min(targetBuffer.remaining(), messageLength - offset);
 
         getMessageData(sourceBuffer, sourceIndex, targetBuffer, length, offset);
         setReadBytes(sourceBuffer, sourceIndex, offset + length);

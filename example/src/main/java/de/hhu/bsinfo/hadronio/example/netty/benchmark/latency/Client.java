@@ -1,14 +1,12 @@
 package de.hhu.bsinfo.hadronio.example.netty.benchmark.latency;
 
-import de.hhu.bsinfo.hadronio.example.netty.benchmark.throughput.ClientHandler;
-import de.hhu.bsinfo.hadronio.util.NettyUtil;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelInitializer;
-import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,21 +36,21 @@ public class Client implements Runnable {
     @Override
     public void run() {
         LOGGER.info("Connecting to server [{}]", remoteAddress);
-        final EventLoopGroup workerGroup = new NioEventLoopGroup();
-        final Bootstrap bootstrap = new Bootstrap();
+        final var workerGroup = new NioEventLoopGroup();
+        final var bootstrap = new Bootstrap();
 
         bootstrap.group(workerGroup)
                 .channel(NioSocketChannel.class)
                 .handler(new ChannelInitializer<SocketChannel>() {
                     @Override
-                    protected void initChannel(final SocketChannel channel) {
+                    protected void initChannel(final @NotNull SocketChannel channel) {
                         channel.pipeline().addLast(new ClientWarmupHandler(messageSize, messageCount, messageCount / 10));
                     }
                 });
 
         try {
             for (int i = 0; i < connections; i++) {
-                final Channel channel = bootstrap.connect(remoteAddress, bindAddress).sync().channel();
+                final var channel = bootstrap.connect(remoteAddress, bindAddress).sync().channel();
                 channel.closeFuture().addListener(future -> LOGGER.info("Closed channel connected to [{}]", channel.remoteAddress()));
                 channels[i] = channel;
             }

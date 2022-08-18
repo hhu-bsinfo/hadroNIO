@@ -44,7 +44,7 @@ public class EchoDemo implements Runnable {
             bindAddress = isServer ? bindAddress : new InetSocketAddress(bindAddress.getAddress(), 0);
         }
 
-        final Runnable runnable = isServer ? new Server(bindAddress) : new Client(remoteAddress);
+        final var runnable = isServer ? new Server(bindAddress) : new Client(remoteAddress);
         runnable.run();
     }
 }

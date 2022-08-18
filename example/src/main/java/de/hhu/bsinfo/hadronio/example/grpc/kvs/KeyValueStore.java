@@ -15,10 +15,10 @@ class KeyValueStore extends KeyValueStoreGrpc.KeyValueStoreImplBase {
 
     @Override
     public void insert(final KeyValueRequest request, final StreamObserver<StatusResponse> responseObserver) {
-        final ByteBuffer key = request.getKey().asReadOnlyByteBuffer();
-        final ByteBuffer value = request.getValue().asReadOnlyByteBuffer();
+        final var key = request.getKey().asReadOnlyByteBuffer();
+        final var value = request.getValue().asReadOnlyByteBuffer();
 
-        final ByteBuffer oldValue = store.putIfAbsent(key, value);
+        final var oldValue = store.putIfAbsent(key, value);
         if (oldValue == null) {
             responseObserver.onNext(StatusResponse.newBuilder().setStatus(Status.Code.OK.value()).build());
         } else {
@@ -30,8 +30,8 @@ class KeyValueStore extends KeyValueStoreGrpc.KeyValueStoreImplBase {
 
     @Override
     public void update(final KeyValueRequest request, final StreamObserver<StatusResponse> responseObserver) {
-        final ByteBuffer key = request.getKey().asReadOnlyByteBuffer();
-        final ByteBuffer value = request.getValue().asReadOnlyByteBuffer();
+        final var key = request.getKey().asReadOnlyByteBuffer();
+        final var value = request.getValue().asReadOnlyByteBuffer();
 
         ByteBuffer oldValue;
         do {
@@ -49,9 +49,9 @@ class KeyValueStore extends KeyValueStoreGrpc.KeyValueStoreImplBase {
 
     @Override
     public void get(final KeyRequest request, final StreamObserver<ValueResponse> responseObserver) {
-        final ByteBuffer key = request.getKey().asReadOnlyByteBuffer();
+        final var key = request.getKey().asReadOnlyByteBuffer();
 
-        final ByteBuffer value = store.get(key);
+        final var value = store.get(key);
         if (value == null) {
             responseObserver.onNext(ValueResponse.newBuilder().setStatus(Status.Code.NOT_FOUND.value()).build());
         } else {
@@ -63,9 +63,9 @@ class KeyValueStore extends KeyValueStoreGrpc.KeyValueStoreImplBase {
 
     @Override
     public void delete(final KeyRequest request, final StreamObserver<StatusResponse> responseObserver) {
-        final ByteBuffer key = request.getKey().asReadOnlyByteBuffer();
+        final var key = request.getKey().asReadOnlyByteBuffer();
 
-        final ByteBuffer oldValue = store.remove(key);
+        final var oldValue = store.remove(key);
         if (oldValue == null) {
             responseObserver.onNext(StatusResponse.newBuilder().setStatus(Status.Code.NOT_FOUND.value()).build());
         } else {

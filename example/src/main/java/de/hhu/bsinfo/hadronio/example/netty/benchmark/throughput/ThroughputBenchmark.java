@@ -80,7 +80,7 @@ public class ThroughputBenchmark implements Runnable {
             bindAddress = isServer ? bindAddress : new InetSocketAddress(bindAddress.getAddress(), 0);
         }
 
-        final Runnable runnable = isServer ? new Server(bindAddress, messageSize, messageCount, aggregationThreshold, connections, resultFileName, benchmarkName, benchmarkIteration) :
+        final var runnable = isServer ? new Server(bindAddress, messageSize, messageCount, aggregationThreshold, connections, resultFileName, benchmarkName, benchmarkIteration) :
                 new Client(bindAddress, remoteAddress, messageSize, messageCount, connections);
         runnable.run();
     }

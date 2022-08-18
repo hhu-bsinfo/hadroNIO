@@ -26,7 +26,7 @@ public class Shell implements Runnable {
         LOGGER.info("Use 'insert', 'update', 'get' or 'delete' to operate the key-value store");
 
         while (scanner.hasNextLine()) {
-            final String line = scanner.nextLine().trim();
+            final var line = scanner.nextLine().trim();
             if (!line.isEmpty()) {
                 parseLine(line);
             }
@@ -36,8 +36,8 @@ public class Shell implements Runnable {
     private void parseLine(final String line) {
         Status status;
         String value = null;
-        final String[] split = line.split(" ");
-        final String command = split[0].toLowerCase();
+        final var split = line.split(" ");
+        final var command = split[0].toLowerCase();
         final long startTime = System.nanoTime();
 
         switch (command) {

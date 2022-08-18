@@ -63,7 +63,7 @@ public class BlockingRunnable implements Runnable {
 
             result.setMeasuredTime(System.nanoTime() - startTime);
 
-            final ManagedChannel channel = (ManagedChannel) blockingStub.getChannel();
+            final var channel = (ManagedChannel) blockingStub.getChannel();
             channel.shutdown();
             channel.awaitTermination(5, TimeUnit.SECONDS);
         } catch (InterruptedException | BrokenBarrierException e) {

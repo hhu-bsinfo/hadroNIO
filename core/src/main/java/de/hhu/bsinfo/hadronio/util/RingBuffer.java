@@ -71,7 +71,7 @@ public class RingBuffer {
         int messagesRead = 0;
 
         // Retrieve our current position within the buffer
-        final AtomicBuffer buffer = this.buffer;
+        final var buffer = this.buffer;
         final int headPositionIndex = this.headPositionIndex;
         final long head = buffer.getLong(headPositionIndex);
         final int capacity = this.capacity;
@@ -107,7 +107,7 @@ public class RingBuffer {
     }
 
     public void commitRead(final int bytes) {
-        final AtomicBuffer buffer = this.buffer;
+        final var buffer = this.buffer;
         final int headPositionIndex = this.headPositionIndex;
         final long head = buffer.getLong(headPositionIndex);
 
@@ -115,7 +115,7 @@ public class RingBuffer {
     }
 
     public int tryClaim(final int length) {
-        final AtomicBuffer buffer = this.buffer;
+        final var buffer = this.buffer;
 
         // Calculate the required size in bytes
         final int recordLength = length + HEADER_LENGTH;
@@ -138,7 +138,7 @@ public class RingBuffer {
     }
 
     public void commitWrite(final int index) {
-        final AtomicBuffer buffer = this.buffer;
+        final var buffer = this.buffer;
 
         // Calculate the request index and length
         final int recordIndex = computeRecordIndex(index);
@@ -222,7 +222,7 @@ public class RingBuffer {
     }
 
     public int size() {
-        final AtomicBuffer buffer = this.buffer;
+        final var buffer = this.buffer;
         final int headPositionIndex = this.headPositionIndex;
         final int tailPositionIndex = this.tailPositionIndex;
 

@@ -243,6 +243,11 @@ The following properties are supported:
 - `de.hhu.bsinfo.hadronio.Configuration.RECEIVE_BUFFER_LENGTH`: Set the size of the receive ring buffer in byte (Default: `8388608`).
 - `de.hhu.bsinfo.hadronio.Configuration.BUFFER_SLICE_LENGTH`: Set the size of the buffer slices used for sending/receiving data (Default: `65536`). This value can have a huge performance impact, since it determines the maximum amount of data, that is send/received at once per channel.
 - `de.hhu.bsinfo.hadronio.Configuration.FLUSH_INTERVAL_SIZE`: Set the interval in which channels should be flushed (Default: `1024`). Every time, the set amount of messages has been sent, the channel will stop signalling `OP_WRITE`, until it has received an automatic acknowledgment message from the receiving side. This is done to prevent a receiver from being overloaded by too many messages. The default value did work fine in our tests, and there should be no need to alter it.
+- `de.hhu.bsinfo.hadronio.Configuration.POLL_METHOD`: Set the way the workers are polled (Default: `DYNAMIC`).
+  - `BUSY_POLLING` provides the best performance for applications with a low connection count, but uses a lot of cpu resources and does not scale well.
+  - `EPOLL` scales well with a lot of connections and saves cpu resources, but causes a higher latency than `BUSY_POLLING`, when using only few connections.
+  - `DYNAMIC` uses `BUSY_POLLING` for a specific amount of time and falls back to `EPOLL`, if no events happen in that timeslot. For applications, that send a lot of messages using few connections, this means that `BUSY_POLLING` is used most of the time. With rising connections or buffer sizes, the latency gets higher and at some point, this causes hadroNIO to use `EPOLL` instead of `BUSY_POLLING`.
+- `de.hhu.bsinfo.hadronio.Configuration.BUSY_POLL_TIMEOUT_NANOS`: The amount of time in nanoseconds, that `BUSY_POLLING` is used before falling back to `EPOLL`, when using the `DYNAMIC` poll method (Default: `20000`).
 
 ## Include in other projects
 

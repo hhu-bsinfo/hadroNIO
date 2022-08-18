@@ -5,7 +5,6 @@ import site.ycsb.Client;
 import java.net.InetSocketAddress;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.List;
 
 public class YcsbRunner implements Runnable {
 
@@ -39,7 +38,7 @@ public class YcsbRunner implements Runnable {
     }
 
     private String[] generateParameters(final Phase phase) {
-        List<String> parameters = new ArrayList<>();
+        final var parameters = new ArrayList<String>();
 
         if (phase == Phase.LOAD) {
             parameters.add("-load");
@@ -54,7 +53,7 @@ public class YcsbRunner implements Runnable {
         // Write results to file if path was set
         if (export != null) {
             parameters.add("-p");
-            parameters.add(String.format("exportfile=%s", export.toAbsolutePath().toString()));
+            parameters.add(String.format("exportfile=%s", export.toAbsolutePath()));
             parameters.add("-p");
             parameters.add(String.format("exporter=%s", JSON_EXPORTER));
         }

@@ -2,7 +2,6 @@ package de.hhu.bsinfo.hadronio.example.grpc.benchmark;
 
 import com.google.protobuf.ByteString;
 import io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder;
-import io.grpc.netty.shaded.io.netty.channel.EventLoopGroup;
 import io.grpc.netty.shaded.io.netty.channel.nio.NioEventLoopGroup;
 import io.grpc.netty.shaded.io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.grpc.stub.StreamObserver;
@@ -28,9 +27,9 @@ public class Server implements Runnable {
     @Override
     public void run() {
         LOGGER.info("Starting server on port [{}]", bindAddress.getPort());
-        final EventLoopGroup acceptorGroup = new NioEventLoopGroup(ACCEPTOR_THREADS);
-        final EventLoopGroup workerGroup = new NioEventLoopGroup();
-        final io.grpc.Server server = NettyServerBuilder.forPort(bindAddress.getPort())
+        final var acceptorGroup = new NioEventLoopGroup(ACCEPTOR_THREADS);
+        final var workerGroup = new NioEventLoopGroup();
+        final var server = NettyServerBuilder.forPort(bindAddress.getPort())
                 .bossEventLoopGroup(acceptorGroup)
                 .workerEventLoopGroup(workerGroup)
                 .channelType(NioServerSocketChannel.class)
@@ -57,7 +56,7 @@ public class Server implements Runnable {
         private final BenchmarkMessage answer;
 
         public BenchmarkImpl(int requestSize) {
-            final byte[] answerBuffer = new byte[requestSize];
+            final var answerBuffer = new byte[requestSize];
             for (int i = 0; i < requestSize; i++) {
                 answerBuffer[i] = (byte) i;
             }

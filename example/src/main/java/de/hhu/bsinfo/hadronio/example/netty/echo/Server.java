@@ -2,11 +2,12 @@ package de.hhu.bsinfo.hadronio.example.netty.echo;
 
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelInitializer;
-import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import java.net.InetSocketAddress;
+
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,16 +26,16 @@ public class Server implements Runnable {
     @Override
     public void run() {
         LOGGER.info("Starting server on [{}]", bindAddress);
-        final EventLoopGroup acceptorGroup = new NioEventLoopGroup(ACCEPTOR_THREADS);
-        final EventLoopGroup workerGroup = new NioEventLoopGroup(WORKER_THREADS);
-        final ServerBootstrap bootstrap = new ServerBootstrap();
+        final var acceptorGroup = new NioEventLoopGroup(ACCEPTOR_THREADS);
+        final var workerGroup = new NioEventLoopGroup(WORKER_THREADS);
+        final var bootstrap = new ServerBootstrap();
 
         bootstrap.group(acceptorGroup, workerGroup)
             .channel(NioServerSocketChannel.class)
             .childHandler(
                 new ChannelInitializer<SocketChannel>() {
                     @Override
-                    protected void initChannel(SocketChannel channel) {
+                    protected void initChannel(@NotNull SocketChannel channel) {
                         channel.closeFuture().addListener(future -> LOGGER.info("Socket channel closed"));
                         channel.pipeline().addLast(new Handler());
                     }

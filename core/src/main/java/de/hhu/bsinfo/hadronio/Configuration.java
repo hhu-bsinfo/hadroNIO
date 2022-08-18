@@ -48,8 +48,8 @@ class Configuration {
         final int bufferSliceLength = Integer.parseInt(System.getProperty("de.hhu.bsinfo.hadronio.Configuration.BUFFER_SLICE_LENGTH", String.valueOf(DEFAULT_BUFFER_SLICE_LENGTH)));
         final int flushIntervalSize = Integer.parseInt(System.getProperty("de.hhu.bsinfo.hadronio.Configuration.FLUSH_INTERVAL_SIZE", String.valueOf(DEFAULT_FLUSH_INTERVAL_SIZE)));
         final int busyPollTimeoutNanos = Integer.parseInt(System.getProperty("de.hhu.bsinfo.hadronio.Configuration.BUSY_POLL_TIMEOUT_NANOS", String.valueOf(DEFAULT_BUSY_POLL_TIMEOUT_NANOS)));
-        final PollMethod pollMethod = PollMethod.valueOf(System.getProperty("de.hhu.bsinfo.hadronio.Configuration.POLL_METHOD", DEFAULT_POLL_METHOD));
-        final String providerClass = System.getProperty("de.hhu.bsinfo.hadronio.Configuration.PROVIDER_CLASS", DEFAULT_PROVIDER_CLASS);
+        final var pollMethod = PollMethod.valueOf(System.getProperty("de.hhu.bsinfo.hadronio.Configuration.POLL_METHOD", DEFAULT_POLL_METHOD));
+        final var providerClass = System.getProperty("de.hhu.bsinfo.hadronio.Configuration.PROVIDER_CLASS", DEFAULT_PROVIDER_CLASS);
 
         checkConfiguration(sendBufferLength, receiveBufferLength, bufferSliceLength, flushIntervalSize, busyPollTimeoutNanos, providerClass);
         return new Configuration(sendBufferLength, receiveBufferLength, bufferSliceLength + MessageUtil.HEADER_LENGTH, flushIntervalSize, busyPollTimeoutNanos, pollMethod, providerClass);
@@ -148,7 +148,7 @@ class Configuration {
                 ",receiveBufferSize=" + receiveBufferLength +
                 ",bufferSliceLength=" + bufferSliceLength +
                 ",flushIntervalSize=" + flushIntervalSize +
-                ",busyPollTimeoutNanos=" + busyPollTimeoutNanos +
+                (pollMethod == PollMethod.DYNAMIC ? (",busyPollTimeoutNanos=" + busyPollTimeoutNanos) : "") +
                 ",pollMethod=" + pollMethod +
                 ",providerClass=" + providerClass +
                 ")";

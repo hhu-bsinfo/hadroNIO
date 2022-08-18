@@ -85,7 +85,7 @@ public class BenchmarkDemo implements Runnable {
             bindAddress = isServer ? bindAddress : new InetSocketAddress(bindAddress.getAddress(), 0);
         }
 
-        final Runnable runnable = isServer ? new Server(bindAddress, answerSize) : new Client(remoteAddress, requestCount, requestSize, answerSize, connections, aggregationThreshold, blocking);
+        final var runnable = isServer ? new Server(bindAddress, answerSize) : new Client(remoteAddress, requestCount, requestSize, answerSize, connections, aggregationThreshold, blocking);
         runnable.run();
     }
 }

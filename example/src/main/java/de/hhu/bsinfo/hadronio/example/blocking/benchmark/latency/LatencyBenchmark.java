@@ -86,7 +86,7 @@ public class LatencyBenchmark implements Runnable {
 
         try {
             if (isServer) {
-                final ServerSocketChannel serverSocket = ServerSocketChannel.open();
+                final var serverSocket = ServerSocketChannel.open();
                 serverSocket.configureBlocking(true);
                 serverSocket.bind(bindAddress);
                 socket = serverSocket.accept();
@@ -99,7 +99,7 @@ public class LatencyBenchmark implements Runnable {
             return;
         }
 
-        final SyncSignal closeSignal = new SyncSignal(socket);
+        final var closeSignal = new SyncSignal(socket);
         final int warmupCount = (messageCount / 10) > 0 ? (messageCount / 10) : 1;
 
         try {

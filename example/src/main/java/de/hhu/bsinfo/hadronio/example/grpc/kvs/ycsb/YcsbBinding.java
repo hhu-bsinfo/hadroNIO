@@ -29,21 +29,21 @@ public class YcsbBinding extends DB {
 
     @Override
     public Status insert(String table, String key, Map<String, ByteIterator> values) {
-        for (final Map.Entry<String, ByteIterator> entry : values.entrySet()) {
+        for (final var entry : values.entrySet()) {
             reusableObject.setFieldValue(entry.getKey(), entry.getValue());
         }
 
-        final io.grpc.Status status = client.insert(generateKey(table, key), reusableObject.getData());
+        final var status = client.insert(generateKey(table, key), reusableObject.getData());
         return status == io.grpc.Status.OK ? Status.OK : Status.FORBIDDEN;
     }
 
     @Override
     public Status update(String table, String key, Map<String, ByteIterator> values) {
-        for (Map.Entry<String, ByteIterator> entry : values.entrySet()) {
+        for (final var entry : values.entrySet()) {
             reusableObject.setFieldValue(entry.getKey(), entry.getValue());
         }
 
-        final io.grpc.Status status = client.update(generateKey(table, key), reusableObject.getData());
+        final var status = client.update(generateKey(table, key), reusableObject.getData());
         return status == io.grpc.Status.OK ? Status.OK : Status.NOT_FOUND;
     }
 
@@ -62,7 +62,7 @@ public class YcsbBinding extends DB {
                 result.put("field" + i, reusableObject.getFieldIterator(i));
             }
         } else {
-            for (final String field : fields) {
+            for (final var field : fields) {
                 result.put(field, reusableObject.getFieldIterator(field));
             }
         }
@@ -72,12 +72,12 @@ public class YcsbBinding extends DB {
 
     @Override
     public Status delete(String table, String key) {
-        final io.grpc.Status status = client.delete(generateKey(table, key));
+        final var status = client.delete(generateKey(table, key));
         return status == io.grpc.Status.OK ? Status.OK : Status.NOT_FOUND;
     }
 
     @Override
-    public Status scan(String table, String startkey, int recordcount, Set<String> fields, Vector<HashMap<String, ByteIterator>> result) {
+    public Status scan(String table, String startKey, int recordCount, Set<String> fields, Vector<HashMap<String, ByteIterator>> result) {
         LOGGER.error("Operation [SCAN] is not supported");
         return Status.NOT_IMPLEMENTED;
     }

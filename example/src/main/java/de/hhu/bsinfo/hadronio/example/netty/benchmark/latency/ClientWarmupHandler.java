@@ -3,6 +3,7 @@ package de.hhu.bsinfo.hadronio.example.netty.benchmark.latency;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,8 +36,8 @@ public class ClientWarmupHandler extends ChannelInboundHandlerAdapter {
     }
 
     @Override
-    public void channelRead(final ChannelHandlerContext context, final Object message) {
-        final ByteBuf receiveBuffer = (ByteBuf) message;
+    public void channelRead(final @NotNull ChannelHandlerContext context, final @NotNull Object message) {
+        final var receiveBuffer = (ByteBuf) message;
         receivedBytes += receiveBuffer.readableBytes();
         receiveBuffer.release();
         if (receivedBytes == messageSize) {
@@ -49,7 +50,7 @@ public class ClientWarmupHandler extends ChannelInboundHandlerAdapter {
 
         if (receivedMessages >= warmupCount) {
             LOGGER.info("Finished warmup");
-            final ClientHandler handler = new ClientHandler(messageSize, messageCount, sendBuffer);
+            final var handler = new ClientHandler(messageSize, messageCount, sendBuffer);
             context.channel().pipeline().removeLast();
             context.channel().pipeline().addLast(handler);
         }

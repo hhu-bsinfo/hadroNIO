@@ -1,13 +1,9 @@
 package de.hhu.bsinfo.hadronio.example.netty.benchmark.throughput;
 
-import de.hhu.bsinfo.hadronio.example.netty.Netty;
-import de.hhu.bsinfo.hadronio.util.NettyUtil;
 import de.hhu.bsinfo.hadronio.util.ThroughputCombiner;
-import de.hhu.bsinfo.hadronio.util.ThroughputResult;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelInitializer;
-import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
@@ -15,11 +11,8 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.concurrent.CyclicBarrier;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadFactory;
 
-import net.openhft.affinity.AffinityStrategies;
-import net.openhft.affinity.AffinityThreadFactory;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,17 +57,17 @@ public class Server implements Runnable {
     @Override
     public void run() {
         LOGGER.info("Starting server on [{}]", bindAddress);
-        final EventLoopGroup acceptorGroup = new NioEventLoopGroup(ACCEPTOR_THREADS);
-        final EventLoopGroup workerGroup = new NioEventLoopGroup();
-        final ServerBootstrap bootstrap = new ServerBootstrap();
-        final ThroughputCombiner combiner = new ThroughputCombiner();
+        final var acceptorGroup = new NioEventLoopGroup(ACCEPTOR_THREADS);
+        final var workerGroup = new NioEventLoopGroup();
+        final var bootstrap = new ServerBootstrap();
+        final var combiner = new ThroughputCombiner();
 
         bootstrap.group(acceptorGroup, workerGroup)
             .channel(NioServerSocketChannel.class)
             .childHandler(
             new ChannelInitializer<SocketChannel>() {
                 @Override
-                protected void initChannel(SocketChannel channel) {
+                protected void initChannel(@NotNull SocketChannel channel) {
                     final Object syncLock = new Object();
                     channel.closeFuture().addListener(future -> LOGGER.info("Closed channel connected to [{}]", channel.remoteAddress()));
                     channel.pipeline().addLast(new ServerHandler(syncLock));
@@ -116,7 +109,7 @@ public class Server implements Runnable {
                 threads[i].join();
             }
 
-            final ThroughputResult result = combiner.getCombinedResult();
+            final var result = combiner.getCombinedResult();
             LOGGER.info("{}", result);
 
             if (!resultFileName.isEmpty()) {

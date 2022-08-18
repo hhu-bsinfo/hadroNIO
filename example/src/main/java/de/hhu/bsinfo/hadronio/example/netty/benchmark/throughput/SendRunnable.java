@@ -76,7 +76,7 @@ public class SendRunnable implements Runnable {
         }
 
         // Cleanup buffers
-        for (final ByteBuf buf : buffers) {
+        for (final var buf : buffers) {
             if (buf.refCnt() > 0) {
                 buf.release(buf.refCnt());
             }
@@ -94,7 +94,7 @@ public class SendRunnable implements Runnable {
         }
 
         for (int i = 0; i < messageCount - 1; i++) {
-            final ByteBuf buffer = buffers[i % aggregationThreshold];
+            final var buffer = buffers[i % aggregationThreshold];
             buffer.setIndex(0, buffer.capacity());
 
             if (i % aggregationThreshold == 0) {
@@ -104,7 +104,7 @@ public class SendRunnable implements Runnable {
             }
         }
 
-        final ByteBuf buffer = buffers[(messageCount - 1) % aggregationThreshold];
+        final var buffer = buffers[(messageCount - 1) % aggregationThreshold];
         buffer.setIndex(0, buffer.capacity());
         channel.writeAndFlush(buffer).sync();
     }

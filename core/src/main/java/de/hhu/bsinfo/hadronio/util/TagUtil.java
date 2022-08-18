@@ -3,7 +3,6 @@ package de.hhu.bsinfo.hadronio.util;
 import java.util.PrimitiveIterator;
 import java.util.Random;
 import java.util.zip.CRC32;
-import java.util.zip.Checksum;
 
 public class TagUtil {
 
@@ -13,7 +12,7 @@ public class TagUtil {
 
         private final byte value;
 
-        MessageType(byte value) {
+        MessageType(final byte value) {
             this.value = value;
         }
 
@@ -21,7 +20,7 @@ public class TagUtil {
             return value;
         }
 
-        static MessageType fromByte(byte value) {
+        static MessageType fromByte(final byte value) {
             switch (value) {
                 case 0:
                     return DEFAULT;
@@ -47,7 +46,7 @@ public class TagUtil {
     }
 
     public static long calculateChecksum(final long tag) {
-        final Checksum checksum = new CRC32();
+        final var checksum = new CRC32();
 
         for (int i = 0; i < Long.BYTES; i++) {
             final byte currentByte = (byte) (tag >> (i * 8));
@@ -61,7 +60,7 @@ public class TagUtil {
         return tag & TAG_MASK_TARGET_ID;
     }
 
-    public static MessageType getMessageType(long tag) {
+    public static MessageType getMessageType(final long tag) {
         return MessageType.fromByte((byte) ((tag & TAG_MASK_MESSAGE_TYPE) >> 56));
     }
 
