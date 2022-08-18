@@ -26,7 +26,6 @@ public class HadronioProvider extends SelectorProvider implements Closeable {
 
     public HadronioProvider() {
         LOGGER.info("Initializing HadronioProvider\n\n{}\n", getBanner());
-
         final Configuration configuration = Configuration.getInstance();
         LOGGER.info("hadroNIO configuration: [{}]", configuration);
 
@@ -55,14 +54,12 @@ public class HadronioProvider extends SelectorProvider implements Closeable {
     @Override
     public AbstractSelector openSelector() throws IOException {
         LOGGER.info("Creating new HadronioSelector");
-
-        return new HadronioSelector(this, Configuration.getInstance().getPollMethod());
+        return new HadronioSelector(this);
     }
 
     @Override
     public ServerSocketChannel openServerSocketChannel() throws IOException {
         LOGGER.info("Creating new HadronioServerSocketChannel");
-
         final UcxListener serverSocketChannel = provider.createListener();
         return new HadronioServerSocketChannel(this, serverSocketChannel);
     }
@@ -70,7 +67,6 @@ public class HadronioProvider extends SelectorProvider implements Closeable {
     @Override
     public SocketChannel openSocketChannel() throws IOException {
         LOGGER.info("Creating new HadronioSocketChannel");
-
         final UcxEndpoint socketChannel = provider.createEndpoint();
         return new HadronioSocketChannel(this, socketChannel);
     }

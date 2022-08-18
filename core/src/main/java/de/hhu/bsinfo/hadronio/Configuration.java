@@ -22,14 +22,20 @@ class Configuration {
     private static final int DEFAULT_RECEIVE_BUFFER_LENGTH = 8 * 1024 * 1024;
     private static final int DEFAULT_BUFFER_SLICE_LENGTH = 64 * 1024;
     private static final int DEFAULT_FLUSH_INTERVAL_SIZE = 1024;
+
+    private static final int DEFAULT_BUSY_POLL_TIMEOUT = 3000;
     private static final String DEFAULT_POLL_METHOD = "DYNAMIC";
+
     private static final String DEFAULT_PROVIDER_CLASS = "de.hhu.bsinfo.hadronio.jucx.JucxProvider";
 
     private final int sendBufferLength;
     private final int receiveBufferLength;
     private final int bufferSliceLength;
     private final int flushIntervalSize;
+
+    private final int busyPollTimeout;
     private final PollMethod pollMethod;
+
     private final String providerClass;
 
     static Configuration getInstance() throws IllegalArgumentException {
@@ -41,14 +47,15 @@ class Configuration {
         final int receiveBufferLength = Integer.parseInt(System.getProperty("de.hhu.bsinfo.hadronio.Configuration.RECEIVE_BUFFER_LENGTH", String.valueOf(DEFAULT_RECEIVE_BUFFER_LENGTH)));
         final int bufferSliceLength = Integer.parseInt(System.getProperty("de.hhu.bsinfo.hadronio.Configuration.BUFFER_SLICE_LENGTH", String.valueOf(DEFAULT_BUFFER_SLICE_LENGTH)));
         final int flushIntervalSize = Integer.parseInt(System.getProperty("de.hhu.bsinfo.hadronio.Configuration.FLUSH_INTERVAL_SIZE", String.valueOf(DEFAULT_FLUSH_INTERVAL_SIZE)));
+        final int busyPollTimeout = Integer.parseInt(System.getProperty("de.hhu.bsinfo.hadronio.Configuration.BUSY_POLL_TIMEOUT", String.valueOf(DEFAULT_BUSY_POLL_TIMEOUT)));
         final PollMethod pollMethod = PollMethod.valueOf(System.getProperty("de.hhu.bsinfo.hadronio.Configuration.POLL_METHOD", DEFAULT_POLL_METHOD));
         final String providerClass = System.getProperty("de.hhu.bsinfo.hadronio.Configuration.PROVIDER_CLASS", DEFAULT_PROVIDER_CLASS);
 
-        checkConfiguration(sendBufferLength, receiveBufferLength, bufferSliceLength, flushIntervalSize, providerClass);
-        return new Configuration(sendBufferLength, receiveBufferLength, bufferSliceLength + MessageUtil.HEADER_LENGTH, flushIntervalSize, pollMethod, providerClass);
+        checkConfiguration(sendBufferLength, receiveBufferLength, bufferSliceLength, flushIntervalSize, busyPollTimeout, providerClass);
+        return new Configuration(sendBufferLength, receiveBufferLength, bufferSliceLength + MessageUtil.HEADER_LENGTH, flushIntervalSize, busyPollTimeout, pollMethod, providerClass);
     }
 
-    private static void checkConfiguration(final int sendBufferLength, final int receiveBufferLength, final int bufferSliceLength, final int flushIntervalSize, final String providerClass) throws IllegalArgumentException {
+    private static void checkConfiguration(final int sendBufferLength, final int receiveBufferLength, final int bufferSliceLength, final int flushIntervalSize, final int busyPollTimeout, final String providerClass) throws IllegalArgumentException {
         if (sendBufferLength < MIN_SEND_BUFFER_LENGTH) {
             throw new IllegalArgumentException("SEND_BUFFER_LENGTH must be a at least " + MIN_SEND_BUFFER_LENGTH + " byte!");
         }
@@ -85,6 +92,10 @@ class Configuration {
             throw new IllegalArgumentException("SEND_BUFFER_LENGTH must be a at least twice as high as RECEIVE_BUFFER_LENGTH!");
         }
 
+        if (busyPollTimeout <= 0) {
+            throw new IllegalArgumentException("BUSY_POLL_TIMEOUT must be greater than 0!");
+        }
+
         try {
             Class.forName(providerClass);
         } catch (ClassNotFoundException e) {
@@ -92,11 +103,12 @@ class Configuration {
         }
     }
 
-    private Configuration(final int sendBufferLength, final int receiveBufferLength, final int bufferSliceLength, final int flushIntervalSize, final PollMethod pollMethod, final String providerClass) {
+    private Configuration(final int sendBufferLength, final int receiveBufferLength, final int bufferSliceLength, final int flushIntervalSize, final int busyPollTimeout, final PollMethod pollMethod, final String providerClass) {
         this.sendBufferLength = sendBufferLength;
         this.receiveBufferLength = receiveBufferLength;
         this.bufferSliceLength = bufferSliceLength;
         this.flushIntervalSize = flushIntervalSize;
+        this.busyPollTimeout = busyPollTimeout;
         this.pollMethod = pollMethod;
         this.providerClass = providerClass;
     }
@@ -115,6 +127,10 @@ class Configuration {
 
     int getFlushIntervalSize() {
         return flushIntervalSize;
+    }
+
+    int getBusyPollTimeout() {
+        return busyPollTimeout;
     }
 
     PollMethod getPollMethod() {

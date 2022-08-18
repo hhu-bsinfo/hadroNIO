@@ -20,7 +20,6 @@ import java.util.*;
 class HadronioSelector extends AbstractSelector {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(HadronioSelector.class);
-    private static final int BUSY_POLL_TIMEOUT = 3000;
 
     private final Set<SelectionKey> keys = new HashSet<>();
     private final FixedSelectionKeySet selectedKeys = new FixedSelectionKeySet();
@@ -28,16 +27,18 @@ class HadronioSelector extends AbstractSelector {
     private final Int2ObjectHashMap<HadronioSelectableChannel> epollMap = new Int2ObjectHashMap<>();
     private final Object wakeupLock = new Object();
     private final Configuration.PollMethod pollMethod;
+    private final int busyPollTimeout;
 
     private EpollEvents epollEvents;
-    private int currentBusyPollTimeout = BUSY_POLL_TIMEOUT;
     private boolean lastPollHadEvents = true;
     private boolean wakeupStatus = false;
     private boolean selectorClosed = false;
 
-    HadronioSelector(final SelectorProvider selectorProvider, Configuration.PollMethod pollMethod) throws IOException {
+    HadronioSelector(final SelectorProvider selectorProvider) throws IOException {
         super(selectorProvider);
-        this.pollMethod = pollMethod;
+        final Configuration configuration = Configuration.getInstance();
+        pollMethod = configuration.getPollMethod();
+        busyPollTimeout = configuration.getBusyPollTimeout();
     }
 
     @Override
@@ -220,11 +221,11 @@ class HadronioSelector extends AbstractSelector {
                 long timeLeft = timeout;
                 boolean eventsPolled = false;
                 if (lastPollHadEvents) {
-                    eventsPolled = busyPollWorkers(true, (BUSY_POLL_TIMEOUT < timeLeft || timeLeft == 0) ? BUSY_POLL_TIMEOUT : timeLeft);
+                    eventsPolled = busyPollWorkers(true, (busyPollTimeout < timeLeft || timeLeft == 0) ? busyPollTimeout : timeLeft);
                 }
 
                 if (timeout > 0) {
-                    timeLeft -= BUSY_POLL_TIMEOUT;
+                    timeLeft -= busyPollTimeout;
                 }
 
                 synchronized (wakeupLock) {
