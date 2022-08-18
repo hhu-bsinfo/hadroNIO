@@ -38,7 +38,7 @@ class HadronioSelector extends AbstractSelector {
         super(selectorProvider);
         final Configuration configuration = Configuration.getInstance();
         pollMethod = configuration.getPollMethod();
-        busyPollTimeout = configuration.getBusyPollTimeout();
+        busyPollTimeout = configuration.getBusyPollTimeoutNanos();
     }
 
     @Override
@@ -179,7 +179,7 @@ class HadronioSelector extends AbstractSelector {
                         LOGGER.trace("Finished select iteration (blocking: [{}], keys: [{}], selectedKeys: [{}])", blocking, keys.size(), selectedKeys.size());
 
                         if (blocking && keys.size() > 0 && selectedKeys.size() == 0) {
-                            pollWorkers(true, timeout);
+                            pollWorkers(true, timeout * 1000000);
 
                             synchronized (wakeupLock) {
                                 if (wakeupStatus) {
@@ -199,7 +199,7 @@ class HadronioSelector extends AbstractSelector {
         }
     }
 
-    private void pollWorkers(final boolean blocking, final long timeout) throws IOException {
+    private void pollWorkers(final boolean blocking, final long timeoutNanos) throws IOException {
         if (!blocking) {
             busyPollWorkers(false, 0);
             return;
@@ -207,29 +207,29 @@ class HadronioSelector extends AbstractSelector {
 
         switch (pollMethod) {
             case BUSY_POLLING:
-                busyPollWorkers(true, timeout);
+                busyPollWorkers(true, timeoutNanos);
                 break;
             case EPOLL: {
                 final boolean eventsPolled = drainWorkers();
                 if (!eventsPolled) {
-                    epollWorkers(timeout);
+                    epollWorkers(timeoutNanos);
                 }
 
                 break;
             }
             case DYNAMIC: {
-                long timeLeft = timeout;
+                long timeLeft = timeoutNanos;
                 boolean eventsPolled = false;
                 if (lastPollHadEvents) {
                     eventsPolled = busyPollWorkers(true, (busyPollTimeout < timeLeft || timeLeft == 0) ? busyPollTimeout : timeLeft);
                 }
 
-                if (timeout > 0) {
+                if (timeoutNanos > 0) {
                     timeLeft -= busyPollTimeout;
                 }
 
                 synchronized (wakeupLock) {
-                    if (wakeupStatus || (timeout > 0 && timeLeft <= 0)) {
+                    if (wakeupStatus || (timeoutNanos > 0 && timeLeft <= 0)) {
                         lastPollHadEvents = wakeupStatus;
                         break;
                     }
@@ -248,10 +248,10 @@ class HadronioSelector extends AbstractSelector {
         }
     }
 
-    private boolean busyPollWorkers(final boolean blocking, final long timeout) {
-            LOGGER.trace("Busy polling workers (blocking: [{}], timeout: [{}])", blocking, timeout);
+    private boolean busyPollWorkers(final boolean blocking, final long timeoutNanos) {
+            LOGGER.trace("Busy polling workers (blocking: [{}], timeout: [{} ns])", blocking, timeoutNanos);
             boolean eventsPolled = false;
-            final long endTime = System.nanoTime() + timeout * 1000000;
+            final long endTime = System.nanoTime() + timeoutNanos;
 
             do {
                 for (final SelectionKey key : keys) {
@@ -259,8 +259,8 @@ class HadronioSelector extends AbstractSelector {
                     eventsPolled |= channel.getWorker().progress();
                 }
 
-                if (!eventsPolled && timeout > 0 && System.nanoTime() > endTime) {
-                    LOGGER.trace("Timeout of [{}] has been reached while polling workers", timeout);
+                if (!eventsPolled && timeoutNanos > 0 && System.nanoTime() > endTime) {
+                    LOGGER.trace("Timeout of [{}] has been reached while polling workers", timeoutNanos);
                     break;
                 }
             } while(blocking && !eventsPolled && !wakeupStatus);
@@ -269,9 +269,9 @@ class HadronioSelector extends AbstractSelector {
             return eventsPolled;
     }
 
-    private boolean epollWorkers(final long timeout) throws IOException {
-        LOGGER.trace("Polling workers using epoll (timeout: [{}])", timeout);
-        final int eventCount = epoll.wait(epollEvents, timeout <= 0 ? -1 : (int) timeout);
+    private boolean epollWorkers(final long timeoutNanos) throws IOException {
+        LOGGER.trace("Polling workers using epoll (timeout: [{} ns])", timeoutNanos);
+        final int eventCount = epoll.wait(epollEvents, timeoutNanos <= 0 ? -1 : (int) (timeoutNanos / 1000000));
         LOGGER.trace("Epoll wait() finished (eventCount: [{}])", eventCount);
 
         boolean eventsPolled = false;

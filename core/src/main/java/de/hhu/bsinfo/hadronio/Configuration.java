@@ -23,7 +23,7 @@ class Configuration {
     private static final int DEFAULT_BUFFER_SLICE_LENGTH = 64 * 1024;
     private static final int DEFAULT_FLUSH_INTERVAL_SIZE = 1024;
 
-    private static final int DEFAULT_BUSY_POLL_TIMEOUT = 3000;
+    private static final int DEFAULT_BUSY_POLL_TIMEOUT_NANOS = 20000;
     private static final String DEFAULT_POLL_METHOD = "DYNAMIC";
 
     private static final String DEFAULT_PROVIDER_CLASS = "de.hhu.bsinfo.hadronio.jucx.JucxProvider";
@@ -33,7 +33,7 @@ class Configuration {
     private final int bufferSliceLength;
     private final int flushIntervalSize;
 
-    private final int busyPollTimeout;
+    private final int busyPollTimeoutNanos;
     private final PollMethod pollMethod;
 
     private final String providerClass;
@@ -47,12 +47,12 @@ class Configuration {
         final int receiveBufferLength = Integer.parseInt(System.getProperty("de.hhu.bsinfo.hadronio.Configuration.RECEIVE_BUFFER_LENGTH", String.valueOf(DEFAULT_RECEIVE_BUFFER_LENGTH)));
         final int bufferSliceLength = Integer.parseInt(System.getProperty("de.hhu.bsinfo.hadronio.Configuration.BUFFER_SLICE_LENGTH", String.valueOf(DEFAULT_BUFFER_SLICE_LENGTH)));
         final int flushIntervalSize = Integer.parseInt(System.getProperty("de.hhu.bsinfo.hadronio.Configuration.FLUSH_INTERVAL_SIZE", String.valueOf(DEFAULT_FLUSH_INTERVAL_SIZE)));
-        final int busyPollTimeout = Integer.parseInt(System.getProperty("de.hhu.bsinfo.hadronio.Configuration.BUSY_POLL_TIMEOUT", String.valueOf(DEFAULT_BUSY_POLL_TIMEOUT)));
+        final int busyPollTimeoutNanos = Integer.parseInt(System.getProperty("de.hhu.bsinfo.hadronio.Configuration.BUSY_POLL_TIMEOUT_NANOS", String.valueOf(DEFAULT_BUSY_POLL_TIMEOUT_NANOS)));
         final PollMethod pollMethod = PollMethod.valueOf(System.getProperty("de.hhu.bsinfo.hadronio.Configuration.POLL_METHOD", DEFAULT_POLL_METHOD));
         final String providerClass = System.getProperty("de.hhu.bsinfo.hadronio.Configuration.PROVIDER_CLASS", DEFAULT_PROVIDER_CLASS);
 
-        checkConfiguration(sendBufferLength, receiveBufferLength, bufferSliceLength, flushIntervalSize, busyPollTimeout, providerClass);
-        return new Configuration(sendBufferLength, receiveBufferLength, bufferSliceLength + MessageUtil.HEADER_LENGTH, flushIntervalSize, busyPollTimeout, pollMethod, providerClass);
+        checkConfiguration(sendBufferLength, receiveBufferLength, bufferSliceLength, flushIntervalSize, busyPollTimeoutNanos, providerClass);
+        return new Configuration(sendBufferLength, receiveBufferLength, bufferSliceLength + MessageUtil.HEADER_LENGTH, flushIntervalSize, busyPollTimeoutNanos, pollMethod, providerClass);
     }
 
     private static void checkConfiguration(final int sendBufferLength, final int receiveBufferLength, final int bufferSliceLength, final int flushIntervalSize, final int busyPollTimeout, final String providerClass) throws IllegalArgumentException {
@@ -103,12 +103,12 @@ class Configuration {
         }
     }
 
-    private Configuration(final int sendBufferLength, final int receiveBufferLength, final int bufferSliceLength, final int flushIntervalSize, final int busyPollTimeout, final PollMethod pollMethod, final String providerClass) {
+    private Configuration(final int sendBufferLength, final int receiveBufferLength, final int bufferSliceLength, final int flushIntervalSize, final int busyPollTimeoutNanos, final PollMethod pollMethod, final String providerClass) {
         this.sendBufferLength = sendBufferLength;
         this.receiveBufferLength = receiveBufferLength;
         this.bufferSliceLength = bufferSliceLength;
         this.flushIntervalSize = flushIntervalSize;
-        this.busyPollTimeout = busyPollTimeout;
+        this.busyPollTimeoutNanos = busyPollTimeoutNanos;
         this.pollMethod = pollMethod;
         this.providerClass = providerClass;
     }
@@ -129,8 +129,8 @@ class Configuration {
         return flushIntervalSize;
     }
 
-    int getBusyPollTimeout() {
-        return busyPollTimeout;
+    int getBusyPollTimeoutNanos() {
+        return busyPollTimeoutNanos;
     }
 
     PollMethod getPollMethod() {
@@ -148,6 +148,7 @@ class Configuration {
                 ",receiveBufferSize=" + receiveBufferLength +
                 ",bufferSliceLength=" + bufferSliceLength +
                 ",flushIntervalSize=" + flushIntervalSize +
+                ",busyPollTimeoutNanos=" + busyPollTimeoutNanos +
                 ",pollMethod=" + pollMethod +
                 ",providerClass=" + providerClass +
                 ")";
