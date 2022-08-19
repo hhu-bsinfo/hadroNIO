@@ -9,11 +9,11 @@ import de.hhu.bsinfo.hadronio.binding.UcxWorker;
 import de.hhu.bsinfo.infinileap.binding.*;
 import de.hhu.bsinfo.infinileap.primitive.NativeLong;
 import java.io.IOException;
+import java.lang.foreign.MemorySession;
 import java.net.InetSocketAddress;
-import jdk.incubator.foreign.MemoryAddress;
-import jdk.incubator.foreign.MemorySegment;
-import jdk.incubator.foreign.ResourceScope;
-import jdk.incubator.foreign.ValueLayout.OfLong;
+import java.lang.foreign.MemoryAddress;
+import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout.OfLong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,7 +36,7 @@ class InfinileapEndpoint implements UcxEndpoint {
     }
 
     InfinileapEndpoint(final Context context, final ConnectionRequest connectionRequest) throws ControlException {
-        // TODO: Get remote address from connection request, once available in infinileap
+        remoteAddress = connectionRequest.getClientAddress();
         worker = new InfinileapWorker(context, new WorkerParameters());
         endpoint = worker.getWorker().createEndpoint(
                 parameters.setConnectionRequest(connectionRequest)
@@ -67,27 +67,25 @@ class InfinileapEndpoint implements UcxEndpoint {
 
     @Override
     public boolean sendTaggedMessage(final long address, final long size, final long tag, final boolean useCallback, final boolean blocking) {
-        final var status = endpoint.sendTagged(MemorySegment.ofAddress(MemoryAddress.ofLong(address), size, ResourceScope.globalScope()), Tag.of(tag), useCallback ? sendParameters : emptyParameters);
+        final var status = endpoint.sendTagged(MemorySegment.ofAddress(MemoryAddress.ofLong(address), size, MemorySession.global()), Tag.of(tag), useCallback ? sendParameters : emptyParameters);
         return checkStatus(status, blocking);
     }
 
     @Override
     public boolean receiveTaggedMessage(final long address, final long size, final long tag, final long tagMask, final boolean useCallback, final boolean blocking) {
-        final var status = worker.getWorker().receiveTagged(MemorySegment.ofAddress(MemoryAddress.ofLong(address), size, ResourceScope.globalScope()), Tag.of(tag), useCallback ? receiveParameters : emptyParameters);
+        final var status = worker.getWorker().receiveTagged(MemorySegment.ofAddress(MemoryAddress.ofLong(address), size, MemorySession.global()), Tag.of(tag), useCallback ? receiveParameters : emptyParameters);
         return checkStatus(status, blocking);
     }
 
     @Override
-    public boolean sendStream(final long address, final long size, final boolean useCallback, final boolean blocking) {
-        final var status = endpoint.sendStream(MemorySegment.ofAddress(MemoryAddress.ofLong(address), size, ResourceScope.globalScope()), size, useCallback ? sendParameters : emptyParameters);
-        return checkStatus(status, blocking);
+    public void sendStream(final long address, final long size, final boolean useCallback, final boolean blocking) {
+        endpoint.sendStream(MemorySegment.ofAddress(MemoryAddress.ofLong(address), size, MemorySession.global()), size, useCallback ? sendParameters : emptyParameters);
     }
 
     @Override
-    public boolean receiveStream(final long address, final long size, final boolean useCallback, final boolean blocking) {
+    public void receiveStream(final long address, final long size, final boolean useCallback, final boolean blocking) {
         final var receiveSize = new NativeLong();
-        final var status = endpoint.receiveStream(MemorySegment.ofAddress(MemoryAddress.ofLong(address), size, ResourceScope.globalScope()), size, receiveSize, useCallback ? receiveParameters : emptyParameters);
-        return checkStatus(status, blocking);
+        endpoint.receiveStream(MemorySegment.ofAddress(MemoryAddress.ofLong(address), size, MemorySession.global()), size, receiveSize, useCallback ? receiveParameters : emptyParameters);
     }
 
     @Override

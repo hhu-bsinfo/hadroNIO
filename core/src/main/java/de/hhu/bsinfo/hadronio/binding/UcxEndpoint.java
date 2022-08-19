@@ -1,10 +1,11 @@
 package de.hhu.bsinfo.hadronio.binding;
 
+import java.io.IOException;
 import java.net.InetSocketAddress;
 
 public interface UcxEndpoint extends UcxProgressable {
 
-    void connect(InetSocketAddress remoteAddress);
+    void connect(InetSocketAddress remoteAddress) throws IOException;
 
     boolean sendTaggedMessage(long address, long size, long tag, boolean useCallback, boolean blocking);
 

@@ -5,7 +5,7 @@ import java.io.IOException;
 
 public interface UcxProvider extends Closeable {
 
-    UcxListener createListener();
+    UcxListener createListener() throws IOException;
 
-    UcxEndpoint createEndpoint();
+    UcxEndpoint createEndpoint() throws IOException;
 }

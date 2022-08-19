@@ -3,7 +3,6 @@ package de.hhu.bsinfo.hadronio.example.netty.benchmark.throughput;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,7 +41,7 @@ public class ClientHandler extends ChannelInboundHandlerAdapter {
     }
 
     @Override
-    public void channelRead(final @NotNull ChannelHandlerContext context, final @NotNull Object message) {
+    public void channelRead(final ChannelHandlerContext context, final Object message) {
         final var buffer = (ByteBuf) message;
 
         receivedBytes += buffer.readableBytes();

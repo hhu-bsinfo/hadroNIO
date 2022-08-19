@@ -1,5 +1,4 @@
-// TODO: Reactivate, once infinileap is compatible with the panama preview
-/*plugins {
+plugins {
     id 'java-library'
 }
 
@@ -7,7 +6,7 @@ group 'de.hhu.bsinfo'
 version = getProperty('projectVersion')
 
 compileJava {
-    options.compilerArgs.addAll(['--add-modules', 'jdk.incubator.foreign'])
+    options.compilerArgs.addAll(['--enable-preview'])
 }
 
 java {
@@ -23,6 +22,7 @@ repositories {
 dependencies {
     implementation project(':core')
     implementation files("core-${infinileapVersion}.jar")
+    implementation files("common-${infinileapVersion}.jar")
     implementation "org.slf4j:slf4j-api:${slf4jVersion}"
 
     testImplementation "org.junit.jupiter:junit-jupiter-api:${junitJupiterVersion}"
@@ -31,4 +31,4 @@ dependencies {
 
 test {
     useJUnitPlatform()
-}*/
+}

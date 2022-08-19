@@ -6,7 +6,6 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import java.nio.charset.StandardCharsets;
 
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,7 +23,7 @@ public class Handler extends ChannelInboundHandlerAdapter {
     }
 
     @Override
-    public void channelRead(final @NotNull ChannelHandlerContext context, final @NotNull Object message) {
+    public void channelRead(final ChannelHandlerContext context, final Object message) {
         final var buffer = (ByteBuf) message;
         final var bytes = new byte[buffer.readableBytes()];
 

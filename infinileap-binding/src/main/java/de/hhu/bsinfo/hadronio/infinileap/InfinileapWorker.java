@@ -39,6 +39,20 @@ class InfinileapWorker implements UcxWorker {
     }
 
     @Override
+    public void arm() {
+        worker.arm();
+    }
+
+    @Override
+    public int getEventFileDescriptor() {
+        try {
+            return worker.fileDescriptor().intValue();
+        } catch (ControlException e) {
+            throw new IllegalStateException("Failed to get file descriptor from worker!", e);
+        }
+    }
+
+    @Override
     public void close() {
         LOGGER.info("Closing worker");
         worker.close();

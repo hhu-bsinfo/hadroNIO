@@ -5,11 +5,8 @@ import de.hhu.bsinfo.hadronio.binding.UcxEndpoint;
 import de.hhu.bsinfo.hadronio.binding.UcxListener;
 import de.hhu.bsinfo.hadronio.binding.UcxListenerCallback;
 import de.hhu.bsinfo.hadronio.binding.UcxWorker;
-import de.hhu.bsinfo.infinileap.binding.Context;
-import de.hhu.bsinfo.infinileap.binding.ControlException;
-import de.hhu.bsinfo.infinileap.binding.Listener;
-import de.hhu.bsinfo.infinileap.binding.ListenerParameters;
-import de.hhu.bsinfo.infinileap.binding.WorkerParameters;
+import de.hhu.bsinfo.infinileap.binding.*;
+
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import org.slf4j.Logger;
@@ -32,8 +29,9 @@ class InfinileapListener implements UcxListener {
 
     @Override
     public void bind(final InetSocketAddress localAddress, final UcxListenerCallback callback) throws IOException {
-        listenerParameters = new ListenerParameters().setListenAddress(localAddress)
-                .setConnectionHandler(request -> callback.onConnectionRequest(new InfinileapConnectionRequest(request)));
+        listenerParameters = new ListenerParameters()
+                .setListenAddress(localAddress)
+                .setConnectionHandler(new InfinileapConnectionHandler((callback)));
 
         try {
             listener = worker.getWorker().createListener(listenerParameters);

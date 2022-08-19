@@ -7,7 +7,6 @@ import io.netty.channel.ChannelInitializer;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -62,7 +61,7 @@ public class Server implements Runnable {
             .childHandler(
             new ChannelInitializer<SocketChannel>() {
                 @Override
-                protected void initChannel(@NotNull SocketChannel channel) {
+                protected void initChannel(final SocketChannel channel) {
                     channel.closeFuture().addListener(future -> LOGGER.info("Closed channel connected to [{}]", channel.remoteAddress()));
                     channel.pipeline().addLast(new ServerWarmupHandler(messageSize, messageCount, messageCount / 10, connections, warmupCounter, benchmarkCounter, combiner));
 

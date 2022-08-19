@@ -69,7 +69,7 @@ class HadronioSelector extends AbstractSelector {
                         selectedKeys.clear();
                         keys.clear();
 
-                        if (pollMethod != Configuration.PollMethod.DYNAMIC) {
+                        if (pollMethod != Configuration.PollMethod.BUSY_POLLING) {
                             epoll.close();
                         }
                     }

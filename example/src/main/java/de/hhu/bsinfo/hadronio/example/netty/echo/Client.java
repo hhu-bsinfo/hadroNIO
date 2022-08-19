@@ -10,7 +10,6 @@ import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.Scanner;
 
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,7 +37,7 @@ public class Client implements Runnable {
             .channel(NioSocketChannel.class)
             .handler(new ChannelInitializer<SocketChannel>() {
                 @Override
-                protected void initChannel(final @NotNull SocketChannel channel) {
+                protected void initChannel(final SocketChannel channel) {
                     channel.pipeline().addLast(new Handler());
                 }
             });

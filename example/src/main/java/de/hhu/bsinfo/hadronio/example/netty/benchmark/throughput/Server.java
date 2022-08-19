@@ -12,7 +12,6 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.concurrent.CyclicBarrier;
 
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -67,7 +66,7 @@ public class Server implements Runnable {
             .childHandler(
             new ChannelInitializer<SocketChannel>() {
                 @Override
-                protected void initChannel(@NotNull SocketChannel channel) {
+                protected void initChannel(final SocketChannel channel) {
                     final Object syncLock = new Object();
                     channel.closeFuture().addListener(future -> LOGGER.info("Closed channel connected to [{}]", channel.remoteAddress()));
                     channel.pipeline().addLast(new ServerHandler(syncLock));

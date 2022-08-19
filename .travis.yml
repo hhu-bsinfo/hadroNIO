@@ -11,9 +11,9 @@ jobs:
   include:
     - stage: build
       before_install:
-        - wget -O panama.zip https://coconucos.cs.hhu.de/forschung/jdk/latest.zip
-        - unzip panama.zip -d /tmp
-        - echo "org.gradle.java.installations.paths=/tmp/panama/" > gradle.properties
+        - wget -O jdk.tar.gz ${JDK_URL}
+        - tar -xzvf jdk.tar.gz -C /tmp
+        - echo "org.gradle.java.installations.paths=/tmp/jdk-${JDK_VERSION}" > gradle.properties
       script:
         - ./gradlew build
     - stage: release

@@ -7,7 +7,6 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import java.net.InetSocketAddress;
 
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,7 +34,7 @@ public class Server implements Runnable {
             .childHandler(
                 new ChannelInitializer<SocketChannel>() {
                     @Override
-                    protected void initChannel(@NotNull SocketChannel channel) {
+                    protected void initChannel(final SocketChannel channel) {
                         channel.closeFuture().addListener(future -> LOGGER.info("Socket channel closed"));
                         channel.pipeline().addLast(new Handler());
                     }

@@ -17,8 +17,8 @@ repositories {
 
 dependencies {
     implementation "org.agrona:agrona:${agronaVersion}"
-    implementation "org.slf4j:slf4j-api:${slf4jVersion}"
     implementation "io.helins:linux-epoll:${linuxEpollVersion}"
+    implementation "org.slf4j:slf4j-api:${slf4jVersion}"
 
     testImplementation "org.junit.jupiter:junit-jupiter-api:${junitJupiterVersion}"
     testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:${junitJupiterVersion}"
