@@ -31,7 +31,12 @@ class InfinileapListener implements UcxListener {
     public void bind(final InetSocketAddress localAddress, final UcxListenerCallback callback) throws IOException {
         listenerParameters = new ListenerParameters()
                 .setListenAddress(localAddress)
-                .setConnectionHandler(new InfinileapConnectionHandler((callback)));
+                .setConnectionHandler(new ConnectionHandler() {
+                    @Override
+                    protected void onConnection(final ConnectionRequest connectionRequest) {
+                        callback.onConnectionRequest(new InfinileapConnectionRequest(InfinileapListener.this, connectionRequest));
+                    }
+                });
 
         try {
             listener = worker.getWorker().createListener(listenerParameters);
@@ -39,13 +44,13 @@ class InfinileapListener implements UcxListener {
             throw new IOException("Failed to bind server socket channel to " + localAddress + "!", e);
         }
 
-        LOGGER.info("Listening on [{}]", localAddress);
+        LOGGER.info("Listening on [{}]", getAddress());
     }
 
     @Override
     public UcxEndpoint accept(final UcxConnectionRequest connectionRequest) throws IOException {
         try {
-            return new InfinileapEndpoint(context, ((InfinileapConnectionRequest) connectionRequest).connectionRequest());
+            return new InfinileapEndpoint(context, ((InfinileapConnectionRequest) connectionRequest).getConnectionRequest());
         } catch (ControlException e) {
             throw new IOException(e);
         }
@@ -58,13 +63,24 @@ class InfinileapListener implements UcxListener {
 
     @Override
     public InetSocketAddress getAddress() {
-        // TODO: Implement once available in Infinileap
-        return null;
+        try {
+            return listener.getAddress();
+        } catch (ControlException e) {
+            throw new IllegalStateException("Failed to query address from listener!", e);
+        }
     }
 
     @Override
     public void close() {
         LOGGER.info("Closing listener");
         listener.close();
+    }
+
+    void reject(final ConnectionRequest connectionRequest) {
+        try {
+            listener.reject(connectionRequest);
+        } catch (ControlException e) {
+            throw new IllegalStateException("Failed to reject an incoming connection request!", e);
+        }
     }
 }
