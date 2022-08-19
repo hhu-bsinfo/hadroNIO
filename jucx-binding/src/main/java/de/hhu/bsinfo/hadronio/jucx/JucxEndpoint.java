@@ -22,12 +22,12 @@ class JucxEndpoint implements UcxEndpoint {
     private boolean errorState = false;
 
     JucxEndpoint(final UcpContext context) {
-        worker = new JucxWorker(context, new UcpWorkerParams().requestWakeupTagSend().requestWakeupTagRecv());
+        worker = new JucxWorker(context, new UcpWorkerParams());
     }
 
     JucxEndpoint(final UcpContext context, final UcpConnectionRequest connectionRequest) {
         remoteAddress = connectionRequest.getClientAddress();
-        worker = new JucxWorker(context, new UcpWorkerParams().requestWakeupTagSend().requestWakeupTagRecv());
+        worker = new JucxWorker(context, new UcpWorkerParams());
         endpoint = worker.getWorker().newEndpoint(
             new UcpEndpointParams().
             setConnectionRequest(connectionRequest).

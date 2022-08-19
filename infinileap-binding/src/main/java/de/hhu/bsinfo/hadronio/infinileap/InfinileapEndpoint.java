@@ -26,7 +26,8 @@ class InfinileapEndpoint implements UcxEndpoint {
     private InetSocketAddress remoteAddress;
     private final EndpointParameters parameters = new EndpointParameters();
     private final RequestParameters sendParameters = new RequestParameters();
-    private final RequestParameters receiveParameters = new RequestParameters();
+    private final RequestParameters tagReceiveParameters = new RequestParameters();
+    private final RequestParameters streamReceiveParameters = new RequestParameters();
     private final RequestParameters emptyParameters = new RequestParameters();
 
     private boolean errorState = false;
@@ -73,7 +74,7 @@ class InfinileapEndpoint implements UcxEndpoint {
 
     @Override
     public boolean receiveTaggedMessage(final long address, final long size, final long tag, final long tagMask, final boolean useCallback, final boolean blocking) {
-        final var status = worker.getWorker().receiveTagged(MemorySegment.ofAddress(MemoryAddress.ofLong(address), size, MemorySession.global()), Tag.of(tag), useCallback ? receiveParameters : emptyParameters);
+        final var status = worker.getWorker().receiveTagged(MemorySegment.ofAddress(MemoryAddress.ofLong(address), size, MemorySession.global()), Tag.of(tag), useCallback ? tagReceiveParameters : emptyParameters);
         return checkStatus(status, blocking);
     }
 
@@ -85,7 +86,7 @@ class InfinileapEndpoint implements UcxEndpoint {
     @Override
     public void receiveStream(final long address, final long size, final boolean useCallback, final boolean blocking) {
         final var receiveSize = new NativeLong();
-        endpoint.receiveStream(MemorySegment.ofAddress(MemoryAddress.ofLong(address), size, MemorySession.global()), size, receiveSize, useCallback ? receiveParameters : emptyParameters);
+        endpoint.receiveStream(MemorySegment.ofAddress(MemoryAddress.ofLong(address), size, MemorySession.global()), size, receiveSize, useCallback ? streamReceiveParameters : emptyParameters);
     }
 
     @Override
@@ -104,18 +105,29 @@ class InfinileapEndpoint implements UcxEndpoint {
 
     @Override
     public void setReceiveCallback(final UcxReceiveCallback receiveCallback) {
-        receiveParameters.setReceiveCallback(
+        tagReceiveParameters.setReceiveCallback(
             (request, status, tagInfo, data) -> {
                 if (status == Status.OK) {
                     final var tag = tagInfo.get(OfLong.JAVA_LONG, 0);
                     final var size = tagInfo.get(OfLong.JAVA_LONG, Long.BYTES);
-                    LOGGER.debug("Infinileap ReceiveCallback called (Status: [{}], Size: [{}], Tag: [0x{}])", status, size, Long.toHexString(tag));
+                    LOGGER.debug("Infinileap ReceiveCallback called (Status: [{}], Size: [{}], Tag: [0x{}])", status, Long.toHexString(tag));
                     receiveCallback.onMessageReceived(tag);
                 } else {
                     LOGGER.error("Failed to receive a message (Status: [{}])!", status);
                     handleError();
                 }
             });
+
+        streamReceiveParameters.setReceiveCallback(
+                (request, status, length, data) -> {
+                    if (status == Status.OK) {
+                        LOGGER.debug("Infinileap ReceiveCallback called (Status: [{}], Size: [{}])", status, length);
+                        receiveCallback.onMessageReceived(0);
+                    } else {
+                        LOGGER.error("Failed to receive a message (Status: [{}])!", status);
+                        handleError();
+                    }
+                });
     }
 
     @Override
