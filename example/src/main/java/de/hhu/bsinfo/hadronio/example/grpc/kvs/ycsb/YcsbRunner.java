@@ -50,6 +50,10 @@ public class YcsbRunner implements Runnable {
         parameters.add("-p");
         parameters.add(String.format("%s=%s:%d", YcsbProperties.REMOTE_ADDRESS_PROPERTY, remoteAddress.getHostString(), remoteAddress.getPort()));
 
+
+        parameters.add("-p");
+        parameters.add(String.format("exporter=%s", LoggingExporter.class.getCanonicalName()));
+
         // Write results to file if path was set
         if (export != null) {
             parameters.add("-p");
