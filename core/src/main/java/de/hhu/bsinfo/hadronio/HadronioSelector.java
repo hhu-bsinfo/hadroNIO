@@ -141,8 +141,10 @@ class HadronioSelector extends AbstractSelector {
         LOGGER.trace("Waking up worker");
         synchronized (wakeupLock) {
             wakeupStatus = true;
-            for (final var key : keys) {
-                ((HadronioSelectableChannel) key.channel()).getWorker().interrupt();
+            synchronized (cancelledKeys()) {
+                for (final var key : keys) {
+                    ((HadronioSelectableChannel) key.channel()).getWorker().interrupt();
+                }
             }
             wakeupLock.notifyAll();
         }
