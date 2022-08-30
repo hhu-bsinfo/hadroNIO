@@ -22,15 +22,15 @@ ext {
     slf4jVersion = '1.7.36'
 
     // Binding dependencies
-    jucxVersion = '1.13.0-SNAPSHOT'
+    jucxVersion = '1.13.1-rc1'
     infinileapVersion = '0.1.0-SNAPSHOT'
 
     // Example dependencies
     log4jVersion = '2.18.0'
     picocliVersion = '4.6.3'
     kryoVersion = '5.3.0'
-    nettyVersion = '4.1.79.Final'
-    grpcVersion = '1.48.1'
+    nettyVersion = '4.1.80.Final'
+    grpcVersion = '1.49.0'
     protobufVersion = '3.21.5'
     tomcatVersion = '6.0.53'
     ycsbVersion = '0.17.0'
