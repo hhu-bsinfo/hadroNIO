@@ -9,27 +9,32 @@ import java.util.ArrayList;
 public class YcsbRunner implements Runnable {
 
     private static final String BINDING_CLASS = "de.hhu.bsinfo.hadronio.example.grpc.kvs.ycsb.YcsbBinding";
-    private static final String JSON_EXPORTER = "site.ycsb.measurements.exporter.JSONMeasurementsExporter";
 
     private final InetSocketAddress remoteAddress;
     private final Path properties;
-    private final Path export;
     private final Phase phase;
     private final int threads;
     private final boolean status;
+    private final String resultFileName;
+    private final String benchmarkName;
+    private final int benchmarkIteration;
+    private final int recordSize;
 
     public enum Phase {
         LOAD,
         RUN
     }
 
-    public YcsbRunner(InetSocketAddress remoteAddress, Path workload, Path export, Phase phase, int threads, boolean status) {
+    public YcsbRunner(final InetSocketAddress remoteAddress, final Path workload, final Phase phase, final int threads, final boolean status, final String resultFileName, final String benchmarkName, final int benchmarkIteration, final int recordSize) {
         this.remoteAddress = remoteAddress;
         this.properties = workload;
-        this.export = export;
+        this.resultFileName = resultFileName;
         this.phase = phase;
         this.threads = threads;
         this.status = status;
+        this.benchmarkName = benchmarkName;
+        this.benchmarkIteration = benchmarkIteration;
+        this.recordSize = recordSize;
     }
 
     @Override
@@ -50,16 +55,25 @@ public class YcsbRunner implements Runnable {
         parameters.add("-p");
         parameters.add(String.format("%s=%s:%d", YcsbProperties.REMOTE_ADDRESS_PROPERTY, remoteAddress.getHostString(), remoteAddress.getPort()));
 
-
+        // Set result format
         parameters.add("-p");
-        parameters.add(String.format("exporter=%s", LoggingExporter.class.getCanonicalName()));
+        parameters.add("measurementtype=hdrhistogram");
+        parameters.add("-p");
+        parameters.add("hdrhistogram.percentiles=50,95,99,999,9999");
 
-        // Write results to file if path was set
-        if (export != null) {
+        // Set exporter and output file
+        if (resultFileName.isEmpty()) {
             parameters.add("-p");
-            parameters.add(String.format("exportfile=%s", export.toAbsolutePath()));
+            parameters.add(String.format("exporter=%s", LoggingExporter.class.getCanonicalName()));
+        } else {
+            CsvExporter.benchmarkName = benchmarkName;
+            CsvExporter.iteration = benchmarkIteration;
+            CsvExporter.connections = threads;
+            CsvExporter.recordSize = recordSize;
+            CsvExporter.resultFileName = resultFileName;
+
             parameters.add("-p");
-            parameters.add(String.format("exporter=%s", JSON_EXPORTER));
+            parameters.add(String.format("exporter=%s", CsvExporter.class.getCanonicalName()));
         }
 
         // Set properties file

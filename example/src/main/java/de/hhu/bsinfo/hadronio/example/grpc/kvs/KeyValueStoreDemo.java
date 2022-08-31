@@ -45,11 +45,6 @@ public class KeyValueStoreDemo implements Runnable {
     private Path workload;
 
     @CommandLine.Option(
-            names = {"-e", "--export"},
-            description = "The export file for the YCSB client.")
-    private Path export;
-
-    @CommandLine.Option(
             names = {"-p", "--phase"},
             description = "The benchmark phase to execute (LOAD/RUN).")
     private YcsbRunner.Phase phase;
@@ -64,6 +59,26 @@ public class KeyValueStoreDemo implements Runnable {
             description = "Enable YCSB status reports during the benchmark"
     )
     private boolean status = false;
+
+    @CommandLine.Option(
+            names = {"-o", "--output"},
+            description = "Path to the result file, to which the CSV data shall be written.")
+    private String resultFileName = "";
+
+    @CommandLine.Option(
+            names = {"-n", "--name"},
+            description = "Benchmark name to use, when writing the result to a file.")
+    private String benchmarkName = "";
+
+    @CommandLine.Option(
+            names = {"-i", "--iteration"},
+            description = "Iteration number to use, when writing the result to a file.")
+    private int benchmarkIteration = 0;
+
+    @CommandLine.Option(
+            names = {"-m", "--record-size"},
+            description = "Iteration number to use, when writing the result to a file.")
+    private int recordSize = 0;
 
     @Override
     public void run() {
@@ -92,7 +107,7 @@ public class KeyValueStoreDemo implements Runnable {
                 return;
             }
 
-            runnable = new YcsbRunner(remoteAddress, workload, export, phase, threads, status);
+            runnable = new YcsbRunner(remoteAddress, workload, phase, threads, status, resultFileName, benchmarkName, benchmarkIteration, recordSize);
         } else {
             runnable = new Shell(remoteAddress);
         }

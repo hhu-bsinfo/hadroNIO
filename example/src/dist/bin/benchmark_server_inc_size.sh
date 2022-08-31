@@ -9,7 +9,6 @@ readonly CONNECTIONS=${6}
 readonly RESULT_FILE=${7}
 readonly BENCHMARK_NAME=${8}
 readonly THRESHOLD=${9}
-readonly PIN_THREADS=${10}
 
 port=3000
 
@@ -22,6 +21,6 @@ for (( i=MIN_MESSAGE_SIZE_EXPONENT; i<=MAX_MESSAGE_SIZE_EXPONENT; i++ )); do
 
     for j in {0..4}; do
         port=$((port + 1))
-        ./bin/hadronio netty benchmark "${BENCHMARK_MODE}" -s -a "${BIND_ADDRESS}:${port}" -m "${message_count}" -l "${message_size}" -c "${CONNECTIONS}" -o "${RESULT_FILE}" -n "${BENCHMARK_NAME}" -i "${j}" $([ "${BENCHMARK_MODE}" = "throughput" ] && echo "-t ${THRESHOLD}")  $([ "${PIN_THREADS}" = "true" ] && echo "-p")
+        ./bin/hadronio netty benchmark "${BENCHMARK_MODE}" -s -a "${BIND_ADDRESS}:${port}" -m "${message_count}" -l "${message_size}" -c "${CONNECTIONS}" -o "${RESULT_FILE}" -n "${BENCHMARK_NAME}" -i "${j}" $([ "${BENCHMARK_MODE}" = "throughput" ] && echo "-t ${THRESHOLD}")
     done
 done
