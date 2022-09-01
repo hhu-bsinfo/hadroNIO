@@ -5,6 +5,8 @@ import site.ycsb.workloads.CoreWorkload;
 
 import java.net.InetSocketAddress;
 import java.util.Properties;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class YcsbProperties {
 
@@ -13,6 +15,8 @@ public class YcsbProperties {
     private final int fieldsPerKey;
     private final int fieldSize;
     private final InetSocketAddress remoteAddress;
+    static YcsbRunner.Phase phase;
+    static AtomicInteger closeConnectionCounter;
 
     YcsbProperties(final Properties properties) {
         fieldsPerKey = Integer.parseInt(properties.getProperty(CoreWorkload.FIELD_COUNT_PROPERTY, CoreWorkload.FIELD_COUNT_PROPERTY_DEFAULT));

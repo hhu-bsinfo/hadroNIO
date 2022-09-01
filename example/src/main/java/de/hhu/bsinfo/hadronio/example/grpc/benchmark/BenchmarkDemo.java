@@ -62,6 +62,21 @@ public class BenchmarkDemo implements Runnable {
             description = "The amount of client connections.")
     private int connections = 1;
 
+    @CommandLine.Option(
+            names = {"-o", "--output"},
+            description = "Path to the result file, to which the CSV data shall be written.")
+    private String resultFileName = "";
+
+    @CommandLine.Option(
+            names = {"-n", "--name"},
+            description = "Benchmark name to use, when writing the result to a file.")
+    private String benchmarkName = "";
+
+    @CommandLine.Option(
+            names = {"-i", "--iteration"},
+            description = "Iteration number to use, when writing the result to a file.")
+    private int benchmarkIteration = 0;
+
     @Override
     public void run() {
         if (!isServer && remoteAddress == null) {
@@ -85,7 +100,7 @@ public class BenchmarkDemo implements Runnable {
             bindAddress = isServer ? bindAddress : new InetSocketAddress(bindAddress.getAddress(), 0);
         }
 
-        final var runnable = isServer ? new Server(bindAddress, answerSize) : new Client(remoteAddress, requestCount, requestSize, answerSize, connections, aggregationThreshold, blocking);
+        final var runnable = isServer ? new Server(bindAddress, answerSize) : new Client(remoteAddress, requestCount, requestSize, answerSize, connections, aggregationThreshold, blocking, resultFileName, benchmarkName, benchmarkIteration);
         runnable.run();
     }
 }

@@ -5,6 +5,8 @@ import site.ycsb.Client;
 import java.net.InetSocketAddress;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class YcsbRunner implements Runnable {
 
@@ -35,6 +37,8 @@ public class YcsbRunner implements Runnable {
         this.benchmarkName = benchmarkName;
         this.benchmarkIteration = benchmarkIteration;
         this.recordSize = recordSize;
+        YcsbProperties.phase = phase;
+        YcsbProperties.closeConnectionCounter = new AtomicInteger(threads);
     }
 
     @Override

@@ -1,7 +1,9 @@
 package de.hhu.bsinfo.hadronio.example.grpc.kvs;
 
+import com.google.protobuf.Empty;
 import com.google.protobuf.UnsafeByteOperations;
 import de.hhu.bsinfo.hadronio.example.grpc.kv.*;
+import io.grpc.Server;
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
 
@@ -12,6 +14,8 @@ import java.util.concurrent.ConcurrentMap;
 class KeyValueStore extends KeyValueStoreGrpc.KeyValueStoreImplBase {
 
     private final ConcurrentMap<ByteBuffer, ByteBuffer> store = new ConcurrentHashMap<>();
+
+    private Server server;
 
     @Override
     public void insert(final KeyValueRequest request, final StreamObserver<StatusResponse> responseObserver) {
@@ -73,5 +77,15 @@ class KeyValueStore extends KeyValueStoreGrpc.KeyValueStoreImplBase {
         }
 
         responseObserver.onCompleted();
+    }
+
+    @Override
+    public void shutdown(final Empty request, final StreamObserver<Empty> responseObserver) {
+        responseObserver.onCompleted();
+        server.shutdownNow();
+    }
+
+    void setServer(final Server server) {
+        this.server = server;
     }
 }

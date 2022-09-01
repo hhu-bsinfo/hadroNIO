@@ -1,12 +1,13 @@
 package de.hhu.bsinfo.hadronio.example.grpc.kvs.ycsb;
 
 import de.hhu.bsinfo.hadronio.example.grpc.kvs.Client;
+import io.grpc.StatusRuntimeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import site.ycsb.*;
 
-import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.CyclicBarrier;
 
 public class YcsbBinding extends DB {
 
@@ -14,7 +15,7 @@ public class YcsbBinding extends DB {
 
     private static final String NAMESPACE_SEPARATOR = ".";
 
-    private final de.hhu.bsinfo.hadronio.example.grpc.kvs.Client client = new Client();
+    private final Client client = new Client();
 
     private YcsbProperties properties;
     private YcsbObject reusableObject;
@@ -84,10 +85,12 @@ public class YcsbBinding extends DB {
 
     @Override
     public void cleanup() {
-        try {
+        if (YcsbProperties.closeConnectionCounter.decrementAndGet() == 0 && YcsbProperties.phase == YcsbRunner.Phase.RUN) {
+            try {
+                client.shutdownServer();
+            } catch (StatusRuntimeException ignored) {}
+        } else {
             client.close();
-        } catch (IOException e) {
-            LOGGER.error("Failed to close channel", e);
         }
     }
 

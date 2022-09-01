@@ -25,12 +25,15 @@ public class Server implements Runnable {
         LOGGER.info("Starting server on port [{}]", bindAddress.getPort());
         final var acceptorGroup = new NioEventLoopGroup(ACCEPTOR_THREADS);
         final var workerGroup = new NioEventLoopGroup();
+        final var store = new KeyValueStore();
         final var server = NettyServerBuilder.forPort(bindAddress.getPort())
                 .bossEventLoopGroup(acceptorGroup)
                 .workerEventLoopGroup(workerGroup)
                 .channelType(NioServerSocketChannel.class)
-                .addService(new KeyValueStore())
+                .addService(store)
                 .build();
+
+        store.setServer(server);
 
         try {
             server.start();

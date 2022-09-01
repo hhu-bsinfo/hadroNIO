@@ -4,6 +4,8 @@ option java_multiple_files = true;
 option java_package = "de.hhu.bsinfo.hadronio.example.grpc.kv";
 option java_outer_classname = "KeyValueStoreProto";
 
+import "google/protobuf/empty.proto";
+
 package kvs;
 
 service KeyValueStore {
@@ -11,6 +13,7 @@ service KeyValueStore {
   rpc update (KeyValueRequest) returns (StatusResponse) {}
   rpc get (KeyRequest) returns (ValueResponse) {}
   rpc delete (KeyRequest) returns (StatusResponse) {}
+  rpc shutdown (google.protobuf.Empty) returns (google.protobuf.Empty);
 }
 
 message KeyValueRequest {

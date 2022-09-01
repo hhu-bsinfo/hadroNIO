@@ -1,6 +1,7 @@
 package de.hhu.bsinfo.hadronio.example.grpc.benchmark;
 
 import com.google.protobuf.ByteString;
+import com.google.protobuf.Empty;
 import io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder;
 import io.grpc.netty.shaded.io.netty.channel.nio.NioEventLoopGroup;
 import io.grpc.netty.shaded.io.netty.channel.socket.nio.NioServerSocketChannel;
@@ -19,6 +20,8 @@ public class Server implements Runnable {
     private final InetSocketAddress bindAddress;
     private final int answerSize;
 
+    private io.grpc.Server server;
+
     public Server(InetSocketAddress bindAddress, int answerSize) {
         this.bindAddress = bindAddress;
         this.answerSize = answerSize;
@@ -29,7 +32,7 @@ public class Server implements Runnable {
         LOGGER.info("Starting server on port [{}]", bindAddress.getPort());
         final var acceptorGroup = new NioEventLoopGroup(ACCEPTOR_THREADS);
         final var workerGroup = new NioEventLoopGroup();
-        final var server = NettyServerBuilder.forPort(bindAddress.getPort())
+        server = NettyServerBuilder.forPort(bindAddress.getPort())
                 .bossEventLoopGroup(acceptorGroup)
                 .workerEventLoopGroup(workerGroup)
                 .channelType(NioServerSocketChannel.class)
@@ -52,7 +55,7 @@ public class Server implements Runnable {
         }
     }
 
-    private static final class BenchmarkImpl extends BenchmarkGrpc.BenchmarkImplBase {
+    private final class BenchmarkImpl extends BenchmarkGrpc.BenchmarkImplBase {
         private final BenchmarkMessage answer;
 
         public BenchmarkImpl(int requestSize) {
@@ -68,6 +71,13 @@ public class Server implements Runnable {
         public void benchmark(final BenchmarkMessage request, final StreamObserver<BenchmarkMessage> responseObserver) {
             responseObserver.onNext(answer);
             responseObserver.onCompleted();
+        }
+
+        @Override
+        public void shutdown(final Empty request, final StreamObserver<Empty> responseObserver) {
+            LOGGER.info("Close");
+            responseObserver.onCompleted();
+            server.shutdownNow();
         }
     }
 }

@@ -1,5 +1,6 @@
 package de.hhu.bsinfo.hadronio.example.grpc.kvs;
 
+import com.google.protobuf.Empty;
 import com.google.protobuf.UnsafeByteOperations;
 import de.hhu.bsinfo.hadronio.example.grpc.kv.KeyRequest;
 import de.hhu.bsinfo.hadronio.example.grpc.kv.KeyValueRequest;
@@ -7,6 +8,7 @@ import de.hhu.bsinfo.hadronio.example.grpc.kv.KeyValueStoreGrpc;
 import de.hhu.bsinfo.hadronio.util.ObjectConverter;
 import io.grpc.ManagedChannel;
 import io.grpc.Status;
+import io.grpc.StatusRuntimeException;
 import io.grpc.netty.shaded.io.grpc.netty.NettyChannelBuilder;
 import io.grpc.netty.shaded.io.netty.channel.nio.NioEventLoopGroup;
 import io.grpc.netty.shaded.io.netty.channel.socket.nio.NioSocketChannel;
@@ -14,9 +16,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.Closeable;
-import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.util.concurrent.TimeUnit;
 
 public class Client implements Closeable {
 
@@ -71,13 +71,15 @@ public class Client implements Closeable {
     }
 
     @Override
-    public void close() throws IOException {
+    public void close() {
         try {
-            final var channel = (ManagedChannel) blockingStub.getChannel();
-            channel.shutdown();
-            channel.awaitTermination(5, TimeUnit.SECONDS);
-        } catch (InterruptedException e) {
-            throw new IOException(e);
-        }
+            ((ManagedChannel) blockingStub.getChannel()).shutdown();
+        } catch (StatusRuntimeException ignored) {}
+    }
+
+    public void shutdownServer() {
+        try {
+            blockingStub.shutdown(Empty.newBuilder().build());
+        } catch (StatusRuntimeException ignored) {}
     }
 }

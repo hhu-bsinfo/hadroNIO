@@ -17,26 +17,26 @@ ext {
     protobufPluginVersion = '0.8.18'
 
     // Core dependencies
-    agronaVersion = '1.16.0'
+    agronaVersion = '1.17.1'
     linuxEpollVersion = '1.0.1'
     slf4jVersion = '1.7.36'
 
     // Binding dependencies
-    jucxVersion = '1.13.1-rc1'
+    jucxVersion = '1.13.1'
     infinileapVersion = '0.1.0-SNAPSHOT'
 
     // Example dependencies
-    log4jVersion = '2.18.0'
+    log4jVersion = '2.19.0'
     picocliVersion = '4.6.3'
     kryoVersion = '5.3.0'
-    nettyVersion = '4.1.80.Final'
-    grpcVersion = '1.49.0'
-    protobufVersion = '3.21.5'
+    nettyVersion = '4.1.82.Final'
+    grpcVersion = '1.49.1'
+    protobufVersion = '3.21.6'
     tomcatVersion = '6.0.53'
     ycsbVersion = '0.17.0'
 
     // Test dependencies
-    junitJupiterVersion = '5.9.0'
+    junitJupiterVersion = '5.9.1'
 }
 
 subprojects {
