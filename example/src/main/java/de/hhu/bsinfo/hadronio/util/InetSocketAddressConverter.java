@@ -12,7 +12,7 @@ public class InetSocketAddressConverter implements CommandLine.ITypeConverter<In
     }
 
     @Override
-    public InetSocketAddress convert(final String address) throws Exception {
+    public InetSocketAddress convert(final String address) {
 
         final var splitAddress = address.split(":");
 

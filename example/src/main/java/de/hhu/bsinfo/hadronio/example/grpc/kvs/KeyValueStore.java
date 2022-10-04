@@ -2,20 +2,34 @@ package de.hhu.bsinfo.hadronio.example.grpc.kvs;
 
 import com.google.protobuf.Empty;
 import com.google.protobuf.UnsafeByteOperations;
-import de.hhu.bsinfo.hadronio.example.grpc.kv.*;
 import io.grpc.Server;
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 class KeyValueStore extends KeyValueStoreGrpc.KeyValueStoreImplBase {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(KeyValueStore.class);
+
     private final ConcurrentMap<ByteBuffer, ByteBuffer> store = new ConcurrentHashMap<>();
+    private final AtomicInteger counter = new AtomicInteger();
 
     private Server server;
+    private int connections;
+
+    void setServer(final Server server) {
+        this.server = server;
+    }
+
+    public void setConnections(int connections) {
+        this.connections = connections;
+    }
 
     @Override
     public void insert(final KeyValueRequest request, final StreamObserver<StatusResponse> responseObserver) {
@@ -80,12 +94,29 @@ class KeyValueStore extends KeyValueStoreGrpc.KeyValueStoreImplBase {
     }
 
     @Override
-    public void shutdown(final Empty request, final StreamObserver<Empty> responseObserver) {
+    public void connect(final Empty request, final StreamObserver<ClientIdMessage> responseObserver) {
+        final int id = counter.incrementAndGet();
+        LOGGER.info("Client [#{}] connected", id);
+
+        responseObserver.onNext(ClientIdMessage.newBuilder().setId(id).build());
         responseObserver.onCompleted();
-        server.shutdownNow();
     }
 
-    void setServer(final Server server) {
-        this.server = server;
+    @Override
+    public void startBenchmark(final ClientIdMessage request, final StreamObserver<StartBenchmarkMessage> responseObserver) {
+        final boolean start = counter.get() >= connections;
+        responseObserver.onNext(StartBenchmarkMessage.newBuilder().setStart(start).build());
+        responseObserver.onCompleted();
+    }
+
+    @Override
+    public void endBenchmark(final ClientIdMessage request, final StreamObserver<Empty> responseObserver) {
+        LOGGER.info("Client [#{}] disconnected", request.getId());
+        if (counter.decrementAndGet() <= 0) {
+            server.shutdownNow();
+        }
+
+        responseObserver.onNext(Empty.newBuilder().build());
+        responseObserver.onCompleted();
     }
 }

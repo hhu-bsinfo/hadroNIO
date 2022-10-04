@@ -16,9 +16,11 @@ public class Server implements Runnable {
     private static final Logger LOGGER = LoggerFactory.getLogger(Server.class);
 
     private final InetSocketAddress bindAddress;
+    private final int connections;
 
-    public Server(final InetSocketAddress bindAddress) {
+    public Server(final InetSocketAddress bindAddress, int connections) {
         this.bindAddress = bindAddress;
+        this.connections = connections;
     }
 
     @Override
@@ -35,6 +37,7 @@ public class Server implements Runnable {
                 .build();
 
         store.setServer(server);
+        store.setConnections(connections);
 
         try {
             server.start();

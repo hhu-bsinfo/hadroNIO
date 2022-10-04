@@ -5,28 +5,29 @@ import site.ycsb.workloads.CoreWorkload;
 
 import java.net.InetSocketAddress;
 import java.util.Properties;
-import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class YcsbProperties {
 
-    public static final String REMOTE_ADDRESS_PROPERTY = "de.hhu.bsinfo.hadronio.example.grpc.kvs.REMOTE_ADDRESS";
+    public static final String REMOTE_ADDRESSES_PROPERTY = "de.hhu.bsinfo.hadronio.example.grpc.kvs.REMOTE_ADDRESSES";
 
     private final int fieldsPerKey;
     private final int fieldSize;
-    private final InetSocketAddress remoteAddress;
+    private final InetSocketAddress[] remoteAddresses;
     static YcsbRunner.Phase phase;
     static AtomicInteger closeConnectionCounter;
 
     YcsbProperties(final Properties properties) {
         fieldsPerKey = Integer.parseInt(properties.getProperty(CoreWorkload.FIELD_COUNT_PROPERTY, CoreWorkload.FIELD_COUNT_PROPERTY_DEFAULT));
         fieldSize = Integer.parseInt(properties.getProperty(CoreWorkload.FIELD_LENGTH_PROPERTY, CoreWorkload.FIELD_LENGTH_PROPERTY_DEFAULT));
-        final var remoteAddress = properties.getProperty(REMOTE_ADDRESS_PROPERTY);
 
-        try {
-            this.remoteAddress = new InetSocketAddressConverter(0).convert(remoteAddress);
-        } catch (Exception e) {
-            throw new IllegalArgumentException(e);
+        final var addresses = properties.getProperty(REMOTE_ADDRESSES_PROPERTY);
+        final var splitAddresses = addresses.split(",");
+        remoteAddresses = new InetSocketAddress[splitAddresses.length];
+
+        final var converter = new InetSocketAddressConverter(2998);
+        for (int i = 0; i < splitAddresses.length; i++) {
+            remoteAddresses[i] = converter.convert(splitAddresses[i]);
         }
     }
 
@@ -38,7 +39,7 @@ public class YcsbProperties {
         return fieldSize;
     }
 
-    public InetSocketAddress getRemoteAddress() {
-        return remoteAddress;
+    public InetSocketAddress[] getRemoteAddresses() {
+        return remoteAddresses;
     }
 }

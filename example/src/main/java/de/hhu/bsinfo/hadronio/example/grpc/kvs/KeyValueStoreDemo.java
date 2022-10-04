@@ -30,8 +30,9 @@ public class KeyValueStoreDemo implements Runnable {
 
     @CommandLine.Option(
             names = {"-r", "--remote"},
-            description = "The address to connect to.")
-    private InetSocketAddress remoteAddress;
+            description = "The address to connect to.",
+            split = ",")
+    private InetSocketAddress[] remoteAddress;
 
     @CommandLine.Option(
             names = {"-b", "--benchmark"},
@@ -53,6 +54,12 @@ public class KeyValueStoreDemo implements Runnable {
             names = {"-t", "--threads"},
             description = "The amount of threads to use for the YCSB client.")
     private int threads = 1;
+
+
+    @CommandLine.Option(
+            names = {"-c", "--connections"},
+            description = "The amount of clients, that will connect to the server (only relevant for YCSB).")
+    private int connections = 1;
 
     @CommandLine.Option(
             names = {"-l", "--live-status"},
@@ -95,7 +102,7 @@ public class KeyValueStoreDemo implements Runnable {
 
         Runnable runnable;
         if (isServer) {
-            runnable = new Server(bindAddress);
+            runnable = new Server(bindAddress, connections);
         } else if (benchmark) {
             if (workload == null) {
                 LOGGER.error("Please specify the YCSB properties file");

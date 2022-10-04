@@ -17,7 +17,7 @@ public class Server implements Runnable {
 
     private static final int ACCEPTOR_THREADS = Integer.parseInt(System.getProperty("de.hhu.bsinfo.hadronio.example.NETTY_ACCEPTOR_THREADS", "1"));
     private static final int WORKER_THREADS = Integer.parseInt(System.getProperty("de.hhu.bsinfo.hadronio.example.NETTY_WORKER_THREADS", "0"));
-    private static final Logger LOGGER = LoggerFactory.getLogger(de.hhu.bsinfo.hadronio.example.grpc.echo.Server.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(Server.class);
 
     private final InetSocketAddress bindAddress;
     private final int answerSize;

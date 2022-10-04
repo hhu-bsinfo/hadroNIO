@@ -5,14 +5,14 @@ import site.ycsb.Client;
 import java.net.InetSocketAddress;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.concurrent.CyclicBarrier;
+import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class YcsbRunner implements Runnable {
 
     private static final String BINDING_CLASS = "de.hhu.bsinfo.hadronio.example.grpc.kvs.ycsb.YcsbBinding";
 
-    private final InetSocketAddress remoteAddress;
+    private final InetSocketAddress[] remoteAddresses;
     private final Path properties;
     private final Phase phase;
     private final int threads;
@@ -27,8 +27,8 @@ public class YcsbRunner implements Runnable {
         RUN
     }
 
-    public YcsbRunner(final InetSocketAddress remoteAddress, final Path workload, final Phase phase, final int threads, final boolean status, final String resultFileName, final String benchmarkName, final int benchmarkIteration, final int recordSize) {
-        this.remoteAddress = remoteAddress;
+    public YcsbRunner(final InetSocketAddress[] remoteAddresses, final Path workload, final Phase phase, final int threads, final boolean status, final String resultFileName, final String benchmarkName, final int benchmarkIteration, final int recordSize) {
+        this.remoteAddresses = remoteAddresses;
         this.properties = workload;
         this.resultFileName = resultFileName;
         this.phase = phase;
@@ -57,7 +57,7 @@ public class YcsbRunner implements Runnable {
 
         // Set server address
         parameters.add("-p");
-        parameters.add(String.format("%s=%s:%d", YcsbProperties.REMOTE_ADDRESS_PROPERTY, remoteAddress.getHostString(), remoteAddress.getPort()));
+        parameters.add(String.format("%s=%s", YcsbProperties.REMOTE_ADDRESSES_PROPERTY, Arrays.stream(remoteAddresses).map(address -> address.getHostString() + ":" + address.getPort()).reduce((s1, s2) -> s1 + "," + s2).get()));
 
         // Set result format
         parameters.add("-p");

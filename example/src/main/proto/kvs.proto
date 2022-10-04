@@ -1,7 +1,7 @@
 syntax = "proto3";
 
 option java_multiple_files = true;
-option java_package = "de.hhu.bsinfo.hadronio.example.grpc.kv";
+option java_package = "de.hhu.bsinfo.hadronio.example.grpc.kvs";
 option java_outer_classname = "KeyValueStoreProto";
 
 import "google/protobuf/empty.proto";
@@ -13,7 +13,10 @@ service KeyValueStore {
   rpc update (KeyValueRequest) returns (StatusResponse) {}
   rpc get (KeyRequest) returns (ValueResponse) {}
   rpc delete (KeyRequest) returns (StatusResponse) {}
-  rpc shutdown (google.protobuf.Empty) returns (google.protobuf.Empty);
+
+  rpc connect (google.protobuf.Empty) returns (ClientIdMessage) {}
+  rpc startBenchmark (ClientIdMessage) returns (StartBenchmarkMessage) {}
+  rpc endBenchmark (ClientIdMessage) returns (google.protobuf.Empty) {}
 }
 
 message KeyValueRequest {
@@ -32,4 +35,12 @@ message ValueResponse {
 
 message StatusResponse {
   int32 status = 1;
+}
+
+message ClientIdMessage {
+  uint32 id = 1;
+}
+
+message StartBenchmarkMessage {
+  bool start = 1;
 }

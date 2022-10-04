@@ -11,18 +11,18 @@ public class Shell implements Runnable {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Client.class);
 
-    private final InetSocketAddress remoteAddress;
+    private final InetSocketAddress[] remoteAddresses;
     private final Client client = new Client();
 
-    public Shell(final InetSocketAddress remoteAddress) {
-        this.remoteAddress = remoteAddress;
+    public Shell(final InetSocketAddress[] remoteAddresses) {
+        this.remoteAddresses = remoteAddresses;
     }
 
     @Override
     public void run() {
         final Scanner scanner = new Scanner(System.in);
 
-        client.connect(remoteAddress);
+        client.connect(remoteAddresses);
         LOGGER.info("Use 'insert', 'update', 'get' or 'delete' to operate the key-value store");
 
         while (scanner.hasNextLine()) {

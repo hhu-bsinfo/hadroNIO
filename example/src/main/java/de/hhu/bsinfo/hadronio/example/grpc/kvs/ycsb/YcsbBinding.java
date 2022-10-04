@@ -6,8 +6,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import site.ycsb.*;
 
+import java.net.InetSocketAddress;
 import java.util.*;
-import java.util.concurrent.CyclicBarrier;
 
 public class YcsbBinding extends DB {
 
@@ -25,7 +25,11 @@ public class YcsbBinding extends DB {
         LOGGER.info("Initializing YCSB client");
         properties = new YcsbProperties(getProperties());
         reusableObject = new YcsbObject(properties.getFieldsPerKey(), properties.getFieldSize());
-        client.connect(properties.getRemoteAddress());
+        client.connect(properties.getRemoteAddresses());
+
+        if (YcsbProperties.phase == YcsbRunner.Phase.RUN) {
+            client.startBenchmark();
+        }
     }
 
     @Override
@@ -85,13 +89,12 @@ public class YcsbBinding extends DB {
 
     @Override
     public void cleanup() {
-        if (YcsbProperties.closeConnectionCounter.decrementAndGet() == 0 && YcsbProperties.phase == YcsbRunner.Phase.RUN) {
-            try {
-                client.shutdownServer();
-            } catch (StatusRuntimeException ignored) {}
-        } else {
-            client.close();
+        LOGGER.info("Cleaning up YCSB client");
+        if (YcsbProperties.phase == YcsbRunner.Phase.RUN) {
+            client.endBenchmark();
         }
+
+        client.close();
     }
 
     private static String generateKey(String table, String key) {
