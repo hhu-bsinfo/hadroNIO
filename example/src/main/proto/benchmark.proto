@@ -10,9 +10,19 @@ package benchmark;
 
 service Benchmark {
   rpc benchmark (BenchmarkMessage) returns (BenchmarkMessage) {}
-  rpc shutdown (google.protobuf.Empty) returns (google.protobuf.Empty);
+  rpc connect (google.protobuf.Empty) returns (ClientIdMessage) {}
+  rpc startBenchmark (ClientIdMessage) returns (StartBenchmarkMessage) {}
+  rpc endBenchmark (ClientIdMessage) returns (google.protobuf.Empty) {}
 }
 
 message BenchmarkMessage {
   bytes content = 1;
+}
+
+message ClientIdMessage {
+  uint32 id = 1;
+}
+
+message StartBenchmarkMessage {
+  bool start = 1;
 }

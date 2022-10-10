@@ -2,6 +2,7 @@ package de.hhu.bsinfo.hadronio.example.grpc.benchmark;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.protobuf.ByteString;
+import com.google.protobuf.Empty;
 import de.hhu.bsinfo.hadronio.util.ThroughputCombiner;
 import de.hhu.bsinfo.hadronio.util.ThroughputResult;
 import io.grpc.Channel;
@@ -10,10 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Queue;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BrokenBarrierException;
-import java.util.concurrent.CyclicBarrier;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 public class NonBlockingRunnable implements Runnable {
 
@@ -63,11 +61,29 @@ public class NonBlockingRunnable implements Runnable {
         try {
             // Benchmark
             benchmarkBarrier.await();
+
+            ClientIdMessage id;
+            try {
+                id = futureStub.connect(Empty.newBuilder().build()).get();
+                while (!futureStub.startBenchmark(id).get().getStart()) {
+                    Thread.sleep(100);
+                }
+            } catch (ExecutionException e) {
+                throw new IllegalStateException("Failed to get Client ID and start benchmark!", e);
+            }
+
             LOGGER.info("Starting benchmark with [{}] requests", requestCount);
 
             final long startTime = System.nanoTime();
             performCalls(requestCount);
             result.setMeasuredTime(System.nanoTime() - startTime);
+
+            final var endFuture = futureStub.endBenchmark(id);
+            while (!endFuture.isDone()) {
+                if (endFuture.isCancelled()) {
+                    throw new IllegalStateException("Failed to disconnect from server!");
+                }
+            }
 
             final var channel = (ManagedChannel) futureStub.getChannel();
             channel.shutdown();

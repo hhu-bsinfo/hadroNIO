@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class Server implements Runnable {
 
@@ -20,12 +21,14 @@ public class Server implements Runnable {
 
     private final InetSocketAddress bindAddress;
     private final int answerSize;
+    private final int connections;
 
     private io.grpc.Server server;
 
-    public Server(InetSocketAddress bindAddress, int answerSize) {
+    public Server(final InetSocketAddress bindAddress, final int answerSize, final int connections) {
         this.bindAddress = bindAddress;
         this.answerSize = answerSize;
+        this.connections = connections;
     }
 
     @Override
@@ -57,6 +60,8 @@ public class Server implements Runnable {
     }
 
     private final class BenchmarkImpl extends BenchmarkGrpc.BenchmarkImplBase {
+
+        private final AtomicInteger counter = new AtomicInteger();
         private final BenchmarkMessage answer;
 
         public BenchmarkImpl(int requestSize) {
@@ -75,10 +80,30 @@ public class Server implements Runnable {
         }
 
         @Override
-        public void shutdown(final Empty request, final StreamObserver<Empty> responseObserver) {
-            LOGGER.info("Close");
+        public void connect(final Empty request, final StreamObserver<ClientIdMessage> responseObserver) {
+            final int id = counter.incrementAndGet();
+            LOGGER.info("Client [#{}] connected", id);
+
+            responseObserver.onNext(ClientIdMessage.newBuilder().setId(id).build());
             responseObserver.onCompleted();
-            server.shutdownNow();
+        }
+
+        @Override
+        public void startBenchmark(final ClientIdMessage request, final StreamObserver<StartBenchmarkMessage> responseObserver) {
+            final boolean start = counter.get() >= connections;
+            responseObserver.onNext(StartBenchmarkMessage.newBuilder().setStart(start).build());
+            responseObserver.onCompleted();
+        }
+
+        @Override
+        public void endBenchmark(final ClientIdMessage request, final StreamObserver<Empty> responseObserver) {
+            LOGGER.info("Client [#{}] disconnected", request.getId());
+            if (counter.decrementAndGet() <= 0) {
+                server.shutdownNow();
+            }
+
+            responseObserver.onNext(Empty.newBuilder().build());
+            responseObserver.onCompleted();
         }
     }
 }

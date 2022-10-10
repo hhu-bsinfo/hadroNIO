@@ -87,16 +87,5 @@ public class Client implements Runnable {
                 LOGGER.error("Unable to write result to file '{}'", resultFileName, e);
             }
         }
-
-        final var shutdownChannel = NettyChannelBuilder.forAddress(remoteAddress.getHostString(), remoteAddress.getPort())
-                .eventLoopGroup(workerGroup)
-                .channelType(NioSocketChannel.class)
-                .usePlaintext()
-                .build();
-        final var shutdownStub = BenchmarkGrpc.newBlockingStub(shutdownChannel);
-
-        try {
-            shutdownStub.shutdown(Empty.newBuilder().build());
-        } catch (StatusRuntimeException ignored) {}
     }
 }

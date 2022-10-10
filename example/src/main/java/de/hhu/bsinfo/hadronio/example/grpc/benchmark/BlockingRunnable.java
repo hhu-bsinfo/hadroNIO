@@ -1,6 +1,7 @@
 package de.hhu.bsinfo.hadronio.example.grpc.benchmark;
 
 import com.google.protobuf.ByteString;
+import com.google.protobuf.Empty;
 import de.hhu.bsinfo.hadronio.util.LatencyCombiner;
 import de.hhu.bsinfo.hadronio.util.LatencyResult;
 import io.grpc.Channel;
@@ -52,6 +53,12 @@ public class BlockingRunnable implements Runnable {
         try {
             // Benchmark
             benchmarkBarrier.await();
+
+            final var id = blockingStub.connect(Empty.newBuilder().build());
+            while (!blockingStub.startBenchmark(id).getStart()) {
+                Thread.sleep(100);
+            }
+
             LOGGER.info("Starting benchmark with [{}] requests", requestCount);
             final long startTime = System.nanoTime();
 
@@ -62,6 +69,7 @@ public class BlockingRunnable implements Runnable {
             }
 
             result.setMeasuredTime(System.nanoTime() - startTime);
+            blockingStub.endBenchmark(id);
 
             final var channel = (ManagedChannel) blockingStub.getChannel();
             channel.shutdown();
