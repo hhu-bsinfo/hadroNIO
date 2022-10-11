@@ -1,10 +1,14 @@
 package de.hhu.bsinfo.hadronio.util;
 
 import org.agrona.MutableDirectBuffer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
 
 public class MessageUtil {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(MessageUtil.class);
 
     public static final int HEADER_LENGTH = 2 * Integer.BYTES;
     public static final int MESSAGE_OFFSET_LENGTH = 0;
@@ -55,5 +59,4 @@ public class MessageUtil {
         setReadBytes(targetBuffer, targetIndex, 0);
         setMessageData(targetBuffer, targetIndex, sourceBuffer, messageLength);
     }
-
 }

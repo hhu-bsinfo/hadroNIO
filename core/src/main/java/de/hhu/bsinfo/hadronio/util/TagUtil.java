@@ -65,10 +65,10 @@ public class TagUtil {
     }
 
     public static long setTargetId(final long tag, final long targetId) {
-        return (tag & ~TAG_MASK_TARGET_ID) | targetId;
+        return (tag & TAG_MASK_MESSAGE_TYPE) | targetId;
     }
 
     public static long setMessageType(final long tag, final MessageType messageType) {
-        return (tag & ~TAG_MASK_MESSAGE_TYPE) | ((long) messageType.value << 56);
+        return (tag & TAG_MASK_TARGET_ID) | ((long) messageType.value << 56);
     }
 }

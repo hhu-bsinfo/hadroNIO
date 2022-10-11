@@ -9,7 +9,7 @@ import java.io.OutputStream;
 
 public class LoggingExporter implements MeasurementsExporter {
 
-    private static final int METRING_LENGTH = 35;
+    private static final int METRIC_LENGTH = 35;
     private static final int MEASUREMENT_LENGTH = 23;
     private static final int VALUE_LENGTH = 15;
 
@@ -17,7 +17,7 @@ public class LoggingExporter implements MeasurementsExporter {
 
     public LoggingExporter(final OutputStream outputStream) {
         write("Metric", "Measurement", "Value");
-        LOGGER.info("-".repeat(METRING_LENGTH + 1) + "|" + "-".repeat(MEASUREMENT_LENGTH + 2) + "|" + "-".repeat(VALUE_LENGTH + 1));
+        LOGGER.info("-".repeat(METRIC_LENGTH + 1) + "|" + "-".repeat(MEASUREMENT_LENGTH + 2) + "|" + "-".repeat(VALUE_LENGTH + 1));
     }
 
     @Override
@@ -53,7 +53,7 @@ public class LoggingExporter implements MeasurementsExporter {
     }
 
     private static void write(final String metric, final String measurement, final String value) {
-        final var metricString = String.format("%-" + METRING_LENGTH + "s", metric);
+        final var metricString = String.format("%-" + METRIC_LENGTH + "s", metric);
         final var measurementString = String.format("%-" + MEASUREMENT_LENGTH + "s", (measurement.contains("(") ? measurement.substring(0, measurement.indexOf('(')) : measurement));
         LOGGER.info("{} | {} | {}", metricString, measurementString, value);
     }
