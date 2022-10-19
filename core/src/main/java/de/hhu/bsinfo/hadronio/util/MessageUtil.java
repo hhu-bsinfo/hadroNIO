@@ -8,11 +8,10 @@ import java.nio.ByteBuffer;
 
 public class MessageUtil {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(MessageUtil.class);
-
-    public static final int HEADER_LENGTH = 2 * Integer.BYTES;
+    public static final int HEADER_LENGTH = 2 * Integer.BYTES + Short.BYTES;
     public static final int MESSAGE_OFFSET_LENGTH = 0;
     public static final int MESSAGE_OFFSET_READ_BYTES = Integer.BYTES;
+    public static final int MESSAGE_OFFSET_SEQUENCE_NUMBER = 2 * Integer.BYTES;
     public static final int MESSAGE_OFFSET_DATA = HEADER_LENGTH;
 
     public static int getMessageLength(final MutableDirectBuffer buffer, final int index) {
@@ -21,6 +20,10 @@ public class MessageUtil {
 
     public static int getReadBytes(final MutableDirectBuffer buffer, final int index) {
         return buffer.getInt(index + MESSAGE_OFFSET_READ_BYTES);
+    }
+
+    public static short getSequenceNumber(final MutableDirectBuffer buffer, final int index) {
+        return buffer.getShort(index + MESSAGE_OFFSET_SEQUENCE_NUMBER);
     }
 
     public static void getMessageData(final MutableDirectBuffer sourceBuffer, final int sourceIndex, final ByteBuffer targetBuffer, final int length, final int offset) {
@@ -50,13 +53,11 @@ public class MessageUtil {
         buffer.putInt(index + MESSAGE_OFFSET_READ_BYTES, value);
     }
 
-    public static void setMessageData(final MutableDirectBuffer targetBuffer, final int targetIndex, final ByteBuffer sourceBuffer, final int messageLength) {
-        targetBuffer.putBytes(targetIndex + MESSAGE_OFFSET_DATA, sourceBuffer, sourceBuffer.position(), messageLength);
+    public static void setSequenceNumber(final MutableDirectBuffer buffer, final int index, final short value) {
+        buffer.putShort(index + MESSAGE_OFFSET_SEQUENCE_NUMBER, value);
     }
 
-    public static void writeMessage(final MutableDirectBuffer targetBuffer, final int targetIndex, final ByteBuffer sourceBuffer, final int messageLength) {
-        setMessageLength(targetBuffer, targetIndex, messageLength);
-        setReadBytes(targetBuffer, targetIndex, 0);
-        setMessageData(targetBuffer, targetIndex, sourceBuffer, messageLength);
+    public static void setMessageData(final MutableDirectBuffer targetBuffer, final int targetIndex, final ByteBuffer sourceBuffer, final int messageLength) {
+        targetBuffer.putBytes(targetIndex + MESSAGE_OFFSET_DATA, sourceBuffer, sourceBuffer.position(), messageLength);
     }
 }

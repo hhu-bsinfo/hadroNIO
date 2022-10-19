@@ -40,7 +40,8 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
     private final AtomicBuffer flushBuffer = new UnsafeBuffer(ByteBuffer.allocateDirect(Long.BYTES));
     private final AtomicBoolean isFlushing = new AtomicBoolean();
     private final AtomicInteger readableMessages = new AtomicInteger();
-    private int sendCounter;
+    private long sendCounter;
+    private short lastSequenceNumber = -1;
     private long localTag;
     private long remoteTag;
 
@@ -433,7 +434,8 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
             LOGGER.debug("Claimed part of the receive buffer (Index: [{}], Length: [{}])", index, configuration.getBufferSliceLength());
 
             receiveBuffer.commitWrite(index);
-            final boolean completed = endpoint.receiveTaggedMessage(receiveBuffer.memoryAddress() + index, configuration.getBufferSliceLength(), tag, TagUtil.TAG_MASK_FULL, true, false);
+            final boolean completed = endpoint.receiveTaggedMessage(receiveBuffer.memoryAddress() + index,
+                    configuration.getBufferSliceLength(), tag, TagUtil.TAG_MASK_FULL, true, false);
             LOGGER.debug("Receive request completed instantly: [{}]", completed);
 
             index = receiveBuffer.tryClaim(configuration.getBufferSliceLength());
@@ -504,14 +506,26 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
         LOGGER.debug("Trying to read [{}] bytes (Readable messages: [{}])", target.remaining(), readableMessages.get());
 
         do {
-            readFromBuffer = receiveBuffer.read((msgTypeId, sourceBuffer, sourceIndex, sourceBufferLength) -> {
+            readFromBuffer = receiveBuffer.read((messageTypeId, sourceBuffer, sourceIndex, sourceBufferLength) -> {
                 final int read = MessageUtil.readMessage(sourceBuffer, sourceIndex, target);
                 final int remaining = MessageUtil.getRemainingBytes(sourceBuffer, sourceIndex);
-                LOGGER.debug("Message type id: [{}], Index: [{}], Buffer Length: [{}], Read: [{}], Remaining: [{}]", msgTypeId, sourceIndex, sourceBufferLength, read, remaining);
+                final short sequenceNumber = MessageUtil.getSequenceNumber(sourceBuffer, sourceIndex);
+                final boolean completed = remaining == 0;
+                LOGGER.debug("Message type id: [{}], Index: [{}], Buffer Length: [{}], Read: [{}], Remaining: [{}], Sequence Number [{}]",
+                        messageTypeId, sourceIndex, sourceBufferLength, read, remaining, sequenceNumber);
+
+                if (completed) {
+                    final short expected = (short) (lastSequenceNumber + 1);
+                    if (sequenceNumber != expected) {
+                        LOGGER.warn("Received wrong sequence number (Expected: [{}], Got: [{}])", expected, sequenceNumber);
+                    }
+
+                    lastSequenceNumber = sequenceNumber;
+                }
 
                 padding.set(false);
                 readBytes.set(read);
-                messageCompleted.set(remaining == 0);
+                messageCompleted.set(completed);
             }, 1);
 
             if (padding.get()) {
@@ -554,7 +568,6 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
         }
 
         final int index = sendBuffer.tryClaim(messageLength);
-
         if (index < 0) {
             LOGGER.debug("Unable to claim space in the send buffer (Error: [{}])", index);
             return 0;
@@ -563,6 +576,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
         // Write message header
         MessageUtil.setMessageLength(sendBuffer.buffer(), index, messageLength - MessageUtil.HEADER_LENGTH);
         MessageUtil.setReadBytes(sendBuffer.buffer(), index, 0);
+        MessageUtil.setSequenceNumber(sendBuffer.buffer(), index, (short) sendCounter++);
 
         // Copy message data from source buffers into send buffer
         int remaining = messageLength - MessageUtil.HEADER_LENGTH;
@@ -603,7 +617,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
         LOGGER.debug("Send request completed instantly: [{}]", completed);
 
         // Flush, if necessary
-        if (++sendCounter % configuration.getFlushIntervalSize() == 0) {
+        if (sendCounter % configuration.getFlushIntervalSize() == 0) {
             flush();
         }
 
