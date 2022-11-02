@@ -9,7 +9,7 @@ Transparent acceleration for Java NIO applications via [UCX](https://openucx.org
 <p align="center">
   <a href="https://travis-ci.com/github/hhu-bsinfo/hadroNIO"><img src="https://www.travis-ci.com/hhu-bsinfo/hadroNIO.svg?branch=main"></a>
   <a href="https://openjdk.java.net/"><img src="https://img.shields.io/badge/java-11+-blue.svg"></a>
-  <a href="https://openucx.org/"><img src="https://img.shields.io/badge/ucx-1.13.1_rc1-blue.svg"></a>
+  <a href="https://openucx.org/"><img src="https://img.shields.io/badge/ucx-1.13.1-blue.svg"></a>
   <a href="https://github.com/hhu-bsinfo/hadroNIO/blob/master/LICENSE"><img src="https://img.shields.io/badge/license-GPLv3-orange.svg"></a>
 </p>
 
@@ -45,7 +45,7 @@ The JAR-file should now be located at `build/provider/libs/hadronio-0.3.3-SNAPSH
 
 ## Run instructions
 
-To run hadroNIO, **UCX 1.13.0** needs to be installed on your system. See the [OpenUCX GitHub Repository](https://github.com/openucx/ucx) for information on how to build and install UCX.
+To run hadroNIO, **UCX 1.13.1** needs to be installed on your system. See the [OpenUCX GitHub Repository](https://github.com/openucx/ucx) for information on how to build and install UCX.
 
 To accelerate an existing Java application (e.g. `application.jar`), the hadroNIO JAR-file needs to be included in the classpath. Additionally, the property `java.nio.channels.spi.SelectorProvider` must be set to `de.hhu.bsinfo.hadronio.HadronioProvider`:
 ```shell
@@ -54,12 +54,13 @@ java -cp path/to/hadronio-0.3.3-SNAPSHOT-all.jar -Djava.nio.channels.spi.Selecto
 
 ### Enable logging
 
-hadroNIO uses [SLF4J](http://www.slf4j.org/) for logging. To see any log output, you need to supply an appropriate logging framework, that supports SLF4J (we recommend [Log4j 2](https://logging.apache.org/log4j/2.x/) with the [log4j-slf4j-impl](https://mvnrepository.com/artifact/org.apache.logging.log4j/log4j-slf4j-impl) module). Either load the framework's JAR file into the classpath, when starting your application, or add the framework as a build dependency to your application. For Gradle, this can be done in the following way:
+hadroNIO uses [SLF4J](http://www.slf4j.org/) for logging. To see any log output, you need to supply an appropriate logging framework, that supports SLF4J (we recommend [Log4j 2](https://logging.apache.org/log4j/2.x/) with the [log4j-slf4j2-impl](https://mvnrepository.com/artifact/org.apache.logging.log4j/log4j-slf4j2-impl) module). Either load the framework's JAR file into the classpath, when starting your application, or add the framework as a build dependency to your application. For Gradle, this can be done in the following way:
 
 ```groovy
 dependencies {
     ...
-    implementation 'org.apache.logging.log4j:log4j-slf4j-impl:2.17.2'
+    implementation 'org.apache.logging.log4j:log4j-core:2.19.0'
+    implementation 'org.apache.logging.log4j:log4j-slf4j2-impl:2.19.0'
     ...
 }
 ```

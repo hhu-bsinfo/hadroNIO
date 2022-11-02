@@ -37,7 +37,7 @@ class ReceiveCallback implements UcxReceiveCallback {
     public void onMessageReceived(long tag) {
         final long id = TagUtil.getTargetId(tag);
         final var messageType = TagUtil.getMessageType(tag);
-        LOGGER.debug("hadroNIO ReceiveCallback called (id: [0x{}], messageType: [{}], receiveCouter: [{}])", Long.toHexString(id), messageType, receiveCounter);
+        LOGGER.debug("hadroNIO ReceiveCallback called (id: [0x{}], messageType: [{}], receiveCounter: [{}])", Long.toHexString(id), messageType, receiveCounter);
 
         if (messageType == TagUtil.MessageType.FLUSH) {
             LOGGER.debug("Received flush answer");

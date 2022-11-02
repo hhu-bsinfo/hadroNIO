@@ -47,7 +47,7 @@ public class MemoryUtil {
             final int lineLength = Math.min(bytes, LINE_LENGTH);
 
             // Print memory address
-            stream.printf(" %08X |", buffer.addressOffset() + offset);
+            stream.printf(" %08X |", offset);
 
             // Print bytes
             for (int i = 0; i < LINE_LENGTH; i++) {

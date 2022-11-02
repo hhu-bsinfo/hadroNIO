@@ -472,8 +472,8 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
         endpoint.setReceiveCallback(connectionCallback);
 
         LOGGER.info("Exchanging tags to establish connection");
-        endpoint.sendStream(sendBuffer.addressOffset(), 2 * Long.BYTES, true, true);
         endpoint.receiveStream(receiveBuffer.addressOffset(), 2 * Long.BYTES, true, false);
+        endpoint.sendStream(sendBuffer.addressOffset(), 2 * Long.BYTES, true, true);
     }
 
     private int readBlocking(final ByteBuffer target) throws IOException {
@@ -576,7 +576,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
         // Write message header
         MessageUtil.setMessageLength(sendBuffer.buffer(), index, messageLength - MessageUtil.HEADER_LENGTH);
         MessageUtil.setReadBytes(sendBuffer.buffer(), index, 0);
-        MessageUtil.setSequenceNumber(sendBuffer.buffer(), index, (short) sendCounter++);
+        MessageUtil.setSequenceNumber(sendBuffer.buffer(), index, (short) sendCounter);
 
         // Copy message data from source buffers into send buffer
         int remaining = messageLength - MessageUtil.HEADER_LENGTH;
@@ -591,8 +591,8 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
                 continue;
             }
 
-            LOGGER.debug("Copying source buffer into send buffer (Buffer: [{}/{}], Position: [{}/{}], Length: [{}], Remaining: [{}])",
-                offset + i + 1, length, sourceBuffer.position(), sourceBuffer.limit(), currentLength, remaining);
+            LOGGER.debug("Copying source buffer into send buffer (Buffer: [{}/{}], Position: [{}/{}], Length: [{}], Remaining: [{}], Sequence Number: [{}])",
+                offset + i + 1, length, sourceBuffer.position(), sourceBuffer.limit(), currentLength, remaining, (short) sendCounter);
             sendBuffer.buffer().putBytes(targetIndex, sourceBuffer, sourceBuffer.position(), currentLength);
 
             lastBufferIndex = i;
@@ -601,6 +601,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
             remaining -= currentLength;
         }
 
+        sendCounter++;
         sendBuffer.commitWrite(index);
 
         // Update source buffer positions afterwards

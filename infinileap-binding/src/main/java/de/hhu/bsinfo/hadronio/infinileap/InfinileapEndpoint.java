@@ -74,20 +74,21 @@ class InfinileapEndpoint implements UcxEndpoint {
 
     @Override
     public boolean receiveTaggedMessage(final long address, final long size, final long tag, final long tagMask, final boolean useCallback, final boolean blocking) {
-        LOGGER.info("Receiving [{}] bytes at address [0x{}]  with tag [0x{}]", size, Long.toHexString(address), Long.toHexString(tag));
         final var status = worker.getWorker().receiveTagged(MemorySegment.ofAddress(MemoryAddress.ofLong(address), size, MemorySession.global()), Tag.of(tag), Tag.of(tagMask), useCallback ? tagReceiveParameters : emptyParameters);
         return checkStatus(status, blocking);
     }
 
     @Override
     public void sendStream(final long address, final long size, final boolean useCallback, final boolean blocking) {
-        endpoint.sendStream(MemorySegment.ofAddress(MemoryAddress.ofLong(address), size, MemorySession.global()), size, useCallback ? sendParameters : emptyParameters);
+        final var status = endpoint.sendStream(MemorySegment.ofAddress(MemoryAddress.ofLong(address), size, MemorySession.global()), size, useCallback ? sendParameters : emptyParameters);
+        checkStatus(status, blocking);
     }
 
     @Override
     public void receiveStream(final long address, final long size, final boolean useCallback, final boolean blocking) {
         final var receiveSize = new NativeLong();
-        endpoint.receiveStream(MemorySegment.ofAddress(MemoryAddress.ofLong(address), size, MemorySession.global()), size, receiveSize, useCallback ? streamReceiveParameters : emptyParameters);
+        final var status = endpoint.receiveStream(MemorySegment.ofAddress(MemoryAddress.ofLong(address), size, MemorySession.global()), size, receiveSize, useCallback ? streamReceiveParameters : emptyParameters);
+        checkStatus(status, blocking);
     }
 
     @Override
@@ -111,7 +112,7 @@ class InfinileapEndpoint implements UcxEndpoint {
                 if (status == Status.OK) {
                     final var tag = tagInfo.get(OfLong.JAVA_LONG, 0);
                     final var size = tagInfo.get(OfLong.JAVA_LONG, Long.BYTES);
-                    LOGGER.info("Infinileap ReceiveCallback called (Status: [{}], Size: [{}], Tag: [0x{}])", status, size, Long.toHexString(tag));
+                    LOGGER.debug("Infinileap ReceiveCallback called (Status: [{}], Size: [{}], Tag: [0x{}])", status, size, Long.toHexString(tag));
                     receiveCallback.onMessageReceived(tag);
                 } else {
                     LOGGER.error("Failed to receive a message (Status: [{}])!", status);
