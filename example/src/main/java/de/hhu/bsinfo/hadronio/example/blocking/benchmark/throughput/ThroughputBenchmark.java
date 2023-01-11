@@ -168,7 +168,7 @@ public class ThroughputBenchmark implements Runnable {
     }
 
     private void receiveMessages(final int messageCount) throws IOException {
-        for (int i = 1; i <= messageCount; i++) {
+        for (int i = 0; i < messageCount; i++) {
             do {
                 socket.read(receiveBuffer);
             } while (receiveBuffer.hasRemaining());

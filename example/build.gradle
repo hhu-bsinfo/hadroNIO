@@ -62,8 +62,8 @@ test {
 
 startScripts {
     doLast {
-        def unixScriptFile = file getUnixScript()
-        def line = unixScriptFile.text.lines().find{it.startsWith('CLASSPATH=$APP_HOME')} as CharSequence
-        unixScriptFile.text  = unixScriptFile.text.replace(line, line + ':$CLASSPATH')
+        def line = unixScript.text.lines().find{it.startsWith('CLASSPATH=$APP_HOME')} as CharSequence
+        unixScript.text  = unixScript.text.replace(line, line + ':$CLASSPATH')
+        unixScript.text = unixScript.text.replaceFirst('exec ', 'UCX_ERROR_SIGNALS="" UCX_TCP_CM_REUSEADDR=y exec ')
     }
 }

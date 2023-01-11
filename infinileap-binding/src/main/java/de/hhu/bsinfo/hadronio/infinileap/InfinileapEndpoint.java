@@ -158,14 +158,16 @@ class InfinileapEndpoint implements UcxEndpoint {
     }
 
     private boolean checkStatus(long status, boolean blocking) {
-        if (Status.is(status, Status.OK)) {
-            return true;
+        if (Status.isStatus(status)) {
+            return Status.is(status, Status.OK);
         }
 
-        while (blocking && !Status.is(ucp_request_check_status(status), Status.OK)) {
+        long statusCode = ucp_request_check_status(status);
+        while (blocking && Status.is(statusCode, Status.IN_PROGRESS)) {
             worker.getWorker().progress();
+            statusCode = ucp_request_check_status(status);
         }
 
-        return Status.is(ucp_request_check_status(status), Status.OK);
+        return Status.is(statusCode, Status.OK);
     }
 }
