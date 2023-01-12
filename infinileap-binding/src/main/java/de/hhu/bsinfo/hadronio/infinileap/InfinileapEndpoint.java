@@ -1,6 +1,7 @@
 package de.hhu.bsinfo.hadronio.infinileap;
 
 import static org.openucx.Communication.ucp_request_check_status;
+import static org.openucx.Communication.ucp_request_free;
 
 import de.hhu.bsinfo.hadronio.binding.UcxSendCallback;
 import de.hhu.bsinfo.hadronio.binding.UcxEndpoint;
@@ -24,11 +25,12 @@ class InfinileapEndpoint implements UcxEndpoint {
     private Endpoint endpoint;
     private final InfinileapWorker worker;
     private InetSocketAddress remoteAddress;
+
     private final EndpointParameters parameters = new EndpointParameters();
-    private final RequestParameters sendParameters = new RequestParameters();
-    private final RequestParameters tagReceiveParameters = new RequestParameters();
-    private final RequestParameters streamReceiveParameters = new RequestParameters();
-    private final RequestParameters emptyParameters = new RequestParameters();
+    private final RequestParameters sendParameters = new RequestParameters().disableImmediateCompletion();
+    private final RequestParameters tagReceiveParameters = new RequestParameters().disableImmediateCompletion();
+    private final RequestParameters streamReceiveParameters = new RequestParameters().disableImmediateCompletion();
+    private final RequestParameters emptyParameters = new RequestParameters().disableImmediateCompletion();
 
     private boolean errorState = false;
 
