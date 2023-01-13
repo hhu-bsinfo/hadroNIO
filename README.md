@@ -410,3 +410,4 @@ With 16 to 19 μs, IPoIB's latency results in that range are more than 3 times a
 ## Publications
 
 - *hadroNIO: Accelerating Java NIO via UCX*, Fabian Ruhland, Filip Krakowski, Michael Schöttner; appeared in: Proceedings of the IEEE International Symposium on Parallel and Distributed Computing ([ISPDC](https://ispdc2021.utcluj.ro/), [IEEE Xplore](https://ieeexplore.ieee.org/document/9521601)), Cluj-Napoca, Romania, 2021.
+- *Accelerating netty-based applications through transparent InfiniBand support*, Fabian Ruhland, Filip Krakowski, Michael Schöttner ([arXiv](https://arxiv.org/abs/2209.14048)), 2022.

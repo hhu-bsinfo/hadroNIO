@@ -15,6 +15,10 @@ class ConnectionCallback implements UcxSendCallback, UcxReceiveCallback {
     private final AtomicBuffer receiveBuffer;
     private final long localTag;
 
+    private int counter;
+    private boolean success;
+    private long remoteTag;
+
     ConnectionCallback(final HadronioSocketChannel socket, final AtomicBuffer receiveBuffer, final long localTag) {
         this.socket = socket;
         this.receiveBuffer = receiveBuffer;
@@ -23,21 +27,28 @@ class ConnectionCallback implements UcxSendCallback, UcxReceiveCallback {
 
     @Override
     public void onMessageSent() {
-        LOGGER.debug("Connection callback has been called (Sent tag: [0x{}])", Long.toHexString(localTag));
+        LOGGER.debug("Connection callback has been called (Sent tag: [0x{}], counter: [{}])", Long.toHexString(localTag), counter + 1);
+        if (++counter == 2) {
+            socket.onConnection(success, localTag, remoteTag);
+        }
     }
 
     @Override
     public void onMessageReceived(long tag) {
-        final long remoteTag = receiveBuffer.getLong(0);
+        remoteTag = receiveBuffer.getLong(0);
         final long checksum = receiveBuffer.getLong(Long.BYTES);
         final long expectedChecksum = TagUtil.calculateChecksum(remoteTag);
 
         if (checksum == expectedChecksum) {
-            LOGGER.debug("Connection callback has been called (Received tag: [0x{}])", Long.toHexString(remoteTag));
-            socket.onConnection(true, localTag, remoteTag);
+            LOGGER.debug("Connection callback has been called (Received tag: [0x{}], counter: [{}])", Long.toHexString(remoteTag), counter + 1);
+            success = true;
         } else {
             LOGGER.error("Tags have been exchanged, but checksum is wrong (Expected: [0x{}], Received: [0x{}])!", Long.toHexString(expectedChecksum), Long.toHexString(checksum));
-            socket.onConnection(false, localTag, 0);
+            success = false;
+        }
+
+        if (++counter == 2) {
+            socket.onConnection(success, localTag, remoteTag);
         }
     }
 }
