@@ -142,6 +142,8 @@ class InfinileapEndpoint implements UcxEndpoint {
                     LOGGER.error("Failed to send a message (Status: [{}])!", status);
                     handleError();
                 }
+
+                ucp_request_free(request);
             });
     }
 
@@ -159,6 +161,8 @@ class InfinileapEndpoint implements UcxEndpoint {
                     LOGGER.error("Failed to receive a message (Status: [{}])!", status);
                     handleError();
                 }
+
+                ucp_request_free(request);
             });
 
         streamReceiveParameters.setReceiveCallback(
@@ -170,6 +174,8 @@ class InfinileapEndpoint implements UcxEndpoint {
                         LOGGER.error("Failed to receive a message (Status: [{}])!", status);
                         handleError();
                     }
+
+                    ucp_request_free(request);
                 });
     }
 
