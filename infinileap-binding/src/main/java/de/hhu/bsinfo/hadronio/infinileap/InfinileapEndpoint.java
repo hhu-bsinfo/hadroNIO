@@ -1,8 +1,5 @@
 package de.hhu.bsinfo.hadronio.infinileap;
 
-import static org.openucx.Communication.ucp_request_check_status;
-import static org.openucx.Communication.ucp_request_free;
-
 import de.hhu.bsinfo.hadronio.binding.UcxSendCallback;
 import de.hhu.bsinfo.hadronio.binding.UcxEndpoint;
 import de.hhu.bsinfo.hadronio.binding.UcxReceiveCallback;
@@ -18,6 +15,8 @@ import java.lang.foreign.ValueLayout.OfLong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static org.openucx.Communication.*;
+
 class InfinileapEndpoint implements UcxEndpoint {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(InfinileapEndpoint.class);
@@ -26,11 +25,15 @@ class InfinileapEndpoint implements UcxEndpoint {
     private final InfinileapWorker worker;
     private InetSocketAddress remoteAddress;
 
+    private final MemorySegment tagInfo = MemorySegment.allocateNative(2 * Long.BYTES, MemorySession.openImplicit());
+    private UcxSendCallback sendCallback;
+    private UcxReceiveCallback receiveCallback;
+
     private final EndpointParameters parameters = new EndpointParameters();
-    private final RequestParameters sendParameters = new RequestParameters().disableImmediateCompletion();
-    private final RequestParameters tagReceiveParameters = new RequestParameters().disableImmediateCompletion();
-    private final RequestParameters streamReceiveParameters = new RequestParameters().disableImmediateCompletion();
-    private final RequestParameters emptyParameters = new RequestParameters().disableImmediateCompletion();
+    private final RequestParameters sendParameters = new RequestParameters();
+    private final RequestParameters tagReceiveParameters = new RequestParameters();
+    private final RequestParameters streamReceiveParameters = new RequestParameters();
+    private final RequestParameters emptyParameters = new RequestParameters();
 
     private boolean errorState = false;
 
@@ -71,30 +74,65 @@ class InfinileapEndpoint implements UcxEndpoint {
     @Override
     public boolean sendTaggedMessage(final long address, final long size, final long tag, final boolean useCallback, final boolean blocking) {
         final var status = endpoint.sendTagged(MemorySegment.ofAddress(MemoryAddress.ofLong(address), size, MemorySession.global()), Tag.of(tag), useCallback ? sendParameters : emptyParameters);
-        return checkStatus(status, blocking);
+        if (Status.isStatus(status)) {
+            if (useCallback && Status.is(status, Status.OK)) {
+                sendCallback.onMessageSent();
+            }
+
+            return true;
+        } else if (blocking) {
+            waitRequest(status);
+            return true;
+        }
+
+        return false;
     }
 
     @Override
     public boolean receiveTaggedMessage(final long address, final long size, final long tag, final long tagMask, final boolean useCallback, final boolean blocking) {
         final var status = worker.getWorker().receiveTagged(MemorySegment.ofAddress(MemoryAddress.ofLong(address), size, MemorySession.global()), Tag.of(tag), Tag.of(tagMask), useCallback ? tagReceiveParameters : emptyParameters);
-        return checkStatus(status, blocking);
+        if (Status.isStatus(status)) {
+            if (useCallback && Status.is(status, Status.OK)) {
+                receiveCallback.onMessageReceived(tag);
+            }
+
+            return true;
+        } else if (blocking) {
+            waitRequest(status);
+            return true;
+        }
+
+        return false;
     }
 
     @Override
     public void sendStream(final long address, final long size, final boolean useCallback, final boolean blocking) {
         final var status = endpoint.sendStream(MemorySegment.ofAddress(MemoryAddress.ofLong(address), size, MemorySession.global()), size, useCallback ? sendParameters : emptyParameters);
-        checkStatus(status, blocking);
+        if (Status.isStatus(status)) {
+            if (useCallback && Status.is(status, Status.OK)) {
+                sendCallback.onMessageSent();
+            }
+        } else if (blocking) {
+            waitRequest(status);
+        }
     }
 
     @Override
     public void receiveStream(final long address, final long size, final boolean useCallback, final boolean blocking) {
         final var receiveSize = new NativeLong();
         final var status = endpoint.receiveStream(MemorySegment.ofAddress(MemoryAddress.ofLong(address), size, MemorySession.global()), size, receiveSize, useCallback ? streamReceiveParameters : emptyParameters);
-        checkStatus(status, blocking);
+        if (Status.isStatus(status)) {
+            if (useCallback && Status.is(status, Status.OK)) {
+                receiveCallback.onMessageReceived(0);
+            }
+        } else if (blocking) {
+            waitRequest(status);
+        }
     }
 
     @Override
     public void setSendCallback(final UcxSendCallback sendCallback) {
+        this.sendCallback = sendCallback;
         sendParameters.setSendCallback(
             (request, status, data) -> {
                 if (status == Status.OK) {
@@ -109,6 +147,7 @@ class InfinileapEndpoint implements UcxEndpoint {
 
     @Override
     public void setReceiveCallback(final UcxReceiveCallback receiveCallback) {
+        this.receiveCallback = receiveCallback;
         tagReceiveParameters.setReceiveCallback(
             (request, status, tagInfo, data) -> {
                 if (status == Status.OK) {
@@ -159,17 +198,11 @@ class InfinileapEndpoint implements UcxEndpoint {
         errorState = true;
     }
 
-    private boolean checkStatus(long status, boolean blocking) {
-        if (Status.isStatus(status)) {
-            return Status.is(status, Status.OK);
-        }
-
-        long statusCode = ucp_request_check_status(status);
-        while (blocking && Status.is(statusCode, Status.IN_PROGRESS)) {
+    private void waitRequest(long requestHandle) {
+        long status = ucp_request_check_status(requestHandle);
+        while (Status.is(status, Status.IN_PROGRESS)) {
             worker.getWorker().progress();
-            statusCode = ucp_request_check_status(status);
+            status = ucp_request_check_status(requestHandle);
         }
-
-        return Status.is(statusCode, Status.OK);
     }
 }
