@@ -381,7 +381,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
         final long tag = TagUtil.setMessageType(localTag, TagUtil.MessageType.FLUSH);
         isFlushing.set(true);
         flushBuffer.putLong(0, 0);
-        endpoint.receiveTaggedMessage(flushBuffer.addressOffset(), flushBuffer.capacity(), tag, TagUtil.TAG_MASK_FULL,true, false);
+        endpoint.receiveTaggedMessage(flushBuffer.addressOffset(), flushBuffer.capacity(), tag, true, false);
     }
 
     public void onConnection(final boolean success, long localTag, long remoteTag) {
@@ -435,7 +435,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
 
             receiveBuffer.commitWrite(index);
             final boolean completed = endpoint.receiveTaggedMessage(receiveBuffer.memoryAddress() + index,
-                    configuration.getBufferSliceLength(), tag, TagUtil.TAG_MASK_FULL, true, false);
+                    configuration.getBufferSliceLength(), tag, true, false);
             LOGGER.debug("Receive request completed instantly: [{}]", completed);
 
             index = receiveBuffer.tryClaim(configuration.getBufferSliceLength());

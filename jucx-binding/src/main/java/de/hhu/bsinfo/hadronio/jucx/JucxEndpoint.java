@@ -4,6 +4,7 @@ import de.hhu.bsinfo.hadronio.binding.UcxEndpoint;
 import de.hhu.bsinfo.hadronio.binding.UcxReceiveCallback;
 import de.hhu.bsinfo.hadronio.binding.UcxSendCallback;
 import de.hhu.bsinfo.hadronio.binding.UcxWorker;
+import de.hhu.bsinfo.hadronio.util.TagUtil;
 import org.openucx.jucx.ucp.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -71,8 +72,8 @@ class JucxEndpoint implements UcxEndpoint {
     }
 
     @Override
-    public boolean receiveTaggedMessage(final long address, final long size, final long tag, final long tagMask, final boolean useCallback, final boolean blocking) {
-        final var request = worker.getWorker().recvTaggedNonBlocking(address, size, tag, tagMask, useCallback ? receiveCallback : null);
+    public boolean receiveTaggedMessage(final long address, final long size, final long tag, final boolean useCallback, final boolean blocking) {
+        final var request = worker.getWorker().recvTaggedNonBlocking(address, size, tag, TagUtil.TAG_MASK_FULL, useCallback ? receiveCallback : null);
         while (blocking && !request.isCompleted()) {
             try {
                 worker.getWorker().progressRequest(request);

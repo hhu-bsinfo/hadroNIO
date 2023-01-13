@@ -4,6 +4,7 @@ import de.hhu.bsinfo.hadronio.binding.UcxSendCallback;
 import de.hhu.bsinfo.hadronio.binding.UcxEndpoint;
 import de.hhu.bsinfo.hadronio.binding.UcxReceiveCallback;
 import de.hhu.bsinfo.hadronio.binding.UcxWorker;
+import de.hhu.bsinfo.hadronio.util.TagUtil;
 import de.hhu.bsinfo.infinileap.binding.*;
 import de.hhu.bsinfo.infinileap.primitive.NativeLong;
 import java.io.IOException;
@@ -20,6 +21,8 @@ import static org.openucx.Communication.*;
 class InfinileapEndpoint implements UcxEndpoint {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(InfinileapEndpoint.class);
+
+    private static final Tag TAG_MASK_FULL = Tag.of(TagUtil.TAG_MASK_FULL);
 
     private Endpoint endpoint;
     private final InfinileapWorker worker;
@@ -89,8 +92,8 @@ class InfinileapEndpoint implements UcxEndpoint {
     }
 
     @Override
-    public boolean receiveTaggedMessage(final long address, final long size, final long tag, final long tagMask, final boolean useCallback, final boolean blocking) {
-        final var status = worker.getWorker().receiveTagged(MemorySegment.ofAddress(MemoryAddress.ofLong(address), size, MemorySession.global()), Tag.of(tag), Tag.of(tagMask), useCallback ? tagReceiveParameters : emptyParameters);
+    public boolean receiveTaggedMessage(final long address, final long size, final long tag, final boolean useCallback, final boolean blocking) {
+        final var status = worker.getWorker().receiveTagged(MemorySegment.ofAddress(MemoryAddress.ofLong(address), size, MemorySession.global()), Tag.of(tag), TAG_MASK_FULL, useCallback ? tagReceiveParameters : emptyParameters);
         if (Status.isStatus(status)) {
             if (useCallback && Status.is(status, Status.OK)) {
                 receiveCallback.onMessageReceived(tag);
