@@ -1,7 +1,3 @@
-# hadroNIO
-
-Transparent acceleration for Java NIO applications via [UCX](https://openucx.org).
-
 <p align="center">
 <img src=media/logo.svg width=400>
 </p>
@@ -13,6 +9,13 @@ Transparent acceleration for Java NIO applications via [UCX](https://openucx.org
   <a href="https://github.com/hhu-bsinfo/hadroNIO/blob/master/LICENSE"><img src="https://img.shields.io/badge/license-GPLv3-orange.svg"></a>
 </p>
 
+<p align="center">
+  <a href="https://www.ej-technologies.com/products/jprofiler/overview.html"><img src="https://www.ej-technologies.com/images/product_banners/jprofiler_large.png"></a>
+</p>
+
+Developed by the [operating systems group](https://www.cs.hhu.de/en/research-groups/operating-systems.html) of the department of computer science of the [Heinrich Heine University Düsseldorf](https://www.hhu.de), **hadroNIO** aims at transparently accelerating Java NIO applications via the open-source communication framework [UCX](https://github.com/openucx/ucx).  
+To access the native functionality of UCX, we support using both the official Java-binding [JUCX](https://github.com/openucx/ucx/tree/master/bindings/java), and our own library [Infinileap](https://github.com/hhu-bsinfo/infinileap), which leverages Project Panama's [Foreign Function Interface](https://openjdk.java.net/jeps/191) and [Foreign-Memory Access API](https://openjdk.java.net/jeps/370). 
+
 ## Introduction
 
 Java NIO is the standard for modern network development on the Java platform for many years now. With its elegant API for asynchronous communication, it empowers application developers to handle several connections with just a single thread, while still being flexible to scale with large thread counts. Additionally, it supports blocking communication, resembling the traditional Java socket API.  
@@ -21,7 +24,7 @@ However, since the NIO implementation relies on classic sockets, applications ar
 [Unified Communication X](https://openucx.org) (UCX) is a native framework, aiming to provide a unified API for multiple transport types. The UCX API offers several forms of communication, such as tagged messaging, active messaging, streaming or RDMA. Application developers do not need to target a specific network interconnect, since UCX automatically scans the system for available transports and chooses the fastest one (e.g. Ethernet or InfiniBand).  
 Its Java-binding called JUCX (based on JNI) makes it also suitable for Java applications.
 
-With **hadroNIO**, we aim at combining these two frameworks, by providing a new NIO implementation, which leverages UCX to send and receive network traffic. Thus, hadroNIO can transparently accelerate existing Java NIO applications, using the fastest network interconnect available in a given environment.
+With hadroNIO, we aim at combining these two frameworks, by providing a new NIO implementation, which leverages UCX to send and receive network traffic. Thus, hadroNIO can transparently accelerate existing Java NIO applications, using the fastest network interconnect available in a given environment.
 
 This is a research project by the [Operating Systems group](https://www.cs.hhu.de/en/research-groups/operating-systems.html) at the *Heinrich Heine University Düsseldorf*.
 
