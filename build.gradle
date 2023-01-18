@@ -6,15 +6,21 @@ buildscript {
             url "https://plugins.gradle.org/m2/"
         }
     }
+
+    dependencies {
+        classpath 'com.guardsquare:proguard-gradle:7.3.1'
+    }
 }
 
 ext {
     projectVersion = '0.3.3' + (Boolean.valueOf(System.getProperty('release')) ? '' : '-SNAPSHOT')
 
-    buildConfigPluginVersion = '1.1.8'
+    // Gradle plugins
+    buildConfigPluginVersion = '3.1.0'
     gitVersionPluginVersion = '0.15.0'
     shadowPluginVersion = '7.1.2'
     protobufPluginVersion = '0.9.1'
+    proguardVersion = '7.3.0'
 
     // Core dependencies
     agronaVersion = '1.17.1'
@@ -48,5 +54,5 @@ subprojects {
 }
 
 wrapper {
-    gradleVersion = "7.5.1"
+    gradleVersion = "7.6"
 }

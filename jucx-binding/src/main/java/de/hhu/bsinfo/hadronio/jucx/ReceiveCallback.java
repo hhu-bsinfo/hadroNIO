@@ -1,6 +1,7 @@
 package de.hhu.bsinfo.hadronio.jucx;
 
 import de.hhu.bsinfo.hadronio.binding.UcxReceiveCallback;
+import de.hhu.bsinfo.hadronio.generated.DebugConfig;
 import org.openucx.jucx.ucp.UcpRequest;
 import org.openucx.jucx.UcxCallback;
 import org.slf4j.Logger;
@@ -20,7 +21,7 @@ class ReceiveCallback extends UcxCallback {
 
     @Override
     public void onSuccess(final UcpRequest request) {
-        LOGGER.debug("JUCX ReceiveCallback called (Completed: [{}], Size: [{}], Tag: [0x{}])", request.isCompleted(), request.getRecvSize(), Long.toHexString(request.getSenderTag()));
+        if (DebugConfig.DEBUG) LOGGER.debug("JUCX ReceiveCallback called (Completed: [{}], Size: [{}], Tag: [0x{}])", request.isCompleted(), request.getRecvSize(), Long.toHexString(request.getSenderTag()));
         if (request.isCompleted()) {
             callback.onMessageReceived(request.getSenderTag());
         }

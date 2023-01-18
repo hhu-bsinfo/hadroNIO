@@ -1,7 +1,9 @@
+import proguard.gradle.ProGuardTask
+
 plugins {
     id 'java-library'
     id 'maven-publish'
-    id 'de.fuerstenau.buildconfig' version "${buildConfigPluginVersion}"
+    id 'com.github.gmazzo.buildconfig' version "${buildConfigPluginVersion}"
     id 'com.palantir.git-version' version "${gitVersionPluginVersion}"
     id 'com.github.johnrengelman.shadow' version "${shadowPluginVersion}"
 }
@@ -41,7 +43,7 @@ javadoc {
     classpath = files(projects.collect { project(it).sourceSets.main.compileClasspath }) + files(buildDir.toString() + '/gen/buildconfig/classes/main')
 }
 
-javadoc.dependsOn('compileBuildConfig')
+javadoc.dependsOn('generateBuildConfig')
 
 task sourcesJar(type: Jar, dependsOn: classes) {
     archiveClassifier.set('sources')
@@ -58,34 +60,54 @@ artifacts {
     archives javadocJar
 }
 
+shadowJar {
+    archivesBaseName = 'hadronio'
+}
+
 jar {
     from project(':core').buildDir.toString() + '/classes/java/main'
     from project(':jucx-binding').buildDir.toString() + '/classes/java/main'
 }
 
-shadowJar {
-    archivesBaseName = 'hadronio'
-}
-
 buildConfig {
     def gitVersion = versionDetails()
+    className('BuildConfig')
+    packageName('de.hhu.bsinfo.hadronio.generated')
 
-    appName = project.name
-    version = project.version
-
-    clsName = 'BuildConfig'
-    packageName = 'de.hhu.bsinfo.hadronio.generated'
-
-    charset = 'UTF-8'
-
-    buildConfigField 'String', 'BUILD_DATE', new Date().format('yyyy-MM-dd HH:mm:ss')
-    buildConfigField 'String', 'GIT_COMMIT', gitVersion.gitHash
-    buildConfigField 'String', 'GIT_BRANCH', gitVersion.branchName
+    buildConfigField('String', 'VERSION', "\"${version}\"")
+    buildConfigField('String', 'BUILD_DATE', "\"${new Date().format('yyyy-MM-dd HH:mm:ss')}\"")
+    buildConfigField('String', 'GIT_COMMIT', "\"${gitVersion.gitHash}\"")
+    buildConfigField('String', 'GIT_BRANCH', "\"${gitVersion.branchName}\"")
 }
 
 // Workaround for 'Configuration <compile> not found', caused by de.fuerstenau.buildconfig with Gradle 7+
 configurations {
     create("compile")
+}
+
+tasks.register('proguard', ProGuardTask) {
+    configuration file('../proguard.pro')
+    injars(tasks.named('jar', Jar).flatMap { it.archiveFile })
+    libraryjars "${System.getProperty('java.home')}/jmods/java.base.jmod", jarfilter: '!**.jar', filter: '!module-info.class'
+    outjars(layout.buildDirectory.file("libs/hadronio-${version}-minified.jar"))
+}
+
+tasks.register('optimize', Copy) {
+    from(layout.buildDirectory.file("libs/hadronio-${version}-minified.jar"))
+    destinationDir(layout.buildDirectory.dir("libs").get().getAsFile())
+    rename { String filename ->
+        filename.replace("-minified", "")
+    }
+
+    doLast {
+        delete file(layout.buildDirectory.file("libs/hadronio-${version}-minified.jar"))
+    }
+}
+
+tasks.optimize.dependsOn(proguard)
+
+if (Boolean.parseBoolean(System.getProperty('release'))) {
+    tasks.jar.finalizedBy(optimize)
 }
 
 apply from: 'publish.gradle'

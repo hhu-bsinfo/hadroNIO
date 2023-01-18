@@ -25,6 +25,8 @@ public class HadronioServerSocketChannel extends ServerSocketChannel implements 
     private static final Logger LOGGER = LoggerFactory.getLogger(HadronioServerSocketChannel.class);
     private static final int DEFAULT_SERVER_PORT = 2998;
 
+    private final WrappingServerSocket wrappingSocket = new WrappingServerSocket(this);
+
     private final UcxListener listener;
     private final Stack<UcxConnectionRequest> pendingRequests = new Stack<>();
 
@@ -32,7 +34,7 @@ public class HadronioServerSocketChannel extends ServerSocketChannel implements 
     private boolean channelBound = false;
     private int readyOps;
 
-    public HadronioServerSocketChannel(final SelectorProvider provider, final UcxListener listener) {
+    public HadronioServerSocketChannel(final SelectorProvider provider, final UcxListener listener) throws IOException {
         super(provider);
         this.listener = listener;
     }
@@ -102,11 +104,7 @@ public class HadronioServerSocketChannel extends ServerSocketChannel implements 
 
     @Override
     public ServerSocket socket() {
-        try {
-            return new WrappingServerSocket(this);
-        } catch (IOException e) {
-            throw new IllegalStateException("Unable to create wrapping server socket!");
-        }
+        return wrappingSocket;
     }
 
     @Override

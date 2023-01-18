@@ -2,6 +2,7 @@ package de.hhu.bsinfo.hadronio;
 
 import de.hhu.bsinfo.hadronio.binding.UcxEndpoint;
 import de.hhu.bsinfo.hadronio.binding.UcxWorker;
+import de.hhu.bsinfo.hadronio.generated.DebugConfig;
 import de.hhu.bsinfo.hadronio.util.MemoryUtil;
 import de.hhu.bsinfo.hadronio.util.MemoryUtil.Alignment;
 import de.hhu.bsinfo.hadronio.util.MessageUtil;
@@ -29,6 +30,8 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
     private static final Logger LOGGER = LoggerFactory.getLogger(HadronioSocketChannel.class);
 
     static final long FLUSH_ANSWER = 0xC0FFEE00ADD1C7EDL;
+
+    private final WrappingSocket wrappingSocket = new WrappingSocket(this);
 
     private final UcxEndpoint endpoint;
     private final Configuration configuration;
@@ -131,7 +134,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
 
     @Override
     public Socket socket() {
-        return new WrappingSocket(this);
+        return wrappingSocket;
     }
 
     @Override
@@ -389,26 +392,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
             this.localTag = localTag;
             this.remoteTag = remoteTag;
 
-            endpoint.setSendCallback(() -> {
-                LOGGER.debug("hadroNIO SendCallback called");
-                final AtomicBoolean padding = new AtomicBoolean(true);
-                int readFromBuffer;
-
-                do {
-                    readFromBuffer = sendBuffer.read((msgTypeId, buffer, index, length) -> {
-                        LOGGER.debug("Message type id: [{}], Index: [{}], Length: [{}]", msgTypeId, index, length);
-                        padding.set(false);
-                    }, 1);
-
-                    if (padding.get()) {
-                        LOGGER.debug("Read [{}] padding bytes from send buffer", readFromBuffer);
-                        sendBuffer.commitRead(readFromBuffer);
-                    }
-                } while (padding.get());
-
-                sendBuffer.commitRead(readFromBuffer);
-            });
-
+            endpoint.setSendCallback(new SendCallback(sendBuffer));
             endpoint.setReceiveCallback(new ReceiveCallback(this, readableMessages, isFlushing, configuration.getFlushIntervalSize()));
             LOGGER.info("SocketChannel connected successfully (localTag: [0x{}], remoteTag: [0x{}])", Long.toHexString(localTag), Long.toHexString(remoteTag));
 
@@ -431,12 +415,12 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
         int index = receiveBuffer.tryClaim(configuration.getBufferSliceLength());
 
         while (index >= 0) {
-            LOGGER.debug("Claimed part of the receive buffer (Index: [{}], Length: [{}])", index, configuration.getBufferSliceLength());
+            if (DebugConfig.DEBUG) LOGGER.debug("Claimed part of the receive buffer (Index: [{}], Length: [{}])", index, configuration.getBufferSliceLength());
 
             receiveBuffer.commitWrite(index);
             final boolean completed = endpoint.receiveTaggedMessage(receiveBuffer.memoryAddress() + index,
                     configuration.getBufferSliceLength(), tag, true, false);
-            LOGGER.debug("Receive request completed instantly: [{}]", completed);
+            if (DebugConfig.DEBUG) LOGGER.debug("Receive request completed instantly: [{}]", completed);
 
             index = receiveBuffer.tryClaim(configuration.getBufferSliceLength());
         }
@@ -503,7 +487,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
         final var readBytes = new AtomicInteger();
         int readFromBuffer;
 
-        LOGGER.debug("Trying to read [{}] bytes (Readable messages: [{}])", target.remaining(), readableMessages.get());
+        if (DebugConfig.DEBUG) LOGGER.debug("Trying to read [{}] bytes (Readable messages: [{}])", target.remaining(), readableMessages.get());
 
         do {
             readFromBuffer = receiveBuffer.read((messageTypeId, sourceBuffer, sourceIndex, sourceBufferLength) -> {
@@ -511,7 +495,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
                 final int remaining = MessageUtil.getRemainingBytes(sourceBuffer, sourceIndex);
                 final short sequenceNumber = MessageUtil.getSequenceNumber(sourceBuffer, sourceIndex);
                 final boolean completed = remaining == 0;
-                LOGGER.debug("Message type id: [{}], Index: [{}], Buffer Length: [{}], Read: [{}], Remaining: [{}], Sequence Number [{}]",
+                if (DebugConfig.DEBUG) LOGGER.debug("Message type id: [{}], Index: [{}], Buffer Length: [{}], Read: [{}], Remaining: [{}], Sequence Number [{}]",
                         messageTypeId, sourceIndex, sourceBufferLength, read, remaining, sequenceNumber);
 
                 if (completed) {
@@ -529,14 +513,14 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
             }, 1);
 
             if (padding.get()) {
-                LOGGER.debug("Read [{}] padding bytes from receive buffer", readFromBuffer);
+                if (DebugConfig.DEBUG) LOGGER.debug("Read [{}] padding bytes from receive buffer", readFromBuffer);
                 receiveBuffer.commitRead(readFromBuffer);
             }
         } while (padding.get());
 
         if (messageCompleted.get()) {
             final int readable = readableMessages.decrementAndGet();
-            LOGGER.debug("Readable messages left: [{}]", readable);
+            if (DebugConfig.DEBUG) LOGGER.debug("Readable messages left: [{}]", readable);
             receiveBuffer.commitRead(readFromBuffer);
         }
 
@@ -563,13 +547,13 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
         // If the message is larger than a single buffer slice, we only claim a buffer slice and do not send the full message
         final int messageLength = Math.min(Math.min(sourcesLength + MessageUtil.HEADER_LENGTH, sendBuffer.maxMessageLength()), configuration.getBufferSliceLength());
         if (messageLength <= MessageUtil.HEADER_LENGTH) {
-            LOGGER.debug("Unable to claim space in the send buffer (Error: [{}])", INSUFFICIENT_CAPACITY);
+            if (DebugConfig.DEBUG) LOGGER.debug("Unable to claim space in the send buffer (Error: [{}])", INSUFFICIENT_CAPACITY);
             return 0;
         }
 
         final int index = sendBuffer.tryClaim(messageLength);
         if (index < 0) {
-            LOGGER.debug("Unable to claim space in the send buffer (Error: [{}])", index);
+            if (DebugConfig.DEBUG) LOGGER.debug("Unable to claim space in the send buffer (Error: [{}])", index);
             return 0;
         }
 
@@ -591,7 +575,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
                 continue;
             }
 
-            LOGGER.debug("Copying source buffer into send buffer (Buffer: [{}/{}], Position: [{}/{}], Length: [{}], Remaining: [{}], Sequence Number: [{}])",
+            if (DebugConfig.DEBUG) LOGGER.debug("Copying source buffer into send buffer (Buffer: [{}/{}], Position: [{}/{}], Length: [{}], Remaining: [{}], Sequence Number: [{}])",
                 offset + i + 1, length, sourceBuffer.position(), sourceBuffer.limit(), currentLength, remaining, (short) sendCounter);
             sendBuffer.buffer().putBytes(targetIndex, sourceBuffer, sourceBuffer.position(), currentLength);
 
@@ -615,7 +599,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
         // Send message via endpoint
         final long tag = TagUtil.setMessageType(remoteTag, TagUtil.MessageType.DEFAULT);
         final boolean completed = endpoint.sendTaggedMessage(sendBuffer.memoryAddress() + index, messageLength, tag, true, blocking);
-        LOGGER.debug("Send request completed instantly: [{}]", completed);
+        if (DebugConfig.DEBUG) LOGGER.debug("Send request completed instantly: [{}]", completed);
 
         // Flush, if necessary
         if (sendCounter % configuration.getFlushIntervalSize() == 0) {

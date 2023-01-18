@@ -1,6 +1,7 @@
 package de.hhu.bsinfo.hadronio;
 
 import de.hhu.bsinfo.hadronio.binding.UcxReceiveCallback;
+import de.hhu.bsinfo.hadronio.generated.DebugConfig;
 import de.hhu.bsinfo.hadronio.util.TagUtil;
 import org.agrona.concurrent.AtomicBuffer;
 import org.agrona.concurrent.UnsafeBuffer;
@@ -37,21 +38,21 @@ class ReceiveCallback implements UcxReceiveCallback {
     public void onMessageReceived(long tag) {
         final long id = TagUtil.getTargetId(tag);
         final var messageType = TagUtil.getMessageType(tag);
-        LOGGER.debug("hadroNIO ReceiveCallback called (id: [0x{}], messageType: [{}], receiveCounter: [{}])", Long.toHexString(id), messageType, receiveCounter);
+        if (DebugConfig.DEBUG) LOGGER.debug("hadroNIO ReceiveCallback called (id: [0x{}], messageType: [{}], receiveCounter: [{}])", Long.toHexString(id), messageType, receiveCounter);
 
         if (messageType == TagUtil.MessageType.FLUSH) {
-            LOGGER.debug("Received flush answer");
+            if (DebugConfig.DEBUG) LOGGER.debug("Received flush answer");
             isFlushing.set(false);
             return;
         }
 
         if (++receiveCounter % flushIntervalSize == 0) {
-            LOGGER.debug("Sending flush answer");
+            if (DebugConfig.DEBUG) LOGGER.debug("Sending flush answer");
             final long flushTag = TagUtil.setMessageType(socket.getRemoteTag(), TagUtil.MessageType.FLUSH);
             socket.getSocketChannelImplementation().sendTaggedMessage(flushBuffer.addressOffset(), flushBuffer.capacity(), flushTag, false, true);
         }
 
         int readable = readableMessages.incrementAndGet();
-        LOGGER.debug("Readable messages: [{}]", readable);
+        if (DebugConfig.DEBUG) LOGGER.debug("Readable messages: [{}]", readable);
     }
 }

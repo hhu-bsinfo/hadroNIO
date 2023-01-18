@@ -4,6 +4,7 @@ import de.hhu.bsinfo.hadronio.binding.UcxSendCallback;
 import de.hhu.bsinfo.hadronio.binding.UcxEndpoint;
 import de.hhu.bsinfo.hadronio.binding.UcxReceiveCallback;
 import de.hhu.bsinfo.hadronio.binding.UcxWorker;
+import de.hhu.bsinfo.hadronio.generated.DebugConfig;
 import de.hhu.bsinfo.hadronio.util.TagUtil;
 import de.hhu.bsinfo.infinileap.binding.*;
 import de.hhu.bsinfo.infinileap.primitive.NativeLong;
@@ -139,7 +140,7 @@ class InfinileapEndpoint implements UcxEndpoint {
         sendParameters.setSendCallback(
             (request, status, data) -> {
                 if (status == Status.OK) {
-                    LOGGER.debug("Infinileap SendCallback called (Status: [{}])", status);
+                    if (DebugConfig.DEBUG) LOGGER.debug("Infinileap SendCallback called (Status: [{}])", status);
                     sendCallback.onMessageSent();
                 } else {
                     LOGGER.error("Failed to send a message (Status: [{}])!", status);
@@ -158,7 +159,7 @@ class InfinileapEndpoint implements UcxEndpoint {
                 if (status == Status.OK) {
                     final var tag = tagInfo.get(OfLong.JAVA_LONG, 0);
                     final var size = tagInfo.get(OfLong.JAVA_LONG, Long.BYTES);
-                    LOGGER.debug("Infinileap ReceiveCallback called (Status: [{}], Size: [{}], Tag: [0x{}])", status, size, Long.toHexString(tag));
+                    if (DebugConfig.DEBUG) LOGGER.debug("Infinileap ReceiveCallback called (Status: [{}], Size: [{}], Tag: [0x{}])", status, size, Long.toHexString(tag));
                     receiveCallback.onMessageReceived(tag);
                 } else {
                     LOGGER.error("Failed to receive a message (Status: [{}])!", status);
@@ -171,7 +172,7 @@ class InfinileapEndpoint implements UcxEndpoint {
         streamReceiveParameters.setReceiveCallback(
                 (request, status, length, data) -> {
                     if (status == Status.OK) {
-                        LOGGER.debug("Infinileap ReceiveCallback called (Status: [{}], Size: [{}])", status, length);
+                        if (DebugConfig.DEBUG) LOGGER.debug("Infinileap ReceiveCallback called (Status: [{}], Size: [{}])", status, length);
                         receiveCallback.onMessageReceived(0);
                     } else {
                         LOGGER.error("Failed to receive a message (Status: [{}])!", status);

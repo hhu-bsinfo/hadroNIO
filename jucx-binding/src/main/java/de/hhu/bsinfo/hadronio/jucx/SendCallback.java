@@ -1,6 +1,7 @@
 package de.hhu.bsinfo.hadronio.jucx;
 
 import de.hhu.bsinfo.hadronio.binding.UcxSendCallback;
+import de.hhu.bsinfo.hadronio.generated.DebugConfig;
 import org.openucx.jucx.ucp.UcpRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,7 +20,7 @@ class SendCallback extends org.openucx.jucx.UcxCallback {
 
     @Override
     public void onSuccess(final UcpRequest request) {
-        LOGGER.debug("JUCX SendCallback called (Completed: [{}])", request.isCompleted());
+        if (DebugConfig.DEBUG) LOGGER.debug("JUCX SendCallback called (Completed: [{}])", request.isCompleted());
         if (request.isCompleted()) {
             callback.onMessageSent();
         }

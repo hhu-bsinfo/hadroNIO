@@ -1,5 +1,20 @@
+buildscript {
+    repositories {
+        mavenCentral()
+
+        maven {
+            url "https://plugins.gradle.org/m2/"
+        }
+    }
+
+    dependencies {
+        classpath 'com.guardsquare:proguard-gradle:7.3.1'
+    }
+}
+
 plugins {
     id 'java-library'
+    id 'com.github.gmazzo.buildconfig' version "${buildConfigPluginVersion}"
 }
 
 group 'de.hhu.bsinfo'
@@ -26,4 +41,16 @@ dependencies {
 
 test {
     useJUnitPlatform()
+}
+
+buildConfig {
+    className('DebugConfig')
+    packageName('de.hhu.bsinfo.hadronio.generated')
+
+    buildConfigField 'boolean', 'DEBUG', Boolean.valueOf(System.getProperty('release')) ? 'false' : 'true'
+}
+
+// Workaround for 'Configuration <compile> not found', caused by de.fuerstenau.buildconfig with Gradle 7+
+configurations {
+    create("compile")
 }

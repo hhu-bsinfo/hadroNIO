@@ -14,6 +14,13 @@ java {
     }
 }
 
+if (Boolean.parseBoolean(System.getProperty('release'))) {
+    tasks.distZip.dependsOn(':provider:optimize')
+    tasks.distTar.dependsOn(':provider:optimize')
+    tasks.installDist.dependsOn(':provider:optimize')
+    tasks.startScripts.dependsOn(':provider:optimize')
+}
+
 application.setApplicationName("hadronio")
 application.getMainClass().set("de.hhu.bsinfo.hadronio.example.Application")
 
@@ -63,7 +70,11 @@ test {
 startScripts {
     doLast {
         def line = unixScript.text.lines().find{it.startsWith('CLASSPATH=$APP_HOME')} as CharSequence
-        unixScript.text  = unixScript.text.replace(line, line + ':$CLASSPATH')
+        unixScript.text = unixScript.text.replace(line, line + ':$CLASSPATH')
+
+        unixScript.text = unixScript.text.replace("\$APP_HOME/lib/jucx-binding-${version}.jar:", '')
+        unixScript.text = unixScript.text.replace("\$APP_HOME/lib/core-${version}.jar:", '')
+
         unixScript.text = unixScript.text.replaceFirst('exec ', 'UCX_ERROR_SIGNALS="" UCX_TCP_CM_REUSEADDR=y exec ')
     }
 }
