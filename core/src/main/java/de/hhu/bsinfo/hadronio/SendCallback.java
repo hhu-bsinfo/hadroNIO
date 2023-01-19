@@ -44,13 +44,13 @@ public class SendCallback implements UcxSendCallback {
 
         private final AtomicBoolean padding;
 
-        private ReadHandler(AtomicBoolean padding) {
+        private ReadHandler(final AtomicBoolean padding) {
             this.padding = padding;
         }
 
         @Override
-        public void onMessage(int msgTypeId, MutableDirectBuffer buffer, int index, int length) {
-            if (DebugConfig.DEBUG) LOGGER.debug("Message type id: [{}], Index: [{}], Length: [{}]", msgTypeId, index, length);
+        public void onMessage(final int messageTypeId, final MutableDirectBuffer buffer, final int index, final int length) {
+            if (DebugConfig.DEBUG) LOGGER.debug("Message type id: [{}], Index: [{}], Length: [{}]", messageTypeId, index, length);
             padding.set(false);
         }
     }

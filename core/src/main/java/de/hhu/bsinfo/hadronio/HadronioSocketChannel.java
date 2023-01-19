@@ -8,7 +8,9 @@ import de.hhu.bsinfo.hadronio.util.MemoryUtil.Alignment;
 import de.hhu.bsinfo.hadronio.util.MessageUtil;
 import de.hhu.bsinfo.hadronio.util.RingBuffer;
 import de.hhu.bsinfo.hadronio.util.TagUtil;
+import org.agrona.MutableDirectBuffer;
 import org.agrona.concurrent.AtomicBuffer;
+import org.agrona.concurrent.MessageHandler;
 import org.agrona.concurrent.UnsafeBuffer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,6 +41,11 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
     private final RingBuffer sendBuffer;
     private final RingBuffer receiveBuffer;
     private final ByteBuffer[] singleBufferArray = new ByteBuffer[1];
+
+    final AtomicBoolean padding = new AtomicBoolean();
+    final AtomicInteger readBytes = new AtomicInteger();
+    final AtomicBoolean messageCompleted = new AtomicBoolean();
+    private final ReadHandler readHandler = new ReadHandler(this, padding, readBytes, messageCompleted);
 
     private final AtomicBuffer flushBuffer = new UnsafeBuffer(ByteBuffer.allocateDirect(Long.BYTES));
     private final AtomicBoolean isFlushing = new AtomicBoolean();
@@ -482,35 +489,16 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
     }
 
     private int readFromReceiveBuffer(final ByteBuffer target) {
-        final var padding = new AtomicBoolean(true);
-        final var messageCompleted = new AtomicBoolean(false);
-        final var readBytes = new AtomicInteger();
+        readHandler.setTarget(target);
+        padding.set(true);
+        messageCompleted.set(false);
+        readBytes.set(0);
         int readFromBuffer;
 
         if (DebugConfig.DEBUG) LOGGER.debug("Trying to read [{}] bytes (Readable messages: [{}])", target.remaining(), readableMessages.get());
 
         do {
-            readFromBuffer = receiveBuffer.read((messageTypeId, sourceBuffer, sourceIndex, sourceBufferLength) -> {
-                final int read = MessageUtil.readMessage(sourceBuffer, sourceIndex, target);
-                final int remaining = MessageUtil.getRemainingBytes(sourceBuffer, sourceIndex);
-                final short sequenceNumber = MessageUtil.getSequenceNumber(sourceBuffer, sourceIndex);
-                final boolean completed = remaining == 0;
-                if (DebugConfig.DEBUG) LOGGER.debug("Message type id: [{}], Index: [{}], Buffer Length: [{}], Read: [{}], Remaining: [{}], Sequence Number [{}]",
-                        messageTypeId, sourceIndex, sourceBufferLength, read, remaining, sequenceNumber);
-
-                if (completed) {
-                    final short expected = (short) (lastSequenceNumber + 1);
-                    if (sequenceNumber != expected) {
-                        LOGGER.warn("Received wrong sequence number (Expected: [{}], Got: [{}])", expected, sequenceNumber);
-                    }
-
-                    lastSequenceNumber = sequenceNumber;
-                }
-
-                padding.set(false);
-                readBytes.set(read);
-                messageCompleted.set(completed);
-            }, 1);
+            readFromBuffer = receiveBuffer.read(readHandler, 1);
 
             if (padding.get()) {
                 if (DebugConfig.DEBUG) LOGGER.debug("Read [{}] padding bytes from receive buffer", readFromBuffer);
@@ -635,5 +623,50 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
         }
 
         return outputClosed;
+    }
+
+    private static final class ReadHandler implements MessageHandler {
+
+        final HadronioSocketChannel channel;
+
+        final AtomicBoolean padding;
+        final AtomicInteger readBytes;
+        final AtomicBoolean messageCompleted;
+
+        ByteBuffer target;
+
+        public ReadHandler(HadronioSocketChannel channel, AtomicBoolean padding, AtomicInteger readBytes, AtomicBoolean messageCompleted) {
+            this.channel = channel;
+            this.padding = padding;
+            this.readBytes = readBytes;
+            this.messageCompleted = messageCompleted;
+        }
+
+        public void setTarget(ByteBuffer target) {
+            this.target = target;
+        }
+
+        @Override
+        public void onMessage(int messageTypeId, MutableDirectBuffer sourceBuffer, int sourceIndex, int sourceBufferLength) {
+            final int read = MessageUtil.readMessage(sourceBuffer, sourceIndex, target);
+            final int remaining = MessageUtil.getRemainingBytes(sourceBuffer, sourceIndex);
+            final short sequenceNumber = MessageUtil.getSequenceNumber(sourceBuffer, sourceIndex);
+            final boolean completed = remaining == 0;
+            if (DebugConfig.DEBUG) LOGGER.debug("Message type id: [{}], Index: [{}], Buffer Length: [{}], Read: [{}], Remaining: [{}], Sequence Number [{}]",
+                    messageTypeId, sourceIndex, sourceBufferLength, read, remaining, sequenceNumber);
+
+            if (completed) {
+                final short expected = (short) (channel.lastSequenceNumber + 1);
+                if (sequenceNumber != expected) {
+                    LOGGER.warn("Received wrong sequence number (Expected: [{}], Got: [{}])", expected, sequenceNumber);
+                }
+
+                channel.lastSequenceNumber = sequenceNumber;
+            }
+
+            padding.set(false);
+            readBytes.set(read);
+            messageCompleted.set(completed);
+        }
     }
 }

@@ -6,7 +6,10 @@
 
 # These classes form the public API of hadroNIO, so they need to be marked as entry points
 -keep,allowoptimization class de.hhu.bsinfo.hadronio.Hadronio* { *; }
+
+# For some reason, ProGuard obfuscates these callbacks
 -keep class de.hhu.bsinfo.hadronio.SendCallback*$ReadHandler { *; }
+-keep class de.hhu.bsinfo.hadronio.HadronioSocketChannel*$ReadHandler { *; }
 
 # The interfaces need to be kept, since they are implemented by the bindings
 -keep interface de.hhu.bsinfo.hadronio.binding.* { *; }
