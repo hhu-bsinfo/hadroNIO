@@ -3,6 +3,8 @@ package de.hhu.bsinfo.hadronio;
 import de.hhu.bsinfo.hadronio.util.MessageUtil;
 import org.agrona.BitUtil;
 
+import java.lang.management.ManagementFactory;
+
 class Configuration {
 
     enum PollMethod {
@@ -26,8 +28,6 @@ class Configuration {
     private static final int DEFAULT_BUSY_POLL_TIMEOUT_NANOS = 20000;
     private static final String DEFAULT_POLL_METHOD = "DYNAMIC";
 
-    private static final String DEFAULT_PROVIDER_CLASS = "de.hhu.bsinfo.hadronio.jucx.JucxProvider";
-
     private final int sendBufferLength;
     private final int receiveBufferLength;
     private final int bufferSliceLength;
@@ -37,6 +37,24 @@ class Configuration {
     private final PollMethod pollMethod;
 
     private final String providerClass;
+
+    private static String getDefaultProviderClass() {
+        final boolean previewEnabled = ManagementFactory.getRuntimeMXBean().getInputArguments().contains("--enable-preview");
+        final int javaVersion = Integer.parseInt(System.getProperty("java.specification.version"));
+        boolean infinileapAvailable;
+        try {
+            Class.forName("de.hhu.bsinfo.hadronio.infinileap.InfinileapProvider",  false, ClassLoader.getSystemClassLoader());
+            infinileapAvailable = true;
+        } catch (ClassNotFoundException e) {
+            infinileapAvailable = false;
+        }
+
+        if (javaVersion == 19 && previewEnabled && infinileapAvailable) {
+            return "de.hhu.bsinfo.hadronio.infinileap.InfinileapProvider";
+        }
+
+        return "de.hhu.bsinfo.hadronio.jucx.JucxProvider";
+    }
 
     static Configuration getInstance() throws IllegalArgumentException {
         if (instance != null) {
@@ -49,7 +67,7 @@ class Configuration {
         final int flushIntervalSize = Integer.parseInt(System.getProperty("de.hhu.bsinfo.hadronio.Configuration.FLUSH_INTERVAL_SIZE", String.valueOf(DEFAULT_FLUSH_INTERVAL_SIZE)));
         final int busyPollTimeoutNanos = Integer.parseInt(System.getProperty("de.hhu.bsinfo.hadronio.Configuration.BUSY_POLL_TIMEOUT_NANOS", String.valueOf(DEFAULT_BUSY_POLL_TIMEOUT_NANOS)));
         final var pollMethod = PollMethod.valueOf(System.getProperty("de.hhu.bsinfo.hadronio.Configuration.POLL_METHOD", DEFAULT_POLL_METHOD));
-        final var providerClass = System.getProperty("de.hhu.bsinfo.hadronio.Configuration.PROVIDER_CLASS", DEFAULT_PROVIDER_CLASS);
+        final var providerClass = System.getProperty("de.hhu.bsinfo.hadronio.Configuration.PROVIDER_CLASS", getDefaultProviderClass());
 
         checkConfiguration(sendBufferLength, receiveBufferLength, bufferSliceLength, flushIntervalSize, busyPollTimeoutNanos, providerClass);
         return new Configuration(sendBufferLength, receiveBufferLength, bufferSliceLength + MessageUtil.HEADER_LENGTH, flushIntervalSize, busyPollTimeoutNanos, pollMethod, providerClass);

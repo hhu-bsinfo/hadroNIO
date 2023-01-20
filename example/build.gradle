@@ -10,7 +10,7 @@ version = getProperty('projectVersion')
 
 java {
     toolchain {
-        languageVersion.set(JavaLanguageVersion.of(11))
+        languageVersion.set(JavaLanguageVersion.of(Boolean.parseBoolean(System.getProperty('infinileap')) ? 19 : 11))
     }
 }
 
@@ -72,6 +72,7 @@ startScripts {
         def line = unixScript.text.lines().find{it.startsWith('CLASSPATH=$APP_HOME')} as CharSequence
         unixScript.text = unixScript.text.replace(line, line + ':$CLASSPATH')
 
+        unixScript.text = unixScript.text.replace("\$APP_HOME/lib/infinileap-binding-${version}.jar:", '')
         unixScript.text = unixScript.text.replace("\$APP_HOME/lib/jucx-binding-${version}.jar:", '')
         unixScript.text = unixScript.text.replace("\$APP_HOME/lib/core-${version}.jar:", '')
 

@@ -14,7 +14,7 @@
 </p>
 
 Developed by the [operating systems group](https://www.cs.hhu.de/en/research-groups/operating-systems.html) of the department of computer science of the [Heinrich Heine University Düsseldorf](https://www.hhu.de), **hadroNIO** aims at transparently accelerating Java NIO applications via the open-source communication framework [UCX](https://github.com/openucx/ucx).  
-To access the native functionality of UCX, we support using both the official Java-binding [JUCX](https://github.com/openucx/ucx/tree/master/bindings/java), and our own library [Infinileap](https://github.com/hhu-bsinfo/infinileap), which leverages Project Panama's [Foreign Function Interface](https://openjdk.java.net/jeps/191) and [Foreign-Memory Access API](https://openjdk.java.net/jeps/370). 
+To access the native functionality of UCX, we support using both the official Java-binding [JUCX](https://github.com/openucx/ucx/tree/master/bindings/java) and our own library [Infinileap](https://github.com/hhu-bsinfo/infinileap), which leverages Project Panama's [Foreign Function Interface](https://openjdk.java.net/jeps/191) and [Foreign-Memory Access API](https://openjdk.java.net/jeps/370). 
 
 ## Introduction
 

@@ -15,13 +15,13 @@ jobs:
         - tar -xzvf jdk.tar.gz -C /tmp
         - echo "org.gradle.java.installations.paths=/tmp/jdk-${JDK_VERSION}" > gradle.properties
       script:
-        - ./gradlew build
+        - ./gradlew build -Dinfinileap=true -x javadoc
     - stage: release
       install:
-        - ./gradlew provider:assemble
+        - ./gradlew provider:assemble -Dinfinileap=true
       script:
         - ./gradlew clean
-        - ./gradlew publish -Dgpr.user=${GPR_USER} -Dgpr.token=${GPR_TOKEN} -Drelease=true
+        - ./gradlew publish -Dgpr.user=${GPR_USER} -Dgpr.token=${GPR_TOKEN} -Dinfinileap=true -Drelease=true
         - export PUBLISH=true
 
 deploy:

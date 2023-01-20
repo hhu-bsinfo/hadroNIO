@@ -11,9 +11,15 @@ plugins {
 group 'de.hhu.bsinfo'
 version = getProperty('projectVersion')
 
+compileJava {
+    if (Boolean.parseBoolean(System.getProperty('infinileap'))) {
+        options.compilerArgs.addAll(['--enable-preview'])
+    }
+}
+
 java {
     toolchain {
-        languageVersion.set(JavaLanguageVersion.of(11))
+        languageVersion.set(JavaLanguageVersion.of(Boolean.parseBoolean(System.getProperty('infinileap')) ? 19 : 11))
     }
 }
 
@@ -24,6 +30,9 @@ repositories {
 dependencies {
     implementation project(':core')
     implementation project(':jucx-binding')
+    if (Boolean.parseBoolean(System.getProperty('infinileap'))) {
+        implementation project(':infinileap-binding')
+    }
     implementation "org.agrona:agrona:${agronaVersion}"
     implementation "org.slf4j:slf4j-api:${slf4jVersion}"
     implementation "io.helins:linux-epoll:${linuxEpollVersion}"
@@ -36,7 +45,10 @@ test {
     useJUnitPlatform()
 }
 
-def projects = [ ':core', ':jucx-binding', ':provider' ]
+def projects = [ ':provider', ':core', ':jucx-binding' ]
+if (Boolean.parseBoolean(System.getProperty('infinileap'))) {
+    projects.add(':infinileap-binding')
+}
 
 javadoc {
     source projects.collect { project(it).sourceSets.main.allJava }
@@ -67,6 +79,9 @@ shadowJar {
 jar {
     from project(':core').buildDir.toString() + '/classes/java/main'
     from project(':jucx-binding').buildDir.toString() + '/classes/java/main'
+    if (Boolean.parseBoolean(System.getProperty('infinileap'))) {
+        from project(':infinileap-binding').buildDir.toString() + '/classes/java/main'
+    }
 }
 
 buildConfig {
