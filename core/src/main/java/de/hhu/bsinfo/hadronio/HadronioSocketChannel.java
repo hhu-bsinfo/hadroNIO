@@ -548,7 +548,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
         // Write message header
         MessageUtil.setMessageLength(sendBuffer.buffer(), index, messageLength - MessageUtil.HEADER_LENGTH);
         MessageUtil.setReadBytes(sendBuffer.buffer(), index, 0);
-        MessageUtil.setSequenceNumber(sendBuffer.buffer(), index, (short) sendCounter);
+        if (DebugConfig.DEBUG) MessageUtil.setSequenceNumber(sendBuffer.buffer(), index, (short) sendCounter);
 
         // Copy message data from source buffers into send buffer
         int remaining = messageLength - MessageUtil.HEADER_LENGTH;
@@ -650,18 +650,21 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
         public void onMessage(int messageTypeId, MutableDirectBuffer sourceBuffer, int sourceIndex, int sourceBufferLength) {
             final int read = MessageUtil.readMessage(sourceBuffer, sourceIndex, target);
             final int remaining = MessageUtil.getRemainingBytes(sourceBuffer, sourceIndex);
-            final short sequenceNumber = MessageUtil.getSequenceNumber(sourceBuffer, sourceIndex);
             final boolean completed = remaining == 0;
-            if (DebugConfig.DEBUG) LOGGER.debug("Message type id: [{}], Index: [{}], Buffer Length: [{}], Read: [{}], Remaining: [{}], Sequence Number [{}]",
-                    messageTypeId, sourceIndex, sourceBufferLength, read, remaining, sequenceNumber);
 
-            if (completed) {
-                final short expected = (short) (channel.lastSequenceNumber + 1);
-                if (sequenceNumber != expected) {
-                    LOGGER.warn("Received wrong sequence number (Expected: [{}], Got: [{}])", expected, sequenceNumber);
+            if (DebugConfig.DEBUG)  {
+                final short sequenceNumber = MessageUtil.getSequenceNumber(sourceBuffer, sourceIndex);
+                LOGGER.debug("Message type id: [{}], Index: [{}], Buffer Length: [{}], Read: [{}], Remaining: [{}], Sequence Number [{}]",
+                        messageTypeId, sourceIndex, sourceBufferLength, read, remaining, sequenceNumber);
+
+                if (completed) {
+                    final short expected = (short) (channel.lastSequenceNumber + 1);
+                    if (sequenceNumber != expected) {
+                        LOGGER.warn("Received wrong sequence number (Expected: [{}], Got: [{}])", expected, sequenceNumber);
+                    }
+
+                    channel.lastSequenceNumber = sequenceNumber;
                 }
-
-                channel.lastSequenceNumber = sequenceNumber;
             }
 
             padding.set(false);
