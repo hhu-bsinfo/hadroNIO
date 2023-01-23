@@ -15,7 +15,7 @@ jobs:
         - tar -xzvf jdk.tar.gz -C /tmp
         - echo "org.gradle.java.installations.paths=/tmp/jdk-${JDK_VERSION}" > gradle.properties
       script:
-        - ./gradlew build -Dinfinileap=true -x javadoc
+        - ./gradlew build -Dinfinileap=true
     - stage: release
       install:
         - ./gradlew provider:assemble -Dinfinileap=true

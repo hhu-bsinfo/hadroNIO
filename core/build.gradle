@@ -35,8 +35,3 @@ buildConfig {
 
     buildConfigField 'boolean', 'DEBUG', Boolean.valueOf(System.getProperty('release')) ? 'false' : 'true'
 }
-
-// Workaround for 'Configuration <compile> not found', caused by de.fuerstenau.buildconfig with Gradle 7+
-configurations {
-    create("compile")
-}

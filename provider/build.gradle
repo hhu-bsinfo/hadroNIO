@@ -53,6 +53,13 @@ if (Boolean.parseBoolean(System.getProperty('infinileap'))) {
 javadoc {
     source projects.collect { project(it).sourceSets.main.allJava }
     classpath = files(projects.collect { project(it).sourceSets.main.compileClasspath }) + files(buildDir.toString() + '/gen/buildconfig/classes/main')
+
+    if (Boolean.parseBoolean(System.getProperty('infinileap'))) {
+        options {
+            addStringOption("-release", "19")
+            addBooleanOption("-enable-preview", true)
+        }
+    }
 }
 
 javadoc.dependsOn('generateBuildConfig')
@@ -93,11 +100,6 @@ buildConfig {
     buildConfigField('String', 'BUILD_DATE', "\"${new Date().format('yyyy-MM-dd HH:mm:ss')}\"")
     buildConfigField('String', 'GIT_COMMIT', "\"${gitVersion.gitHash}\"")
     buildConfigField('String', 'GIT_BRANCH', "\"${gitVersion.branchName}\"")
-}
-
-// Workaround for 'Configuration <compile> not found', caused by de.fuerstenau.buildconfig with Gradle 7+
-configurations {
-    create("compile")
 }
 
 tasks.register('proguard', ProGuardTask) {

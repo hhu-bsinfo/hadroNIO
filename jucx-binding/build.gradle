@@ -19,9 +19,8 @@ dependencies {
     implementation project(':core')
     // implementation "org.openucx:jucx:${jucxVersion}"
 
-    // The official JUCX version lacks UcpWorker.arm() and UcpWorker.getEventFD().
-    // Once the pull request (https://github.com/openucx/ucx/pull/8453) is merged,
-    // the official version can be used again
+    // The official JUCX version lacks UcpWorker.arm() and UcpWorker.getEventFD(), while also causing a large memory leak
+    // Once the pull requests #8453 and #8829 are part of a release, the official version can be used again.
     implementation files("jucx-${jucxVersion}.jar")
     implementation "org.slf4j:slf4j-api:${slf4jVersion}"
 
