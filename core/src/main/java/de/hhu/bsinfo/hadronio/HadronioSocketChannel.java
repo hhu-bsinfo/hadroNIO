@@ -463,8 +463,8 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
         endpoint.setReceiveCallback(connectionCallback);
 
         LOGGER.info("Exchanging tags to establish connection");
-        endpoint.receiveStream(receiveBuffer.addressOffset(), 2 * Long.BYTES, true, false);
         endpoint.sendStream(sendBuffer.addressOffset(), 2 * Long.BYTES, true, true);
+        endpoint.receiveStream(receiveBuffer.addressOffset(), 2 * Long.BYTES, true, false);
     }
 
     private int readBlocking(final ByteBuffer target) throws IOException {
