@@ -1,9 +1,12 @@
 package de.hhu.bsinfo.hadronio;
 
+import de.hhu.bsinfo.hadronio.binding.UcxWorker;
 import de.hhu.bsinfo.hadronio.generated.DebugConfig;
+import de.hhu.bsinfo.hadronio.util.UngrowableSet;
 import io.helins.linux.epoll.Epoll;
 import io.helins.linux.epoll.EpollEvent;
 import io.helins.linux.epoll.EpollEvents;
+import org.agrona.collections.Hashing;
 import org.agrona.collections.Int2ObjectHashMap;
 import org.agrona.collections.ObjectHashSet;
 import org.slf4j.Logger;
@@ -23,7 +26,11 @@ class HadronioSelector extends AbstractSelector {
     private static final Logger LOGGER = LoggerFactory.getLogger(HadronioSelector.class);
 
     private final Set<SelectionKey> keys = new ObjectHashSet<>();
-    private final FixedSelectionKeySet selectedKeys = new FixedSelectionKeySet();
+    private final Set<SelectionKey> selectedKeys = new ObjectHashSet<>();
+    private final Set<SelectionKey> publicKeys = Collections.unmodifiableSet(keys);
+    private final Set<SelectionKey> publicSelectedKeys = new UngrowableSet<>(selectedKeys);
+
+    private final Set<UcxWorker> workers = new ObjectHashSet<>();
     private final Object wakeupLock = new Object();
     private final Configuration.PollMethod pollMethod;
     private boolean wakeupStatus = false;
@@ -98,6 +105,7 @@ class HadronioSelector extends AbstractSelector {
                 }
 
                 keys.add(key);
+                workers.add(((HadronioSelectableChannel) channel).getWorker());
                 wakeupLock.notifyAll();
 
                 return key;
@@ -111,7 +119,7 @@ class HadronioSelector extends AbstractSelector {
             throw new ClosedSelectorException();
         }
 
-        return Collections.unmodifiableSet(keys);
+        return publicKeys;
     }
 
     @Override
@@ -120,7 +128,7 @@ class HadronioSelector extends AbstractSelector {
             throw new ClosedSelectorException();
         }
 
-        return selectedKeys;
+        return publicSelectedKeys;
     }
 
     @Override
@@ -144,8 +152,8 @@ class HadronioSelector extends AbstractSelector {
         synchronized (wakeupLock) {
             wakeupStatus = true;
             synchronized (cancelledKeys()) {
-                for (final var key : keys) {
-                    ((HadronioSelectableChannel) key.channel()).getWorker().interrupt();
+                for (final var worker : workers) {
+                    worker.interrupt();
                 }
             }
             wakeupLock.notifyAll();
@@ -330,7 +338,7 @@ class HadronioSelector extends AbstractSelector {
             if (selectedKeys.contains(key)) {
                 key.readyOpsOr(readyOps);
             } else {
-                selectedKeys.addKey(key);
+                selectedKeys.add(key);
                 key.readyOps(readyOps);
             }
 
@@ -378,10 +386,12 @@ class HadronioSelector extends AbstractSelector {
         synchronized (cancelledKeys()) {
             if (!cancelledKeys().isEmpty()) {
                 if (DebugConfig.DEBUG) LOGGER.trace("Removing [{}] cancelled {}", cancelledKeys().size(), cancelledKeys().size() == 1 ? "key" : "keys");
-                if (pollMethod != Configuration.PollMethod.BUSY_POLLING) {
-                    for (final var key : cancelledKeys()) {
+                for (final var key : cancelledKeys()) {
+                    if (pollMethod == Configuration.PollMethod.EPOLL || pollMethod == Configuration.PollMethod.DYNAMIC) {
                         removeChannelFromEpoll((HadronioSelectableChannel) key.channel());
                     }
+
+                    workers.remove(((HadronioSelectableChannel) key.channel()).getWorker());
                 }
 
                 keys.removeAll(cancelledKeys());
@@ -429,27 +439,6 @@ class HadronioSelector extends AbstractSelector {
             epollEvents = keys.size() == 1 ? null : new EpollEvents(keys.size() - 1);
         } catch (IOException e) {
             LOGGER.error("Failed to remove file descriptor from epoll", e);
-        }
-    }
-
-    private static final class FixedSelectionKeySet extends ObjectHashSet<SelectionKey> {
-
-        public FixedSelectionKeySet() {
-            super();
-        }
-
-        @Override
-        public boolean add(final SelectionKey key) {
-            throw new UnsupportedOperationException("Trying to add a key to a fixed set!");
-        }
-
-        @Override
-        public boolean addAll(final Collection<? extends SelectionKey> keys) {
-            throw new UnsupportedOperationException("Trying to add a key to a fixed set!");
-        }
-
-        private void addKey(final SelectionKey key) {
-            super.add(key);
         }
     }
 }
