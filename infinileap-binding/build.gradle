@@ -23,6 +23,7 @@ dependencies {
     implementation project(':core')
     implementation files("core-${infinileapVersion}.jar")
     implementation files("common-${infinileapVersion}.jar")
+    implementation "org.agrona:agrona:${agronaVersion}"
     implementation "org.slf4j:slf4j-api:${slf4jVersion}"
 
     testImplementation "org.junit.jupiter:junit-jupiter-api:${junitJupiterVersion}"

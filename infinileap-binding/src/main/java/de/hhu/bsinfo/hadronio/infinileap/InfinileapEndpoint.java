@@ -14,6 +14,8 @@ import java.net.InetSocketAddress;
 import java.lang.foreign.MemoryAddress;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout.OfLong;
+
+import org.agrona.collections.Long2ObjectHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,12 +26,12 @@ class InfinileapEndpoint implements UcxEndpoint {
     private static final Logger LOGGER = LoggerFactory.getLogger(InfinileapEndpoint.class);
 
     private static final Tag TAG_MASK_FULL = Tag.of(TagUtil.TAG_MASK_FULL);
+    private static final NativeLong STREAM_RECEIVE_SIZE = new NativeLong();
 
     private Endpoint endpoint;
     private final InfinileapWorker worker;
     private InetSocketAddress remoteAddress;
 
-    private final MemorySegment tagInfo = MemorySegment.allocateNative(2 * Long.BYTES, MemorySession.openImplicit());
     private UcxSendCallback sendCallback;
     private UcxReceiveCallback receiveCallback;
 
@@ -38,6 +40,9 @@ class InfinileapEndpoint implements UcxEndpoint {
     private final RequestParameters tagReceiveParameters = new RequestParameters();
     private final RequestParameters streamReceiveParameters = new RequestParameters();
     private final RequestParameters emptyParameters = new RequestParameters();
+
+    private final Long2ObjectHashMap<MemorySegment> receiveSegmentCache = new Long2ObjectHashMap<>();
+    private final Long2ObjectHashMap<Tag> tagCache = new Long2ObjectHashMap<>();
 
     private boolean errorState = false;
 
@@ -77,61 +82,30 @@ class InfinileapEndpoint implements UcxEndpoint {
 
     @Override
     public boolean sendTaggedMessage(final long address, final long size, final long tag, final boolean useCallback, final boolean blocking) {
-        final var status = endpoint.sendTagged(MemorySegment.ofAddress(MemoryAddress.ofLong(address), size, MemorySession.global()), Tag.of(tag), useCallback ? sendParameters : emptyParameters);
-        if (Status.isStatus(status)) {
-            if (useCallback && Status.is(status, Status.OK)) {
-                sendCallback.onMessageSent();
-            }
-
-            return true;
-        } else if (blocking) {
-            waitRequest(status);
-            return true;
-        }
-
-        return false;
+        final var segment = MemorySegment.ofAddress(MemoryAddress.ofLong(address), size, MemorySession.global());
+        final var status = endpoint.sendTagged(segment, getCachedTag(tag), useCallback ? sendParameters : emptyParameters);
+        return waitSendStatus(status, useCallback, blocking);
     }
 
     @Override
     public boolean receiveTaggedMessage(final long address, final long size, final long tag, final boolean useCallback, final boolean blocking) {
-        final var status = worker.getWorker().receiveTagged(MemorySegment.ofAddress(MemoryAddress.ofLong(address), size, MemorySession.global()), Tag.of(tag), TAG_MASK_FULL, useCallback ? tagReceiveParameters : emptyParameters);
-        if (Status.isStatus(status)) {
-            if (useCallback && Status.is(status, Status.OK)) {
-                receiveCallback.onMessageReceived(tag);
-            }
-
-            return true;
-        } else if (blocking) {
-            waitRequest(status);
-            return true;
-        }
-
-        return false;
+        final var segment = getCachedSegment(address, size);
+        final var status = worker.getWorker().receiveTagged(segment, getCachedTag(tag), TAG_MASK_FULL, useCallback ? tagReceiveParameters : emptyParameters);
+        return waitReceiveStatus(status, tag, useCallback, blocking);
     }
 
     @Override
     public void sendStream(final long address, final long size, final boolean useCallback, final boolean blocking) {
-        final var status = endpoint.sendStream(MemorySegment.ofAddress(MemoryAddress.ofLong(address), size, MemorySession.global()), size, useCallback ? sendParameters : emptyParameters);
-        if (Status.isStatus(status)) {
-            if (useCallback && Status.is(status, Status.OK)) {
-                sendCallback.onMessageSent();
-            }
-        } else if (blocking) {
-            waitRequest(status);
-        }
+        final var segment = MemorySegment.ofAddress(MemoryAddress.ofLong(address), size, MemorySession.global());
+        final var status = endpoint.sendStream(segment, size, useCallback ? sendParameters : emptyParameters);
+        waitSendStatus(status, useCallback, blocking);
     }
 
     @Override
     public void receiveStream(final long address, final long size, final boolean useCallback, final boolean blocking) {
-        final var receiveSize = new NativeLong();
-        final var status = endpoint.receiveStream(MemorySegment.ofAddress(MemoryAddress.ofLong(address), size, MemorySession.global()), size, receiveSize, useCallback ? streamReceiveParameters : emptyParameters);
-        if (Status.isStatus(status)) {
-            if (useCallback && Status.is(status, Status.OK)) {
-                receiveCallback.onMessageReceived(0);
-            }
-        } else if (blocking) {
-            waitRequest(status);
-        }
+        final var segment = MemorySegment.ofAddress(MemoryAddress.ofLong(address), size, MemorySession.global());
+        final var status = endpoint.receiveStream(segment, size, STREAM_RECEIVE_SIZE, useCallback ? streamReceiveParameters : emptyParameters);
+        waitReceiveStatus(status, 0, useCallback, blocking);
     }
 
     @Override
@@ -208,11 +182,61 @@ class InfinileapEndpoint implements UcxEndpoint {
         errorState = true;
     }
 
-    private void waitRequest(long requestHandle) {
+    private boolean waitSendStatus(final long status, final boolean useCallback, final boolean blocking) {
+        if (Status.isStatus(status)) {
+            if (useCallback && Status.is(status, Status.OK)) {
+                sendCallback.onMessageSent();
+            }
+
+            return true;
+        } else if (blocking) {
+            waitRequest(status);
+            return true;
+        }
+
+        return false;
+    }
+
+    private boolean waitReceiveStatus(final long status, final long tag, final boolean useCallback, final boolean blocking) {
+        if (Status.isStatus(status)) {
+            if (useCallback && Status.is(status, Status.OK)) {
+                receiveCallback.onMessageReceived(tag);
+            }
+
+            return true;
+        } else if (blocking) {
+            waitRequest(status);
+            return true;
+        }
+
+        return false;
+    }
+
+    private void waitRequest(final long requestHandle) {
         long status = ucp_request_check_status(requestHandle);
         while (Status.is(status, Status.IN_PROGRESS)) {
             worker.getWorker().progress();
             status = ucp_request_check_status(requestHandle);
         }
+    }
+
+    private Tag getCachedTag(final long tag) {
+        var tagObject = tagCache.get(tag);
+        if (tagObject == null) {
+            tagObject = Tag.of(tag);
+            tagCache.put(tag, tagObject);
+        }
+
+        return tagObject;
+    }
+
+    private MemorySegment getCachedSegment(final long address, final long size) {
+        var addressObject = receiveSegmentCache.get(address);
+        if (addressObject == null) {
+            addressObject = MemorySegment.ofAddress(MemoryAddress.ofLong(address), size, MemorySession.global());
+            receiveSegmentCache.put(address, addressObject);
+        }
+
+        return addressObject;
     }
 }
