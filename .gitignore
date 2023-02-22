@@ -146,4 +146,5 @@ gradle-app.setting
 
 # End of https://www.toptal.com/developers/gitignore/api/gradle,java,intellij+all
 
-/home/fabian/Projekte/hadroNIO/example/src/dist/workloads/workload*
+example/src/dist/workloads/workload*
+gradle.properties

@@ -13,6 +13,7 @@ import org.slf4j.LoggerFactory;
 
 public class Client implements Runnable {
 
+    private static final int WORKER_THREADS = Integer.parseInt(System.getProperty("de.hhu.bsinfo.hadronio.example.NETTY_WORKER_THREADS", "0"));
     private static final Logger LOGGER = LoggerFactory.getLogger(Client.class);
 
     private final InetSocketAddress bindAddress;
@@ -35,7 +36,7 @@ public class Client implements Runnable {
     @Override
     public void run() {
         LOGGER.info("Connecting to server [{}]", remoteAddress);
-        final var workerGroup = new NioEventLoopGroup();
+        final var workerGroup = new NioEventLoopGroup(WORKER_THREADS);
         final var bootstrap = new Bootstrap();
 
         bootstrap.group(workerGroup)
