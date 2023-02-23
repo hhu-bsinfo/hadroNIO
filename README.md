@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <a href="https://travis-ci.com/github/hhu-bsinfo/hadroNIO"><img src="https://www.travis-ci.com/hhu-bsinfo/hadroNIO.svg?branch=main"></a>
+  <a href="https://github.com/hhu-bsinfo/hadroNIO/actions/workflows/build.yml"><img src="https://github.com/hhu-bsinfo/hadroNIO/actions/workflows/build.yml/badge.svg"></a>
   <a href="https://openjdk.java.net/"><img src="https://img.shields.io/badge/java-11+-blue.svg"></a>
   <a href="https://openucx.org/"><img src="https://img.shields.io/badge/ucx-1.13.1-blue.svg"></a>
   <a href="https://github.com/hhu-bsinfo/hadroNIO/blob/master/LICENSE"><img src="https://img.shields.io/badge/license-GPLv3-orange.svg"></a>

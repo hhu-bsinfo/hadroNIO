@@ -33,16 +33,7 @@ publishing {
     }
     publications {
         gpr(MavenPublication) {
-            artifact jar {
-            }
-
-            artifact sourcesJar {
-                classifier 'sources'
-            }
-
-            artifact javadocJar {
-                classifier 'javadoc'
-            }
+            from components.java
 
             groupId project.group
             artifactId 'hadronio'

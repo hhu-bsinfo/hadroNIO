@@ -1,0 +1,21 @@
+name: build
+on: [push]
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: awalsh128/cache-apt-pkgs-action@v1
+        with:
+          packages: openjdk-19-jdk
+
+      - name: Build JAR
+        run: ./gradlew jar -Dinfinileap=true -Drelease=true
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: hadroNIO JAR
+          path: build/provider/libs/hadronio-*.jar

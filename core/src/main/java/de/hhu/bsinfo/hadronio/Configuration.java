@@ -26,7 +26,7 @@ class Configuration {
     private static final int DEFAULT_FLUSH_INTERVAL_SIZE = 1024;
 
     private static final int DEFAULT_BUSY_POLL_TIMEOUT_NANOS = 20000;
-    private static final String DEFAULT_POLL_METHOD = "DYNAMIC";
+    private static final String DEFAULT_POLL_METHOD = "BUSY_POLLING";
 
     private final int sendBufferLength;
     private final int receiveBufferLength;

@@ -1,0 +1,26 @@
+name: release
+on:
+  push:
+    branches:
+    tags: 'v*'
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: awalsh128/cache-apt-pkgs-action@v1
+        with:
+          packages: openjdk-19-jdk
+
+      - name: Publish to Github Package Repository
+        run: ./gradlew publish -Dinfinileap=true -Drelease=true -Dgpr.user=${PUBLISH_USER} -Dgpr.token=${PUBLISH_TOKEN}
+
+      - name: Publish Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            build/provider/libs/hadronio-*.jar
+          env:
+            GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}

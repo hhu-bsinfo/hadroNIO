@@ -17,8 +17,8 @@ ext {
 
     // Gradle plugins
     buildConfigPluginVersion = '3.1.0'
-    gitVersionPluginVersion = '0.15.0'
-    shadowPluginVersion = '7.1.2'
+    gitVersionPluginVersion = '1.0.0'
+    shadowPluginVersion = '8.1.0'
     protobufPluginVersion = '0.9.2'
 
     // Core dependencies
@@ -31,12 +31,12 @@ ext {
     infinileapVersion = '0.1.0-SNAPSHOT'
 
     // Example dependencies
-    log4jVersion = '2.19.0'
-    picocliVersion = '4.7.0'
+    log4jVersion = '2.20.0'
+    picocliVersion = '4.7.1'
     kryoVersion = '5.4.0'
-    nettyVersion = '4.1.87.Final'
-    grpcVersion = '1.52.1'
-    protobufVersion = '3.21.12'
+    nettyVersion = '4.1.89.Final'
+    grpcVersion = '1.53.0'
+    protobufVersion = '3.22.0'
     tomcatVersion = '6.0.53'
     ycsbVersion = '0.17.0'
 
@@ -53,5 +53,5 @@ subprojects {
 }
 
 wrapper {
-    gradleVersion = "7.6"
+    gradleVersion = "8.0.1"
 }
