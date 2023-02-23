@@ -52,12 +52,18 @@ class JucxListener implements UcxListener {
 
     @Override
     public InetSocketAddress getAddress() {
-        return listener.getAddress();
+        if(listener == null) {
+            return null;
+        }else {
+            return listener.getAddress();
+        }
     }
 
     @Override
     public void close() {
         LOGGER.info("Closing listener");
-        listener.close();
+        if(listener != null) {
+            listener.close();
+        }
     }
 }
