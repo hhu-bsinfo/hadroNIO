@@ -73,7 +73,9 @@ class InfinileapListener implements UcxListener {
     @Override
     public void close() {
         LOGGER.info("Closing listener");
-        listener.close();
+        if (listener != null) {
+            listener.close();
+        }
     }
 
     void reject(final ConnectionRequest connectionRequest) {

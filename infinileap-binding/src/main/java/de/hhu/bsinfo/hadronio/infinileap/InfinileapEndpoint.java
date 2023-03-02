@@ -175,7 +175,9 @@ class InfinileapEndpoint implements UcxEndpoint {
     @Override
     public void close() {
         LOGGER.info("Closing endpoint");
-        endpoint.close();
+        if (endpoint != null) {
+            endpoint.close();
+        }
     }
 
     private void handleError() {

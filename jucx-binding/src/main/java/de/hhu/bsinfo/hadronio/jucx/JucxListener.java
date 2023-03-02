@@ -52,9 +52,9 @@ class JucxListener implements UcxListener {
 
     @Override
     public InetSocketAddress getAddress() {
-        if(listener == null) {
+        if (listener == null) {
             return null;
-        }else {
+        } else {
             return listener.getAddress();
         }
     }

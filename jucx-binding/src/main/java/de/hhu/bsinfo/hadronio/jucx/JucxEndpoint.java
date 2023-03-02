@@ -138,7 +138,7 @@ class JucxEndpoint implements UcxEndpoint {
     @Override
     public void close() {
         LOGGER.info("Closing endpoint");
-        if(endpoint != null) {
+        if (endpoint != null) {
             endpoint.close();
         }
     }
