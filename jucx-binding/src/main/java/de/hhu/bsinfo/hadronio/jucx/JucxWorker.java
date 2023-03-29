@@ -43,8 +43,13 @@ class JucxWorker implements UcxWorker {
     }
 
     @Override
-    public void arm() {
-        worker.arm();
+    public boolean arm() {
+        try {
+            worker.arm();
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     @Override

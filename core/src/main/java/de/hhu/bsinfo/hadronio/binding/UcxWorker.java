@@ -10,7 +10,7 @@ public interface UcxWorker extends Closeable {
 
     void interrupt();
 
-    void arm();
+    boolean arm();
 
     int getEventFileDescriptor();
 

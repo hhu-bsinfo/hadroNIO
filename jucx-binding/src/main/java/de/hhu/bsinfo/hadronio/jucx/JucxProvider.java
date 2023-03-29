@@ -11,7 +11,7 @@ public class JucxProvider implements UcxProvider {
     private final UcpContext context;
 
     public JucxProvider() {
-        context = new UcpContext(new UcpParams().requestWakeupFeature().requestTagFeature().requestStreamFeature().setMtWorkersShared(true));
+        context = new UcpContext(new UcpParams().requestWakeupFeature().requestTagFeature().requestStreamFeature());
     }
 
     @Override

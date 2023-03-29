@@ -297,17 +297,11 @@ class HadronioSelector extends AbstractSelector {
             }
 
             final var worker = channel.getWorker();
-            worker.waitForEvents();
 
-            boolean armed = false;
+            boolean armed;
             do {
-                try {
-                    eventsPolled |= worker.drain();
-                    worker.arm();
-                    armed = true;
-                } catch (Exception e) {
-                    if (DebugConfig.DEBUG) LOGGER.trace("Failed to arm worker");
-                }
+                eventsPolled |= worker.drain();
+                armed = worker.arm();
             } while (!armed);
         }
 

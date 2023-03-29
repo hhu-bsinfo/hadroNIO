@@ -17,11 +17,14 @@ repositories {
 
 dependencies {
     implementation project(':core')
-    // implementation "org.openucx:jucx:${jucxVersion}"
 
-    // The official JUCX version lacks UcpWorker.arm() and UcpWorker.getEventFD(), while also causing a large memory leak
-    // Once the pull requests #8453 and #8829 are part of a release, the official version can be used again.
-    implementation files("jucx-${jucxVersion}.jar")
+    // The official JUCX version causes a large memory leak. Once the pull requests #8829 is part of a release, the official version can be used again.
+    if (file("jucx-${jucxVersion}.jar").exists()) {
+        implementation files("jucx-${jucxVersion}.jar")
+    } else {
+        implementation "org.openucx:jucx:${jucxVersion}"
+    }
+
     implementation "org.slf4j:slf4j-api:${slf4jVersion}"
 
     testImplementation "org.junit.jupiter:junit-jupiter-api:${junitJupiterVersion}"

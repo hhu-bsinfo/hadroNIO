@@ -1,11 +1,7 @@
 package de.hhu.bsinfo.hadronio.infinileap;
 
 import de.hhu.bsinfo.hadronio.binding.UcxWorker;
-import de.hhu.bsinfo.infinileap.binding.Context;
-import de.hhu.bsinfo.infinileap.binding.ControlException;
-import de.hhu.bsinfo.infinileap.binding.Worker;
-import de.hhu.bsinfo.infinileap.binding.WorkerParameters;
-import de.hhu.bsinfo.infinileap.binding.WorkerProgress;
+import de.hhu.bsinfo.infinileap.binding.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,8 +35,8 @@ class InfinileapWorker implements UcxWorker {
     }
 
     @Override
-    public void arm() {
-        worker.arm();
+    public boolean arm() {
+        return worker.arm() == Status.OK;
     }
 
     @Override

@@ -16,27 +16,28 @@ ext {
     projectVersion = '0.3.3' + (Boolean.valueOf(System.getProperty('release')) ? '' : '-SNAPSHOT')
 
     // Gradle plugins
+    gradleVersion = '8.0.2'
     buildConfigPluginVersion = '3.1.0'
-    gitVersionPluginVersion = '1.0.0'
-    shadowPluginVersion = '8.1.0'
+    gitVersionPluginVersion = '2.0.0'
+    shadowPluginVersion = '8.1.1'
     protobufPluginVersion = '0.9.2'
 
     // Core dependencies
     agronaVersion = '1.17.1'
     linuxEpollVersion = '1.0.1'
-    slf4jVersion = '2.0.6'
+    slf4jVersion = '2.0.7'
 
     // Binding dependencies
-    jucxVersion = '1.13.1'
+    jucxVersion = '1.14'
     infinileapVersion = '0.1.0-SNAPSHOT'
 
     // Example dependencies
     log4jVersion = '2.20.0'
     picocliVersion = '4.7.1'
     kryoVersion = '5.4.0'
-    nettyVersion = '4.1.89.Final'
-    grpcVersion = '1.53.0'
-    protobufVersion = '3.22.0'
+    nettyVersion = '4.1.90.Final'
+    grpcVersion = '1.54.0'
+    protobufVersion = '3.22.2'
     tomcatVersion = '6.0.53'
     ycsbVersion = '0.17.0'
 
@@ -53,5 +54,5 @@ subprojects {
 }
 
 wrapper {
-    gradleVersion = "8.0.1"
+    gradleVersion = "8.0.2"
 }
