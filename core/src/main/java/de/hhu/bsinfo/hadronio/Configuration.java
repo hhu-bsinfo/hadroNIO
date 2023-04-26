@@ -26,7 +26,7 @@ class Configuration {
     private static final int DEFAULT_FLUSH_INTERVAL_SIZE = 1024;
 
     private static final int DEFAULT_BUSY_POLL_TIMEOUT_NANOS = 20000;
-    private static final String DEFAULT_POLL_METHOD = "BUSY_POLLING";
+    private static final String DEFAULT_POLL_METHOD = "DYNAMIC";
 
     private final int sendBufferLength;
     private final int receiveBufferLength;
@@ -49,7 +49,7 @@ class Configuration {
             infinileapAvailable = false;
         }
 
-        if (javaVersion == 19 && previewEnabled && infinileapAvailable) {
+        if (javaVersion == 20 && previewEnabled && infinileapAvailable) {
             return "de.hhu.bsinfo.hadronio.infinileap.InfinileapProvider";
         }
 

@@ -24,7 +24,8 @@ port=3000
 
 for (( i=MIN_CONNECTIONS; i<=MAX_CONNECTIONS; i=(i+STEPPING)/STEPPING*STEPPING )); do
     for j in {0..4}; do
-        wait 30
+        wait 30s
+
         port=$((port + 1))
         ./bin/hadronio netty benchmark "${BENCHMARK_MODE}" -r "${REMOTE_ADDRESS}:${port}" -a "${BIND_ADDRESS}:${port}" -m "${MESSAGE_COUNT}" -l "${MESSAGE_SIZE}" -c "${i}"
     done

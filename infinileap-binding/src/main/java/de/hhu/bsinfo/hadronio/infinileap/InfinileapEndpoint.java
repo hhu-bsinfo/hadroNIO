@@ -9,9 +9,7 @@ import de.hhu.bsinfo.hadronio.util.TagUtil;
 import de.hhu.bsinfo.infinileap.binding.*;
 import de.hhu.bsinfo.infinileap.primitive.NativeLong;
 import java.io.IOException;
-import java.lang.foreign.MemorySession;
 import java.net.InetSocketAddress;
-import java.lang.foreign.MemoryAddress;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout.OfLong;
 
@@ -82,7 +80,7 @@ class InfinileapEndpoint implements UcxEndpoint {
 
     @Override
     public boolean sendTaggedMessage(final long address, final long size, final long tag, final boolean useCallback, final boolean blocking) {
-        final var segment = MemorySegment.ofAddress(MemoryAddress.ofLong(address), size, MemorySession.global());
+        final var segment = MemorySegment.ofAddress(address, size);
         final var status = endpoint.sendTagged(segment, getCachedTag(tag), useCallback ? sendParameters : emptyParameters);
         return waitSendStatus(status, useCallback, blocking);
     }
@@ -96,14 +94,14 @@ class InfinileapEndpoint implements UcxEndpoint {
 
     @Override
     public void sendStream(final long address, final long size, final boolean useCallback, final boolean blocking) {
-        final var segment = MemorySegment.ofAddress(MemoryAddress.ofLong(address), size, MemorySession.global());
+        final var segment = MemorySegment.ofAddress(address, size);
         final var status = endpoint.sendStream(segment, size, useCallback ? sendParameters : emptyParameters);
         waitSendStatus(status, useCallback, blocking);
     }
 
     @Override
     public void receiveStream(final long address, final long size, final boolean useCallback, final boolean blocking) {
-        final var segment = MemorySegment.ofAddress(MemoryAddress.ofLong(address), size, MemorySession.global());
+        final var segment = MemorySegment.ofAddress(address, size);
         final var status = endpoint.receiveStream(segment, size, STREAM_RECEIVE_SIZE, useCallback ? streamReceiveParameters : emptyParameters);
         waitReceiveStatus(status, 0, useCallback, blocking);
     }
@@ -163,8 +161,21 @@ class InfinileapEndpoint implements UcxEndpoint {
     }
 
     @Override
+    public InetSocketAddress getLocalAddress() {
+        try {
+            return endpoint.getLocalAddress();
+        } catch (ControlException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Override
     public InetSocketAddress getRemoteAddress() {
-        return remoteAddress;
+        try {
+            return endpoint.getRemoteAddress();
+        } catch (ControlException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override
@@ -235,7 +246,7 @@ class InfinileapEndpoint implements UcxEndpoint {
     private MemorySegment getCachedSegment(final long address, final long size) {
         var addressObject = receiveSegmentCache.get(address);
         if (addressObject == null) {
-            addressObject = MemorySegment.ofAddress(MemoryAddress.ofLong(address), size, MemorySession.global());
+            addressObject = MemorySegment.ofAddress(address, size);
             receiveSegmentCache.put(address, addressObject);
         }
 

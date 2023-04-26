@@ -21,5 +21,7 @@ public interface UcxEndpoint extends UcxProgressable {
 
     boolean getErrorState();
 
+    InetSocketAddress getLocalAddress();
+
     InetSocketAddress getRemoteAddress();
 }

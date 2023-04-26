@@ -126,8 +126,13 @@ class JucxEndpoint implements UcxEndpoint {
     }
 
     @Override
+    public InetSocketAddress getLocalAddress() {
+        return endpoint.getLocalAddress();
+    }
+
+    @Override
     public InetSocketAddress getRemoteAddress() {
-        return remoteAddress;
+        return endpoint.getRemoteAddress();
     }
 
     @Override

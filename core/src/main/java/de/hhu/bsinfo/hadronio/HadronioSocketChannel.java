@@ -316,7 +316,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
             throw new ClosedChannelException();
         }
 
-        throw new IOException("Trying to get local address, which is not supported");
+        return endpoint.getLocalAddress();
     }
 
     @Override
@@ -401,7 +401,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
 
             endpoint.setSendCallback(new SendCallback(sendBuffer));
             endpoint.setReceiveCallback(new ReceiveCallback(this, readableMessages, isFlushing, configuration.getFlushIntervalSize()));
-            LOGGER.info("SocketChannel connected successfully (localTag: [0x{}], remoteTag: [0x{}])", Long.toHexString(localTag), Long.toHexString(remoteTag));
+            LOGGER.info("SocketChannel connected successfully (connection: [{} -> {}], localTag: [0x{}], remoteTag: [0x{}])", endpoint.getLocalAddress(), endpoint.getRemoteAddress(), Long.toHexString(localTag), Long.toHexString(remoteTag));
 
             if (isBlocking()) {
                 connected = true;
