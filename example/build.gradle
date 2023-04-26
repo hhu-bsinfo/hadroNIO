@@ -76,6 +76,6 @@ startScripts {
         unixScript.text = unixScript.text.replace("\$APP_HOME/lib/jucx-binding-${version}.jar:", '')
         unixScript.text = unixScript.text.replace("\$APP_HOME/lib/core-${version}.jar:", '')
 
-        unixScript.text = unixScript.text.replaceFirst('exec ', 'UCX_ERROR_SIGNALS="" UCX_TCP_CM_REUSEADDR=y exec ')
+        unixScript.text = unixScript.text.replaceFirst('exec ', 'UCX_ERROR_SIGNALS="" UCX_TCP_CM_REUSEADDR=y UCX_MAX_RNDV_RAILS=1 exec ')
     }
 }
