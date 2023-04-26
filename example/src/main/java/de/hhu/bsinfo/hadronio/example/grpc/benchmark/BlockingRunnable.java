@@ -6,6 +6,7 @@ import de.hhu.bsinfo.hadronio.util.LatencyCombiner;
 import de.hhu.bsinfo.hadronio.util.LatencyResult;
 import io.grpc.Channel;
 import io.grpc.ManagedChannel;
+import io.grpc.StatusRuntimeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -69,7 +70,11 @@ public class BlockingRunnable implements Runnable {
             }
 
             result.setMeasuredTime(System.nanoTime() - startTime);
-            blockingStub.endBenchmark(id);
+            try {
+                blockingStub.endBenchmark(id);
+            } catch (StatusRuntimeException e) {
+                LOGGER.warn("Failed to close connection (Error: [{}])", e.getMessage());
+            }
 
             final var channel = (ManagedChannel) blockingStub.getChannel();
             channel.shutdown();

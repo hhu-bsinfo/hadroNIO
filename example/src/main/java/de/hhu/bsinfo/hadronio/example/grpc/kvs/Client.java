@@ -113,7 +113,11 @@ public class Client implements Closeable {
 
     public void endBenchmark() {
         for (int i = 0; i < blockingStubs.length; i++) {
-            blockingStubs[i].endBenchmark(ids[i]);
+            try {
+                blockingStubs[i].endBenchmark(ids[i]);
+            } catch (StatusRuntimeException e) {
+                LOGGER.warn("Failed to close connection (Error: [{}])", e.getMessage());
+            }
         }
     }
 

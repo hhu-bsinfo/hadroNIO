@@ -81,7 +81,7 @@ public class NonBlockingRunnable implements Runnable {
             final var endFuture = futureStub.endBenchmark(id);
             while (!endFuture.isDone()) {
                 if (endFuture.isCancelled()) {
-                    throw new IllegalStateException("Failed to disconnect from server!");
+                    LOGGER.warn("Failed to close connection!");
                 }
             }
 
