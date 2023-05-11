@@ -19,6 +19,7 @@ class KeyValueStore extends KeyValueStoreGrpc.KeyValueStoreImplBase {
 
     private final ConcurrentMap<ByteBuffer, ByteBuffer> store = new ConcurrentHashMap<>();
     private final AtomicInteger counter = new AtomicInteger();
+    private final AtomicInteger finishedCounter = new AtomicInteger();
 
     private Server server;
     private int connections;
@@ -112,11 +113,26 @@ class KeyValueStore extends KeyValueStoreGrpc.KeyValueStoreImplBase {
     @Override
     public void endBenchmark(final ClientIdMessage request, final StreamObserver<Empty> responseObserver) {
         LOGGER.info("Client [#{}] disconnected", request.getId());
-        if (counter.decrementAndGet() <= 0) {
+        if (counter.decrementAndGet() == 0) {
+            LOGGER.info("Benchmark finished");
             server.shutdownNow();
         }
 
         responseObserver.onNext(Empty.newBuilder().build());
         responseObserver.onCompleted();
+    }
+
+    @Override
+    public void isBenchmarkFinished(final Empty request, final StreamObserver<BenchmarkFinishedMessage> responseObserver) {
+        final int remainingConnections = counter.get();
+        final boolean finished = remainingConnections == 0;
+        responseObserver.onNext(BenchmarkFinishedMessage.newBuilder().setFinished(finished).build());
+        responseObserver.onCompleted();
+
+        if (remainingConnections == 0) {
+            if (finishedCounter.incrementAndGet() >= connections) {
+                server.shutdownNow();
+            }
+        }
     }
 }

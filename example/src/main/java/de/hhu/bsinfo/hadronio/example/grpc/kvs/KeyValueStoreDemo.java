@@ -4,6 +4,7 @@ import de.hhu.bsinfo.hadronio.example.grpc.kvs.ycsb.YcsbRunner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import picocli.CommandLine;
+import site.ycsb.measurements.Measurements;
 
 import java.net.InetSocketAddress;
 import java.nio.file.Path;
@@ -68,6 +69,12 @@ public class KeyValueStoreDemo implements Runnable {
     private boolean status = false;
 
     @CommandLine.Option(
+            names = {"-z", "--measurement-type"},
+            description = "Set the measurement type (HDRHISTOGRAM, HISTORGRAM, TIMESERIES)"
+    )
+    private Measurements.MeasurementType measurementType = Measurements.MeasurementType.HDRHISTOGRAM;
+
+    @CommandLine.Option(
             names = {"-o", "--output"},
             description = "Path to the result file, to which the CSV data shall be written.")
     private String resultFileName = "";
@@ -114,7 +121,7 @@ public class KeyValueStoreDemo implements Runnable {
                 return;
             }
 
-            runnable = new YcsbRunner(remoteAddress, workload, phase, threads, status, resultFileName, benchmarkName, benchmarkIteration, recordSize);
+            runnable = new YcsbRunner(remoteAddress, workload, phase, measurementType, threads, status, resultFileName, benchmarkName, benchmarkIteration, recordSize);
         } else {
             runnable = new Shell(remoteAddress);
         }

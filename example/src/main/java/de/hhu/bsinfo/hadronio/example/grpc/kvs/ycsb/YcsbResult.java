@@ -8,14 +8,14 @@ public class YcsbResult {
 
     private long recordSize;
     private double operationThroughput;
-    private final List<Double> averageLatencies = new ArrayList<>();
-    private final List<Double> minimumLatencies = new ArrayList<>();
-    private final List<Double> maximumLatencies = new ArrayList<>();
-    private final List<Double> percentile50thLatencies = new ArrayList<>();
-    private final List<Double> percentile95thLatencies = new ArrayList<>();
-    private final List<Double> percentile99thLatencies = new ArrayList<>();
-    private final List<Double> percentile999thLatencies = new ArrayList<>();
-    private final List<Double> percentile9999thLatencies = new ArrayList<>();
+    private double averagelatency;
+    private double minimumlatency;
+    private double maximumlatency;
+    private double percentile50thlatency;
+    private double percentile95thlatency;
+    private double percentile99thlatency;
+    private double percentile999thlatency;
+    private double percentile9999thlatency;
 
     void setRecordSize(final long recordSize) {
         this.recordSize = recordSize;
@@ -25,36 +25,36 @@ public class YcsbResult {
         this.operationThroughput = operationThroughput;
     }
 
-    void addAverageLatency(final double latency) {
-        averageLatencies.add(latency);
+    void setAverageLatency(final double latency) {
+        averagelatency = latency;
     }
 
-    void addMinimumLatency(final double latency) {
-        minimumLatencies.add(latency);
+    void setMinimumLatency(final double latency) {
+        minimumlatency = latency;
     }
 
-    void addMaximumLatency(final double latency) {
-        maximumLatencies.add(latency);
+    void setMaximumLatency(final double latency) {
+        maximumlatency = latency;
     }
 
-    void add50thPercentileLatency(final double latency) {
-        percentile50thLatencies.add(latency);
+    void set50thPercentileLatency(final double latency) {
+        percentile50thlatency = latency;
     }
 
-    void add95thPercentileLatency(final double latency) {
-        percentile95thLatencies.add(latency);
+    void set95thPercentileLatency(final double latency) {
+        percentile95thlatency = latency;
     }
 
-    void add99thPercentileLatency(final double latency) {
-        percentile99thLatencies.add(latency);
+    void set99thPercentileLatency(final double latency) {
+        percentile99thlatency = latency;
     }
 
-    void add999thPercentileLatency(final double latency) {
-        percentile999thLatencies.add(latency);
+    void set999thPercentileLatency(final double latency) {
+        percentile999thlatency = latency;
     }
 
-    void add9999thPercentileLatency(final double latency) {
-        percentile9999thLatencies.add(latency);
+    void set9999thPercentileLatency(final double latency) {
+        percentile9999thlatency = latency;
     }
 
     void write(final String fileName, final String benchmarkName, final int iteration, final int connections) throws IOException {
@@ -77,20 +77,16 @@ public class YcsbResult {
                 .append(String.valueOf(connections)).append(",")
                 .append(String.valueOf(recordSize)).append(",")
                 .append(String.valueOf(operationThroughput)).append(",")
-                .append(String.valueOf(calculateAverage(averageLatencies))).append(",")
-                .append(String.valueOf(calculateAverage(minimumLatencies))).append(",")
-                .append(String.valueOf(calculateAverage(maximumLatencies))).append(",")
-                .append(String.valueOf(calculateAverage(percentile50thLatencies))).append(",")
-                .append(String.valueOf(calculateAverage(percentile95thLatencies))).append(",")
-                .append(String.valueOf(calculateAverage(percentile99thLatencies))).append(",")
-                .append(String.valueOf(calculateAverage(percentile999thLatencies))).append(",")
-                .append(String.valueOf(calculateAverage(percentile9999thLatencies))).append("\n");
+                .append(String.valueOf(averagelatency)).append(",")
+                .append(String.valueOf(minimumlatency)).append(",")
+                .append(String.valueOf(maximumlatency)).append(",")
+                .append(String.valueOf(percentile50thlatency)).append(",")
+                .append(String.valueOf(percentile95thlatency)).append(",")
+                .append(String.valueOf(percentile99thlatency)).append(",")
+                .append(String.valueOf(percentile999thlatency)).append(",")
+                .append(String.valueOf(percentile9999thlatency)).append("\n");
 
         writer.flush();
         writer.close();
-    }
-
-    private double calculateAverage(final List<Double> values) {
-        return values.stream().mapToDouble((value) -> value).summaryStatistics().getAverage() / 1000000;
     }
 }

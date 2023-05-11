@@ -3,6 +3,7 @@ package de.hhu.bsinfo.hadronio.example;
 import de.hhu.bsinfo.hadronio.example.blocking.Blocking;
 import de.hhu.bsinfo.hadronio.example.grpc.Grpc;
 import de.hhu.bsinfo.hadronio.example.netty.Netty;
+import de.hhu.bsinfo.hadronio.example.bookkeeper.Bookkeeper;
 import de.hhu.bsinfo.hadronio.util.InetSocketAddressConverter;
 import picocli.CommandLine;
 
@@ -11,7 +12,7 @@ import java.net.InetSocketAddress;
 @CommandLine.Command(
         name = "hadronio",
         description = "Test applications for hadroNIO",
-        subcommands = { Blocking.class, Netty.class, Grpc.class }
+        subcommands = { Blocking.class, Netty.class, Grpc.class, Bookkeeper.class }
 )
 public class Application implements Runnable {
 

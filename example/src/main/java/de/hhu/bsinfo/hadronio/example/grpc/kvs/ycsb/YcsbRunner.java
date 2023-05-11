@@ -1,6 +1,7 @@
 package de.hhu.bsinfo.hadronio.example.grpc.kvs.ycsb;
 
 import site.ycsb.Client;
+import site.ycsb.measurements.Measurements;
 
 import java.net.InetSocketAddress;
 import java.nio.file.Path;
@@ -15,6 +16,7 @@ public class YcsbRunner implements Runnable {
     private final InetSocketAddress[] remoteAddresses;
     private final Path properties;
     private final Phase phase;
+    private final Measurements.MeasurementType measurementType;
     private final int threads;
     private final boolean status;
     private final String resultFileName;
@@ -27,11 +29,12 @@ public class YcsbRunner implements Runnable {
         RUN
     }
 
-    public YcsbRunner(final InetSocketAddress[] remoteAddresses, final Path workload, final Phase phase, final int threads, final boolean status, final String resultFileName, final String benchmarkName, final int benchmarkIteration, final int recordSize) {
+    public YcsbRunner(final InetSocketAddress[] remoteAddresses, final Path workload, final Phase phase, final Measurements.MeasurementType measurementType, final int threads, final boolean status, final String resultFileName, final String benchmarkName, final int benchmarkIteration, final int recordSize) {
         this.remoteAddresses = remoteAddresses;
         this.properties = workload;
         this.resultFileName = resultFileName;
         this.phase = phase;
+        this.measurementType = measurementType;
         this.threads = threads;
         this.status = status;
         this.benchmarkName = benchmarkName;
@@ -44,6 +47,7 @@ public class YcsbRunner implements Runnable {
     @Override
     public void run() {
         Client.main(generateParameters(phase));
+
     }
 
     private String[] generateParameters(final Phase phase) {
@@ -61,23 +65,24 @@ public class YcsbRunner implements Runnable {
 
         // Set result format
         parameters.add("-p");
-        parameters.add("measurementtype=hdrhistogram");
+        parameters.add("measurementtype=" + measurementType.toString().toLowerCase());
         parameters.add("-p");
         parameters.add("hdrhistogram.percentiles=50,95,99,999,9999");
+        parameters.add("-p");
+        parameters.add("timeseries.granularity=1");
 
         // Set exporter and output file
         if (resultFileName.isEmpty()) {
             parameters.add("-p");
             parameters.add(String.format("exporter=%s", LoggingExporter.class.getCanonicalName()));
         } else {
-            CsvExporter.benchmarkName = benchmarkName;
-            CsvExporter.iteration = benchmarkIteration;
-            CsvExporter.connections = threads;
-            CsvExporter.recordSize = recordSize;
-            CsvExporter.resultFileName = resultFileName;
+            CsvHistogramExporter.benchmarkName = benchmarkName;
+            CsvHistogramExporter.iteration = benchmarkIteration;
+            CsvHistogramExporter.connections = threads;
+            CsvHistogramExporter.resultFileName = resultFileName;
 
             parameters.add("-p");
-            parameters.add(String.format("exporter=%s", CsvExporter.class.getCanonicalName()));
+            parameters.add(String.format("exporter=%s", measurementType == Measurements.MeasurementType.TIMESERIES ? CsvTimeSeriesExporter.class.getCanonicalName() : CsvHistogramExporter.class.getCanonicalName()));
         }
 
         // Set properties file

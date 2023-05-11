@@ -58,7 +58,7 @@ class InfinileapEndpoint implements UcxEndpoint {
                     handleError();
         }));
 
-        LOGGER.info("Endpoint created");
+        if (DebugConfig.DEBUG) LOGGER.debug("Endpoint created");
     }
 
     @Override
@@ -75,7 +75,7 @@ class InfinileapEndpoint implements UcxEndpoint {
             throw new IOException(e);
         }
 
-        LOGGER.info("Endpoint created");
+        if (DebugConfig.DEBUG) LOGGER.debug("Endpoint created");
     }
 
     @Override
@@ -185,7 +185,7 @@ class InfinileapEndpoint implements UcxEndpoint {
 
     @Override
     public void close() {
-        LOGGER.info("Closing endpoint");
+        if (DebugConfig.DEBUG) LOGGER.debug("Closing endpoint");
         if (endpoint != null) {
             endpoint.close();
         }

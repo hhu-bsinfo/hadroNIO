@@ -5,6 +5,7 @@ import de.hhu.bsinfo.hadronio.binding.UcxListener;
 import de.hhu.bsinfo.hadronio.binding.UcxWorker;
 import java.util.Stack;
 
+import de.hhu.bsinfo.hadronio.generated.DebugConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -60,7 +61,7 @@ public class HadronioServerSocketChannel extends ServerSocketChannel implements 
 
         try {
             listener.bind(localAddress, connectionRequest -> {
-                LOGGER.info("Received connection request");
+                if (DebugConfig.DEBUG) LOGGER.debug("Received connection request");
 
                 if (backlog <= 0 || pendingRequests.size() < backlog) {
                     pendingRequests.push(connectionRequest);
@@ -125,7 +126,7 @@ public class HadronioServerSocketChannel extends ServerSocketChannel implements 
             listener.getWorker().progress();
         }
 
-        LOGGER.info("Accepting connection request");
+        if (DebugConfig.DEBUG) LOGGER.debug("Accepting connection request");
         final var endpoint = listener.accept(pendingRequests.pop());
         final var socket = new HadronioSocketChannel(provider(), endpoint);
 
@@ -144,14 +145,14 @@ public class HadronioServerSocketChannel extends ServerSocketChannel implements 
 
     @Override
     protected void implCloseSelectableChannel() throws IOException {
-        LOGGER.info("Closing server socket channel bound to [{}]", getLocalAddress());
+        if (DebugConfig.DEBUG) LOGGER.debug("Closing server socket channel bound to [{}]", getLocalAddress());
         channelClosed = true;
         listener.close();
     }
 
     @Override
     protected void implConfigureBlocking(boolean blocking) {
-        LOGGER.info("Server socket channel is now configured to be [{}]", blocking ? "BLOCKING" : "NON-BLOCKING");
+        if (DebugConfig.DEBUG) LOGGER.debug("Server socket channel is now configured to be [{}]", blocking ? "BLOCKING" : "NON-BLOCKING");
     }
 
     @Override
