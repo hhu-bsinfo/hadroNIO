@@ -62,7 +62,7 @@ class HadronioSelector extends AbstractSelector {
 
     @Override
     protected void implCloseSelector() throws IOException {
-        LOGGER.info("Closing selector");
+        if (DebugConfig.DEBUG) LOGGER.debug("Closing selector");
         selectorClosed = true;
 
         synchronized (this) {
@@ -96,7 +96,7 @@ class HadronioSelector extends AbstractSelector {
         final var key = new HadronioSelectionKey(channel, this);
         key.interestOps(interestOps);
         key.attach(attachment);
-        LOGGER.info("Registering channel with selection key [{}]", key);
+        if (DebugConfig.DEBUG) LOGGER.debug("Registering channel with selection key [{}]", key);
 
         synchronized (keys) {
             synchronized (wakeupLock) {

@@ -2,7 +2,7 @@ package de.hhu.bsinfo.hadronio.example.grpc.kvs.ycsb;
 
 import java.io.*;
 
-public class CsvExporter extends LoggingExporter {
+public class CsvHistogramExporter extends LoggingExporter {
 
     static String benchmarkName;
     static int iteration;
@@ -12,7 +12,7 @@ public class CsvExporter extends LoggingExporter {
 
     private final YcsbResult result = new YcsbResult();
 
-    public CsvExporter(final OutputStream outputStream) {
+    public CsvHistogramExporter(final OutputStream outputStream) {
         super(outputStream);
         result.setRecordSize(recordSize);
     }
@@ -32,11 +32,15 @@ public class CsvExporter extends LoggingExporter {
     @Override
     public void write(final String metric, final String measurement, final double d) throws IOException {
         super.write(metric, measurement, d);
-        gather(metric, measurement, d);
+        if (YcsbProperties.phase == YcsbRunner.Phase.RUN && measurement.startsWith("Throughput")) {
+            gather(metric, measurement, super.getThroughput());
+        } else {
+            gather(metric, measurement, d);
+        }
     }
 
     private void gather(final String metric, final String measurement, final double value) {
-        if (metric.equals("CLEANUP")) {
+        if (!metric.equals("OVERALL") && !metric.equals("READ")) {
             return;
         }
 
@@ -45,28 +49,28 @@ public class CsvExporter extends LoggingExporter {
                 result.setOperationThroughput(value);
                 break;
             case "AverageLatency(us)":
-                result.addAverageLatency(value);
+                result.setAverageLatency(value / 1000000);
                 break;
             case "MinLatency(us)":
-                result.addMinimumLatency(value);
+                result.setMinimumLatency(value / 1000000);
                 break;
             case "MaxLatency(us)":
-                result.addMaximumLatency(value);
+                result.setMaximumLatency(value / 1000000);
                 break;
             case "50thPercentileLatency(us)":
-                result.add50thPercentileLatency(value);
+                result.set50thPercentileLatency(value / 1000000);
                 break;
             case "95thPercentileLatency(us)":
-                result.add95thPercentileLatency(value);
+                result.set95thPercentileLatency(value / 1000000);
                 break;
             case "99thPercentileLatency(us)":
-                result.add99thPercentileLatency(value);
+                result.set99thPercentileLatency(value / 1000000);
                 break;
             case "999thPercentileLatency(us)":
-                result.add999thPercentileLatency(value);
+                result.set999thPercentileLatency(value / 1000000);
                 break;
             case "9999thPercentileLatency(us)":
-                result.add9999thPercentileLatency(value);
+                result.set9999thPercentileLatency(value / 1000000);
                 break;
         }
     }

@@ -2,25 +2,25 @@
 workload=site.ycsb.workloads.CoreWorkload
 
 # The number of records in the dataset at the start of the workload.
-recordcount=10000
+recordcount=1000
 
 # The number of operations to perform in the workload.
-operationcount=2500000
+operationcount=1000000
 
 # The size of each field.
-fieldlength=1024
+fieldlength=16
 
 # The number of fields in a record.
-fieldcount=16
+fieldcount=1
 
 # Should reads read all fields (true) or just one (false).
 readallfields=true
 
 # What proportion of operations should be reads.
-readproportion=0.95
+readproportion=1
 
 # What proportion of operations should be updates.
-updateproportion=0.05
+updateproportion=0
 
 # What proportion of operations should be scans.
 scanproportion=0

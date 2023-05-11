@@ -9,11 +9,14 @@ import java.io.OutputStream;
 
 public class LoggingExporter implements MeasurementsExporter {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(LoggingExporter.class.getCanonicalName().replace(LoggingExporter.class.getSimpleName(), "YCSB"));
+
     private static final int METRIC_LENGTH = 35;
     private static final int MEASUREMENT_LENGTH = 23;
     private static final int VALUE_LENGTH = 15;
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(LoggingExporter.class.getCanonicalName().replace(LoggingExporter.class.getSimpleName(), "YCSB"));
+    private long runTime;
+    private double throughput;
 
     public LoggingExporter(final OutputStream outputStream) {
         write("Metric", "Measurement", "Value");
@@ -28,18 +31,33 @@ public class LoggingExporter implements MeasurementsExporter {
 
     @Override
     public void write(final String metric, final String measurement, final long l) throws IOException {
+        if (measurement.startsWith("RunTime")) {
+            runTime = l - YcsbBinding.getInitTime();
+            write(metric, "InitTime(ms)", YcsbBinding.getInitTime());
+        }
+
         final var value = formatUnit(measurement, String.valueOf(l));
         write(metric, measurement, value);
     }
 
     @Override
     public void write(final String metric, final String measurement, final double d) throws IOException {
-        final var value = formatUnit(measurement, String.format("%.03f", d));
-        write(metric, measurement, value);
+        if (YcsbProperties.phase == YcsbRunner.Phase.RUN && measurement.startsWith("Throughput")) {
+            throughput = YcsbBinding.getOperationCount() / (runTime / 1000.0);
+            final var value = formatUnit(measurement, String.format("%.03f", throughput));
+            write(metric, measurement, value);
+        } else {
+            final var value = formatUnit(measurement, String.format("%.03f", d));
+            write(metric, measurement, value);
+        }
     }
 
     @Override
     public void close() throws IOException {}
+
+    public double getThroughput() {
+        return throughput;
+    }
 
     private static String formatUnit(final String measurement, final String value) {
         if (measurement.contains("(")) {

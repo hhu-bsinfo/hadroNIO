@@ -2,6 +2,7 @@ package de.hhu.bsinfo.hadronio;
 
 import de.hhu.bsinfo.hadronio.binding.UcxProvider;
 import de.hhu.bsinfo.hadronio.generated.BuildConfig;
+import de.hhu.bsinfo.hadronio.generated.DebugConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,14 +58,14 @@ public class HadronioProvider extends SelectorProvider implements Closeable {
 
     @Override
     public ServerSocketChannel openServerSocketChannel() throws IOException {
-        LOGGER.info("Creating new HadronioServerSocketChannel");
+        if (DebugConfig.DEBUG) LOGGER.debug("Creating new HadronioServerSocketChannel");
         final var listener = provider.createListener();
         return new HadronioServerSocketChannel(this, listener);
     }
 
     @Override
     public SocketChannel openSocketChannel() throws IOException {
-        LOGGER.info("Creating new HadronioSocketChannel");
+        if (DebugConfig.DEBUG) LOGGER.debug("Creating new HadronioSocketChannel");
         final var endpoint = provider.createEndpoint();
         return new HadronioSocketChannel(this, endpoint);
     }

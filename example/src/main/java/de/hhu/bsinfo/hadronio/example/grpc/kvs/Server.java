@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.util.concurrent.Executors;
 
 public class Server implements Runnable {
 
@@ -32,6 +33,7 @@ public class Server implements Runnable {
         final var server = NettyServerBuilder.forPort(bindAddress.getPort())
                 .bossEventLoopGroup(acceptorGroup)
                 .workerEventLoopGroup(workerGroup)
+                .executor(Executors.newFixedThreadPool(WORKER_THREADS))
                 .channelType(NioServerSocketChannel.class)
                 .addService(store)
                 .build();

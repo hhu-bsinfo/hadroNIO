@@ -11,7 +11,7 @@ readonly CONNECTIONS=${7}
 wait() {
   local seconds=$1
 
-  for (( i=0; i<$seconds; i++ )) do
+  for (( k=0; k<seconds; k++ )) do
     printf "."
     sleep 1s
   done

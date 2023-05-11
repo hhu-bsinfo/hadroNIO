@@ -12,7 +12,7 @@ readonly STEPPING=${8}
 wait() {
   local seconds=$1
 
-  for (( k=0; k<$seconds; k++ )) do
+  for (( k=0; k<seconds; k++ )) do
     printf "."
     sleep 1s
   done

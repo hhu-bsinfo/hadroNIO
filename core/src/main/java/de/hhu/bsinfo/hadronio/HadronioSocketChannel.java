@@ -119,7 +119,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
             throw new ClosedChannelException();
         }
         
-        LOGGER.info("Closing connection for input");
+        if (DebugConfig.DEBUG) LOGGER.debug("Closing connection for input");
         inputClosed = true;
         return this;
     }
@@ -134,7 +134,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
             throw new ClosedChannelException();
         }
 
-        LOGGER.info("Closing connection for output");
+        if (DebugConfig.DEBUG) LOGGER.debug("Closing connection for output");
         outputClosed = true;
         return this;
     }
@@ -173,7 +173,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
         }
 
         connectionPending = true;
-        LOGGER.info("Connecting to [{}]", remoteAddress);
+        if (DebugConfig.DEBUG) LOGGER.debug("Connecting to [{}]", remoteAddress);
         endpoint.connect((InetSocketAddress) remoteAddress);
         establishConnection();
 
@@ -321,7 +321,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
 
     @Override
     protected void implCloseSelectableChannel() throws IOException {
-        LOGGER.info("Closing socket channel");
+        if (DebugConfig.DEBUG) LOGGER.debug("Closing socket channel");
         channelClosed = true;
         inputClosed = true;
         outputClosed = true;
@@ -331,7 +331,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
 
     @Override
     protected void implConfigureBlocking(final boolean blocking) {
-        LOGGER.info("Socket channel is now configured to be [{}]", blocking ? "BLOCKING" : "NON-BLOCKING");
+        if (DebugConfig.DEBUG) LOGGER.debug("Socket channel is now configured to be [{}]", blocking ? "BLOCKING" : "NON-BLOCKING");
     }
 
     @Override
@@ -401,7 +401,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
 
             endpoint.setSendCallback(new SendCallback(sendBuffer));
             endpoint.setReceiveCallback(new ReceiveCallback(this, readableMessages, isFlushing, configuration.getFlushIntervalSize()));
-            LOGGER.info("SocketChannel connected successfully (connection: [{} -> {}], localTag: [0x{}], remoteTag: [0x{}])", endpoint.getLocalAddress(), endpoint.getRemoteAddress(), Long.toHexString(localTag), Long.toHexString(remoteTag));
+            if (DebugConfig.DEBUG) LOGGER.debug("SocketChannel connected successfully (connection: [{} -> {}], localTag: [0x{}], remoteTag: [0x{}])", endpoint.getLocalAddress(), endpoint.getRemoteAddress(), Long.toHexString(localTag), Long.toHexString(remoteTag));
 
             if (isBlocking()) {
                 connected = true;
@@ -462,7 +462,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
         endpoint.setSendCallback(connectionCallback);
         endpoint.setReceiveCallback(connectionCallback);
 
-        LOGGER.info("Exchanging tags to establish connection");
+        if (DebugConfig.DEBUG) LOGGER.debug("Exchanging tags to establish connection");
         endpoint.sendStream(sendBuffer.addressOffset(), 2 * Long.BYTES, true, true);
         endpoint.receiveStream(receiveBuffer.addressOffset(), 2 * Long.BYTES, true, false);
     }

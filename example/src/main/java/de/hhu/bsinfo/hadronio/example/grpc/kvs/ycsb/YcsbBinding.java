@@ -1,13 +1,11 @@
 package de.hhu.bsinfo.hadronio.example.grpc.kvs.ycsb;
 
 import de.hhu.bsinfo.hadronio.example.grpc.kvs.Client;
-import io.grpc.StatusRuntimeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import site.ycsb.*;
-
-import java.net.InetSocketAddress;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class YcsbBinding extends DB {
 
@@ -15,21 +13,39 @@ public class YcsbBinding extends DB {
 
     private static final String NAMESPACE_SEPARATOR = ".";
 
+    private static AtomicLong firstInitStartTime = new AtomicLong(0);
+    private static AtomicLong lastInitFinishedTime = new AtomicLong(0);
+    private static AtomicLong operationCount = new AtomicLong(0);
+
     private final Client client = new Client();
 
     private YcsbProperties properties;
     private YcsbObject reusableObject;
 
+    public static long getInitTime() {
+        return lastInitFinishedTime.get() - firstInitStartTime.get();
+    }
+
+    public static long getOperationCount() {
+        return operationCount.get();
+    }
+
     @Override
     public void init() {
+        firstInitStartTime.compareAndSet(0, System.currentTimeMillis());
+
         LOGGER.info("Initializing YCSB client");
         properties = new YcsbProperties(getProperties());
         reusableObject = new YcsbObject(properties.getFieldsPerKey(), properties.getFieldSize());
         client.connect(properties.getRemoteAddresses());
+        operationCount.compareAndSet(0, properties.getOperationCount());
+        CsvHistogramExporter.recordSize = properties.getFieldLength();
 
         if (YcsbProperties.phase == YcsbRunner.Phase.RUN) {
             client.startBenchmark();
         }
+
+        lastInitFinishedTime.set(System.currentTimeMillis());
     }
 
     @Override
@@ -90,6 +106,7 @@ public class YcsbBinding extends DB {
     @Override
     public void cleanup() {
         LOGGER.info("Cleaning up YCSB client");
+
         if (YcsbProperties.phase == YcsbRunner.Phase.RUN) {
             client.endBenchmark();
         }

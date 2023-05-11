@@ -17,6 +17,7 @@ service KeyValueStore {
   rpc connect (google.protobuf.Empty) returns (ClientIdMessage) {}
   rpc startBenchmark (ClientIdMessage) returns (StartBenchmarkMessage) {}
   rpc endBenchmark (ClientIdMessage) returns (google.protobuf.Empty) {}
+  rpc isBenchmarkFinished (google.protobuf.Empty) returns (BenchmarkFinishedMessage) {}
 }
 
 message KeyValueRequest {
@@ -43,4 +44,8 @@ message ClientIdMessage {
 
 message StartBenchmarkMessage {
   bool start = 1;
+}
+
+message BenchmarkFinishedMessage {
+  bool finished = 1;
 }

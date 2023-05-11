@@ -16,10 +16,16 @@ import java.io.Closeable;
 import java.net.InetSocketAddress;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class Client implements Closeable {
 
+    private static final int WORKER_THREADS = Integer.parseInt(System.getProperty("de.hhu.bsinfo.hadronio.example.NETTY_WORKER_THREADS", "0"));
     private static final Logger LOGGER = LoggerFactory.getLogger(Client.class);
+
+    private static final NioEventLoopGroup WORKER_GROUP = new NioEventLoopGroup(WORKER_THREADS);
+    private static final ExecutorService EXECUTOR_GROUP = Executors.newFixedThreadPool(1);
 
     private final ObjectConverter converter = new ObjectConverter();
     private MessageDigest messageDigest;
@@ -28,7 +34,6 @@ public class Client implements Closeable {
     private long[] buckets;
 
     public void connect(final InetSocketAddress[] remoteAddresses) {
-        final var workerGroup = new NioEventLoopGroup(remoteAddresses.length);
         blockingStubs = new KeyValueStoreGrpc.KeyValueStoreBlockingStub[remoteAddresses.length];
         ids = new ClientIdMessage[remoteAddresses.length];
         buckets = new long[remoteAddresses.length];
@@ -44,7 +49,8 @@ public class Client implements Closeable {
             LOGGER.info("Connecting to server [{}]", remoteAddress);
 
             final var channel = NettyChannelBuilder.forAddress(remoteAddress.getHostString(), remoteAddress.getPort())
-                    .eventLoopGroup(workerGroup)
+                    .eventLoopGroup(WORKER_GROUP)
+                    .executor(EXECUTOR_GROUP)
                     .channelType(NioSocketChannel.class)
                     .usePlaintext()
                     .build();
