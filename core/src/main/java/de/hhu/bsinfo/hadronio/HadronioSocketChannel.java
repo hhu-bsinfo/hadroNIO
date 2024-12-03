@@ -327,6 +327,8 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
         outputClosed = true;
         connected = false;
         endpoint.close();
+        sendBuffer.alignedBuffer().free();
+        receiveBuffer.alignedBuffer().free();
     }
 
     @Override
@@ -450,8 +452,8 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
     }
 
     void establishConnection() {
-        final var sendBuffer = MemoryUtil.allocateAligned(2 * Long.BYTES, Alignment.PAGE);
-        final var receiveBuffer = MemoryUtil.allocateAligned(2 * Long.BYTES, Alignment.PAGE);
+        final var sendBuffer = new MemoryUtil.AlignedBuffer(2 * Long.BYTES, Alignment.PAGE).buffer();
+        final var receiveBuffer = new MemoryUtil.AlignedBuffer(2 * Long.BYTES, Alignment.PAGE).buffer();
 
         final long localId = TagUtil.generateId();
         final long checksum = TagUtil.calculateChecksum(localId);
@@ -546,9 +548,9 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
         }
 
         // Write message header
-        MessageUtil.setMessageLength(sendBuffer.buffer(), index, messageLength - MessageUtil.HEADER_LENGTH);
-        MessageUtil.setReadBytes(sendBuffer.buffer(), index, 0);
-        if (DebugConfig.DEBUG) MessageUtil.setSequenceNumber(sendBuffer.buffer(), index, (short) sendCounter);
+        MessageUtil.setMessageLength(sendBuffer.alignedBuffer().buffer(), index, messageLength - MessageUtil.HEADER_LENGTH);
+        MessageUtil.setReadBytes(sendBuffer.alignedBuffer().buffer(), index, 0);
+        if (DebugConfig.DEBUG) MessageUtil.setSequenceNumber(sendBuffer.alignedBuffer().buffer(), index, (short) sendCounter);
 
         // Copy message data from source buffers into send buffer
         int remaining = messageLength - MessageUtil.HEADER_LENGTH;
@@ -565,7 +567,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
 
             if (DebugConfig.DEBUG) LOGGER.debug("Copying source buffer into send buffer (Buffer: [{}/{}], Position: [{}/{}], Length: [{}], Remaining: [{}], Sequence Number: [{}])",
                 offset + i + 1, length, sourceBuffer.position(), sourceBuffer.limit(), currentLength, remaining, (short) sendCounter);
-            sendBuffer.buffer().putBytes(targetIndex, sourceBuffer, sourceBuffer.position(), currentLength);
+            sendBuffer.alignedBuffer().buffer().putBytes(targetIndex, sourceBuffer, sourceBuffer.position(), currentLength);
 
             lastBufferIndex = i;
             lastBufferPosition = sourceBuffer.position() + currentLength;
