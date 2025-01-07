@@ -28,7 +28,7 @@ ext {
     slf4jVersion = '2.0.7'
 
     // Binding dependencies
-    jucxVersion = '1.14.1'
+    jucxVersion = '1.17.0'
     infinileapVersion = '0.2.0-SNAPSHOT'
 
     // Example dependencies

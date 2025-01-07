@@ -18,9 +18,7 @@ repositories {
 dependencies {
     implementation project(':core')
 
-    // The official JUCX version causes a large memory leak and does not support querying the local and remote address from an endpoint.
-    // Once the pull requests #8829 and #9065 are part of a release, the official version can be used again.
-    implementation files("jucx-${jucxVersion}.jar")
+    implementation "org.openucx:jucx:${jucxVersion}"
 
     implementation "org.slf4j:slf4j-api:${slf4jVersion}"
 
