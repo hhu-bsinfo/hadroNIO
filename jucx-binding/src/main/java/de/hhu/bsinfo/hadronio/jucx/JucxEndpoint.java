@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
+import java.util.ArrayList;
 
 class JucxEndpoint implements UcxEndpoint {
 
@@ -21,6 +22,7 @@ class JucxEndpoint implements UcxEndpoint {
     private org.openucx.jucx.UcxCallback sendCallback;
     private org.openucx.jucx.UcxCallback receiveCallback;
     private boolean errorState = false;
+    private ArrayList<UcpRequest> requests = new ArrayList<>();
 
     JucxEndpoint(final UcpContext context) {
         worker = new JucxWorker(context, new UcpWorkerParams());
@@ -56,9 +58,10 @@ class JucxEndpoint implements UcxEndpoint {
         LOGGER.info("Endpoint created: [{}]", endpoint);
     }
 
-    @Override
-    public boolean sendTaggedMessage(final long address, final long size, final long tag, final boolean useCallback, final boolean blocking) {
-        final var request = endpoint.sendTaggedNonBlocking(address, size, tag, useCallback ? sendCallback : null);
+    private void execRequest(final UcpRequest request, final boolean blocking) {
+        if (request.getNativeId() != null) {
+            requests.add(request);
+        }
         while (blocking && !request.isCompleted()) {
             try {
                 worker.getWorker().progressRequest(request);
@@ -67,47 +70,30 @@ class JucxEndpoint implements UcxEndpoint {
                 throw new IllegalStateException(e);
             }
         }
+    }
 
+    @Override
+    public boolean sendTaggedMessage(final long address, final long size, final long tag, final boolean useCallback, final boolean blocking) {
+        final var request = endpoint.sendTaggedNonBlocking(address, size, tag, useCallback ? sendCallback : null);
+        execRequest(request, blocking);
         return request.isCompleted();
     }
 
     @Override
     public boolean receiveTaggedMessage(final long address, final long size, final long tag, final boolean useCallback, final boolean blocking) {
         final var request = worker.getWorker().recvTaggedNonBlocking(address, size, tag, TagUtil.TAG_MASK_FULL, useCallback ? receiveCallback : null);
-        while (blocking && !request.isCompleted()) {
-            try {
-                worker.getWorker().progressRequest(request);
-            } catch (Exception e) {
-                // Should never happen, since we do no throw exceptions inside our error handlers
-                throw new IllegalStateException(e);
-            }
-        }
-
+        execRequest(request, blocking);
         return request.isCompleted();
     }
 
     public void sendStream(final long address, final long size, final boolean useCallback, final boolean blocking) {
         final var request = endpoint.sendStreamNonBlocking(address, size, useCallback ? sendCallback : null);
-        while (blocking && !request.isCompleted()) {
-            try {
-                worker.getWorker().progressRequest(request);
-            } catch (Exception e) {
-                // Should never happen, since we do no throw exceptions inside our error handlers
-                throw new IllegalStateException(e);
-            }
-        }
+        execRequest(request, blocking);
     }
 
     public void receiveStream(final long address, final long size, final boolean useCallback, final boolean blocking) {
         final var request = endpoint.recvStreamNonBlocking(address, size, UcpConstants.UCP_STREAM_RECV_FLAG_WAITALL, useCallback ? receiveCallback : null);
-        while (blocking && !request.isCompleted()) {
-            try {
-                worker.getWorker().progressRequest(request);
-            } catch (Exception e) {
-                // Should never happen, since we do no throw exceptions inside our error handlers
-                throw new IllegalStateException(e);
-            }
-        }
+        execRequest(request, blocking);
     }
 
     @Override
@@ -145,6 +131,11 @@ class JucxEndpoint implements UcxEndpoint {
         LOGGER.info("Closing endpoint");
         if (endpoint != null) {
             endpoint.close();
+        }
+        for ( UcpRequest request : requests) {
+            if (request.getNativeId() != null) {
+                worker.getWorker().cancelRequest(request);
+            }
         }
     }
 

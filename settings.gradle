@@ -2,6 +2,6 @@ rootProject.name = 'hadronio'
 
 include 'core'
 include 'provider'
-include 'infinileap-binding'
+//include 'infinileap-binding'
 include 'jucx-binding'
 include 'example'
