@@ -4,6 +4,7 @@ import de.hhu.bsinfo.hadronio.binding.UcxReceiveCallback;
 import de.hhu.bsinfo.hadronio.generated.DebugConfig;
 import org.openucx.jucx.ucp.UcpRequest;
 import org.openucx.jucx.UcxCallback;
+import org.openucx.jucx.ucs.UcsConstants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,7 +30,13 @@ class ReceiveCallback extends UcxCallback {
 
     @Override
     public void onError(final int ucsStatus, final String errorMessage) {
-        LOGGER.error("Failed to receive a message (Status: [{}], Error: [{}])!", ucsStatus, errorMessage);
+        final var formatString = "Failed to receive a message (Status: [{}], Error: [{}])!";
+        if (ucsStatus == UcsConstants.STATUS.UCS_ERR_CANCELED) {
+            LOGGER.debug(formatString, ucsStatus, errorMessage);
+        }
+        else {
+            LOGGER.error(formatString, ucsStatus, errorMessage);
+        }
         endpoint.handleError();
     }
 }
