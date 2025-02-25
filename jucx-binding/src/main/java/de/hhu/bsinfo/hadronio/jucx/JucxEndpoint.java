@@ -10,7 +10,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
-import java.util.ArrayList;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 class JucxEndpoint implements UcxEndpoint {
 
@@ -22,7 +23,7 @@ class JucxEndpoint implements UcxEndpoint {
     private org.openucx.jucx.UcxCallback sendCallback;
     private org.openucx.jucx.UcxCallback receiveCallback;
     private boolean errorState = false;
-    private ArrayList<UcpRequest> requests = new ArrayList<>();
+    private final Queue<UcpRequest> requests = new ConcurrentLinkedQueue<>();
 
     JucxEndpoint(final UcpContext context) {
         worker = new JucxWorker(context, new UcpWorkerParams());
