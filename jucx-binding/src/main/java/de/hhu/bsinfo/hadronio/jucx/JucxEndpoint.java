@@ -133,9 +133,11 @@ class JucxEndpoint implements UcxEndpoint {
         if (endpoint != null) {
             endpoint.close();
         }
-        for ( UcpRequest request : requests) {
-            if (request.getNativeId() != null) {
-                worker.getWorker().cancelRequest(request);
+        if (worker != null) {
+            for (UcpRequest request : requests) {
+                if (request.getNativeId() != null) {
+                    worker.getWorker().cancelRequest(request);
+                }
             }
         }
     }
