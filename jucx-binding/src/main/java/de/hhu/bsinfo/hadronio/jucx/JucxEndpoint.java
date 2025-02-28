@@ -23,7 +23,7 @@ class JucxEndpoint implements UcxEndpoint {
     private org.openucx.jucx.UcxCallback sendCallback;
     private org.openucx.jucx.UcxCallback receiveCallback;
     private boolean errorState = false;
-    private final Queue<UcpRequest> requests = new ConcurrentLinkedQueue<>();
+    private final Queue<UcpRequest> pendingWorkerRequests = new ConcurrentLinkedQueue<>();
 
     JucxEndpoint(final UcpContext context) {
         worker = new JucxWorker(context, new UcpWorkerParams());
@@ -59,11 +59,8 @@ class JucxEndpoint implements UcxEndpoint {
         LOGGER.info("Endpoint created: [{}]", endpoint);
     }
 
-    private void execRequest(final UcpRequest request, final boolean blocking) {
-        if (request.getNativeId() != null) {
-            requests.add(request);
-        }
-        while (blocking && !request.isCompleted()) {
+    private void execRequestNow(final UcpRequest request) {
+        while (!request.isCompleted()) {
             try {
                 worker.getWorker().progressRequest(request);
             } catch (Exception e) {
@@ -76,25 +73,36 @@ class JucxEndpoint implements UcxEndpoint {
     @Override
     public boolean sendTaggedMessage(final long address, final long size, final long tag, final boolean useCallback, final boolean blocking) {
         final var request = endpoint.sendTaggedNonBlocking(address, size, tag, useCallback ? sendCallback : null);
-        execRequest(request, blocking);
+        if (blocking) {
+            execRequestNow(request);
+        }
         return request.isCompleted();
     }
 
     @Override
     public boolean receiveTaggedMessage(final long address, final long size, final long tag, final boolean useCallback, final boolean blocking) {
         final var request = worker.getWorker().recvTaggedNonBlocking(address, size, tag, TagUtil.TAG_MASK_FULL, useCallback ? receiveCallback : null);
-        execRequest(request, blocking);
+        if (request.getNativeId() != null) {
+            pendingWorkerRequests.add(request);
+        }
+        if (blocking) {
+            execRequestNow(request);
+        }
         return request.isCompleted();
     }
 
     public void sendStream(final long address, final long size, final boolean useCallback, final boolean blocking) {
         final var request = endpoint.sendStreamNonBlocking(address, size, useCallback ? sendCallback : null);
-        execRequest(request, blocking);
+        if (blocking) {
+            execRequestNow(request);
+        }
     }
 
     public void receiveStream(final long address, final long size, final boolean useCallback, final boolean blocking) {
         final var request = endpoint.recvStreamNonBlocking(address, size, UcpConstants.UCP_STREAM_RECV_FLAG_WAITALL, useCallback ? receiveCallback : null);
-        execRequest(request, blocking);
+        if (blocking) {
+            execRequestNow(request);
+        }
     }
 
     @Override
@@ -131,10 +139,11 @@ class JucxEndpoint implements UcxEndpoint {
     public void close() {
         LOGGER.info("Closing endpoint");
         if (endpoint != null) {
-            endpoint.close();
+            var closeRequest = endpoint.closeNonBlockingForce();
+            execRequestNow(closeRequest);
         }
         if (worker != null) {
-            for (UcpRequest request : requests) {
+            for (UcpRequest request : pendingWorkerRequests) {
                 if (request.getNativeId() != null) {
                     worker.getWorker().cancelRequest(request);
                 }
