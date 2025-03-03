@@ -139,11 +139,11 @@ class JucxEndpoint implements UcxEndpoint {
     public void close() {
         LOGGER.info("Closing endpoint");
         if (endpoint != null) {
-            var closeRequest = endpoint.closeNonBlockingForce();
+            final var closeRequest = endpoint.closeNonBlockingForce();
             execRequestNow(closeRequest);
         }
         if (worker != null) {
-            for (UcpRequest request : pendingWorkerRequests) {
+            for (final UcpRequest request : pendingWorkerRequests) {
                 if (request.getNativeId() != null) {
                     worker.getWorker().cancelRequest(request);
                 }
