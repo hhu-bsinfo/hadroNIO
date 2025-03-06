@@ -1,9 +1,6 @@
 package de.hhu.bsinfo.hadronio.jucx;
 
-import de.hhu.bsinfo.hadronio.binding.UcxEndpoint;
-import de.hhu.bsinfo.hadronio.binding.UcxReceiveCallback;
-import de.hhu.bsinfo.hadronio.binding.UcxSendCallback;
-import de.hhu.bsinfo.hadronio.binding.UcxWorker;
+import de.hhu.bsinfo.hadronio.binding.*;
 import de.hhu.bsinfo.hadronio.util.TagUtil;
 import org.openucx.jucx.ucp.*;
 import org.slf4j.Logger;
@@ -23,7 +20,6 @@ class JucxEndpoint implements UcxEndpoint {
     private org.openucx.jucx.UcxCallback sendCallback;
     private org.openucx.jucx.UcxCallback receiveCallback;
     private boolean errorState = false;
-    private final Queue<UcpRequest> pendingWorkerRequests = new ConcurrentLinkedQueue<>();
 
     JucxEndpoint(final UcpContext context) {
         worker = new JucxWorker(context, new UcpWorkerParams());
@@ -33,13 +29,13 @@ class JucxEndpoint implements UcxEndpoint {
         remoteAddress = connectionRequest.getClientAddress();
         worker = new JucxWorker(context, new UcpWorkerParams());
         endpoint = worker.getWorker().newEndpoint(
-            new UcpEndpointParams().
-            setConnectionRequest(connectionRequest).
-            setPeerErrorHandlingMode().
-            setErrorHandler((endpoint, status, message) -> {
-                LOGGER.error("A UCX error occurred (Status: [{}], Error: [{}])!", status, message);
-                handleError();
-            }));
+                new UcpEndpointParams().
+                        setConnectionRequest(connectionRequest).
+                        setPeerErrorHandlingMode().
+                        setErrorHandler((endpoint, status, message) -> {
+                            LOGGER.error("A UCX error occurred (Status: [{}], Error: [{}])!", status, message);
+                            handleError();
+                        }));
 
         LOGGER.info("Endpoint created: [{}]", endpoint);
     }
@@ -48,25 +44,23 @@ class JucxEndpoint implements UcxEndpoint {
     public void connect(final InetSocketAddress remoteAddress) {
         this.remoteAddress = remoteAddress;
         endpoint = worker.getWorker().newEndpoint(
-            new UcpEndpointParams().
-            setSocketAddress(remoteAddress).
-            setPeerErrorHandlingMode().
-            setErrorHandler((endpoint, status, message) -> {
-                LOGGER.error("A UCX error occurred (Status: [{}], Error: [{}])!", status, message);
-                handleError();
-            }));
+                new UcpEndpointParams().
+                        setSocketAddress(remoteAddress).
+                        setPeerErrorHandlingMode().
+                        setErrorHandler((endpoint, status, message) -> {
+                            LOGGER.error("A UCX error occurred (Status: [{}], Error: [{}])!", status, message);
+                            handleError();
+                        }));
 
         LOGGER.info("Endpoint created: [{}]", endpoint);
     }
 
-    private void execRequestNow(final UcpRequest request) {
-        while (!request.isCompleted()) {
-            try {
-                worker.getWorker().progressRequest(request);
-            } catch (Exception e) {
-                // Should never happen, since we do no throw exceptions inside our error handlers
-                throw new IllegalStateException(e);
-            }
+    private void handledProgressRequest(final UcpRequest request) {
+        try {
+            worker.getWorker().progressRequest(request);
+        } catch (Exception e) {
+            // Should never happen, since we do no throw exceptions inside our error handlers
+            throw new IllegalStateException(e);
         }
     }
 
@@ -74,34 +68,31 @@ class JucxEndpoint implements UcxEndpoint {
     public boolean sendTaggedMessage(final long address, final long size, final long tag, final boolean useCallback, final boolean blocking) {
         final var request = endpoint.sendTaggedNonBlocking(address, size, tag, useCallback ? sendCallback : null);
         if (blocking) {
-            execRequestNow(request);
+            handledProgressRequest(request);
         }
         return request.isCompleted();
     }
 
     @Override
-    public boolean receiveTaggedMessage(final long address, final long size, final long tag, final boolean useCallback, final boolean blocking) {
+    public UcxRequest receiveTaggedMessage(final long address, final long size, final long tag, final boolean useCallback, final boolean blocking) {
         final var request = worker.getWorker().recvTaggedNonBlocking(address, size, tag, TagUtil.TAG_MASK_FULL, useCallback ? receiveCallback : null);
-        if (request.getNativeId() != null) {
-            pendingWorkerRequests.add(request);
-        }
         if (blocking) {
-            execRequestNow(request);
+            handledProgressRequest(request);
         }
-        return request.isCompleted();
+        return new JucxRequest(request);
     }
 
     public void sendStream(final long address, final long size, final boolean useCallback, final boolean blocking) {
         final var request = endpoint.sendStreamNonBlocking(address, size, useCallback ? sendCallback : null);
         if (blocking) {
-            execRequestNow(request);
+            handledProgressRequest(request);
         }
     }
 
     public void receiveStream(final long address, final long size, final boolean useCallback, final boolean blocking) {
         final var request = endpoint.recvStreamNonBlocking(address, size, UcpConstants.UCP_STREAM_RECV_FLAG_WAITALL, useCallback ? receiveCallback : null);
         if (blocking) {
-            execRequestNow(request);
+            handledProgressRequest(request);
         }
     }
 
@@ -131,6 +122,11 @@ class JucxEndpoint implements UcxEndpoint {
     }
 
     @Override
+    public void cancelRequest(final UcxRequest request) {
+        worker.getWorker().cancelRequest(((JucxRequest) request).getRequest());
+    }
+
+    @Override
     public UcxWorker getWorker() {
         return worker;
     }
@@ -139,15 +135,11 @@ class JucxEndpoint implements UcxEndpoint {
     public void close() {
         LOGGER.info("Closing endpoint");
         if (endpoint != null) {
-            final var closeRequest = endpoint.closeNonBlockingForce();
-            execRequestNow(closeRequest);
+            var closeRequest = endpoint.closeNonBlockingForce();
+            handledProgressRequest(closeRequest);
         }
         if (worker != null) {
-            for (final UcpRequest request : pendingWorkerRequests) {
-                if (request.getNativeId() != null) {
-                    worker.getWorker().cancelRequest(request);
-                }
-            }
+            worker.close();
         }
     }
 

@@ -1,13 +1,15 @@
 package de.hhu.bsinfo.hadronio;
 
 import de.hhu.bsinfo.hadronio.binding.UcxEndpoint;
+import de.hhu.bsinfo.hadronio.binding.UcxRequest;
 import de.hhu.bsinfo.hadronio.binding.UcxWorker;
 import de.hhu.bsinfo.hadronio.generated.DebugConfig;
-import de.hhu.bsinfo.hadronio.util.MemoryUtil;
+import de.hhu.bsinfo.hadronio.util.*;
 import de.hhu.bsinfo.hadronio.util.MemoryUtil.Alignment;
 import de.hhu.bsinfo.hadronio.util.MessageUtil;
 import de.hhu.bsinfo.hadronio.util.RingBuffer;
 import de.hhu.bsinfo.hadronio.util.TagUtil;
+
 import org.agrona.MutableDirectBuffer;
 import org.agrona.concurrent.AtomicBuffer;
 import org.agrona.concurrent.MessageHandler;
@@ -21,7 +23,9 @@ import java.nio.ByteBuffer;
 import java.nio.channels.*;
 import java.nio.channels.spi.SelectorProvider;
 import java.util.Collections;
+import java.util.Queue;
 import java.util.Set;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -63,6 +67,8 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
     private boolean outputClosed = false;
     private boolean channelClosed = false;
     private int readyOps;
+
+    private final Queue<UcxRequest> pendingWorkerRequests = new ConcurrentLinkedQueue<>();
 
     public HadronioSocketChannel(final SelectorProvider provider, final UcxEndpoint endpoint) {
         super(provider);
@@ -326,6 +332,12 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
         inputClosed = true;
         outputClosed = true;
         connected = false;
+        for (final UcxRequest request : pendingWorkerRequests) {
+            if (!request.isCompleted()) {
+                endpoint.cancelRequest(request);
+            }
+        }
+
         endpoint.close();
     }
 
@@ -425,10 +437,13 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
             if (DebugConfig.DEBUG) LOGGER.debug("Claimed part of the receive buffer (Index: [{}], Length: [{}])", index, configuration.getBufferSliceLength());
 
             receiveBuffer.commitWrite(index);
-            final boolean completed = endpoint.receiveTaggedMessage(receiveBuffer.memoryAddress() + index,
+            final var workerRequest = endpoint.receiveTaggedMessage(receiveBuffer.memoryAddress() + index,
                     configuration.getBufferSliceLength(), tag, true, false);
-            if (DebugConfig.DEBUG) LOGGER.debug("Receive request completed instantly: [{}]", completed);
-
+            pendingWorkerRequests.add(workerRequest);
+            if (DebugConfig.DEBUG) {
+                LOGGER.debug("Receive request completed instantly: [{}]", workerRequest.isCompleted());
+                LOGGER.debug("Pending requests queue size: [{}]", pendingWorkerRequests.size());
+            }
             index = receiveBuffer.tryClaim(configuration.getBufferSliceLength());
         }
     }
@@ -510,6 +525,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
             final int readable = readableMessages.decrementAndGet();
             if (DebugConfig.DEBUG) LOGGER.debug("Readable messages left: [{}]", readable);
             receiveBuffer.commitRead(readFromBuffer);
+            pendingWorkerRequests.remove();
         }
 
         return readBytes.get();
