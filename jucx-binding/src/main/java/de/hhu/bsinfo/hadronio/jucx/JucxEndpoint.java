@@ -29,13 +29,13 @@ class JucxEndpoint implements UcxEndpoint {
         remoteAddress = connectionRequest.getClientAddress();
         worker = new JucxWorker(context, new UcpWorkerParams());
         endpoint = worker.getWorker().newEndpoint(
-                new UcpEndpointParams().
-                        setConnectionRequest(connectionRequest).
-                        setPeerErrorHandlingMode().
-                        setErrorHandler((endpoint, status, message) -> {
-                            LOGGER.error("A UCX error occurred (Status: [{}], Error: [{}])!", status, message);
-                            handleError();
-                        }));
+            new UcpEndpointParams().
+            setConnectionRequest(connectionRequest).
+            setPeerErrorHandlingMode().
+            setErrorHandler((endpoint, status, message) -> {
+                LOGGER.error("A UCX error occurred (Status: [{}], Error: [{}])!", status, message);
+                handleError();
+            }));
 
         LOGGER.info("Endpoint created: [{}]", endpoint);
     }
@@ -44,13 +44,13 @@ class JucxEndpoint implements UcxEndpoint {
     public void connect(final InetSocketAddress remoteAddress) {
         this.remoteAddress = remoteAddress;
         endpoint = worker.getWorker().newEndpoint(
-                new UcpEndpointParams().
-                        setSocketAddress(remoteAddress).
-                        setPeerErrorHandlingMode().
-                        setErrorHandler((endpoint, status, message) -> {
-                            LOGGER.error("A UCX error occurred (Status: [{}], Error: [{}])!", status, message);
-                            handleError();
-                        }));
+            new UcpEndpointParams().
+            setSocketAddress(remoteAddress).
+            setPeerErrorHandlingMode().
+            setErrorHandler((endpoint, status, message) -> {
+                LOGGER.error("A UCX error occurred (Status: [{}], Error: [{}])!", status, message);
+                handleError();
+            }));
 
         LOGGER.info("Endpoint created: [{}]", endpoint);
     }
@@ -135,7 +135,7 @@ class JucxEndpoint implements UcxEndpoint {
     public void close() {
         LOGGER.info("Closing endpoint");
         if (endpoint != null) {
-            var closeRequest = endpoint.closeNonBlockingForce();
+            final var closeRequest = endpoint.closeNonBlockingForce();
             handledProgressRequest(closeRequest);
         }
         if (worker != null) {
