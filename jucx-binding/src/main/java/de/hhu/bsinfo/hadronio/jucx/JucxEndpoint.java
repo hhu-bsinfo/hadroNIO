@@ -138,9 +138,6 @@ class JucxEndpoint implements UcxEndpoint {
             final var closeRequest = endpoint.closeNonBlockingForce();
             handledProgressRequest(closeRequest);
         }
-        if (worker != null) {
-            worker.close();
-        }
     }
 
     void handleError() {
