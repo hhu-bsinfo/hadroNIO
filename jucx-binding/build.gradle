@@ -18,6 +18,8 @@ repositories {
 dependencies {
     implementation project(':core')
 
+    implementation "org.agrona:agrona:${agronaVersion}"
+
     implementation "org.openucx:jucx:${jucxVersion}"
 
     implementation "org.slf4j:slf4j-api:${slf4jVersion}"

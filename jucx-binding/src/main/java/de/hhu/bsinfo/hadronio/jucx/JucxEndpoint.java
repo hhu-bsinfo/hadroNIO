@@ -1,25 +1,32 @@
 package de.hhu.bsinfo.hadronio.jucx;
 
-import de.hhu.bsinfo.hadronio.binding.*;
+import de.hhu.bsinfo.hadronio.Configuration;
+import de.hhu.bsinfo.hadronio.binding.UcxEndpoint;
+import de.hhu.bsinfo.hadronio.binding.UcxReceiveCallback;
+import de.hhu.bsinfo.hadronio.binding.UcxSendCallback;
+import de.hhu.bsinfo.hadronio.binding.UcxWorker;
 import de.hhu.bsinfo.hadronio.util.TagUtil;
+import org.agrona.concurrent.OneToOneConcurrentArrayQueue;
 import org.openucx.jucx.ucp.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
 import java.util.Queue;
-import java.util.concurrent.ConcurrentLinkedQueue;
 
 class JucxEndpoint implements UcxEndpoint {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(JucxEndpoint.class);
 
+    private static final int maxCountOfWorkerRequests = Configuration.getInstance().getReceiveBufferLength() / Configuration.getInstance().getBufferSliceLength();
     private final JucxWorker worker;
     private UcpEndpoint endpoint;
     private InetSocketAddress remoteAddress;
     private org.openucx.jucx.UcxCallback sendCallback;
     private org.openucx.jucx.UcxCallback receiveCallback;
     private boolean errorState = false;
+
+    private final Queue<UcpRequest> pendingWorkerRequests = new OneToOneConcurrentArrayQueue<>(maxCountOfWorkerRequests);
 
     JucxEndpoint(final UcpContext context) {
         worker = new JucxWorker(context, new UcpWorkerParams());
@@ -74,12 +81,24 @@ class JucxEndpoint implements UcxEndpoint {
     }
 
     @Override
-    public UcxRequest receiveTaggedMessage(final long address, final long size, final long tag, final boolean useCallback, final boolean blocking) {
-        final var request = worker.getWorker().recvTaggedNonBlocking(address, size, tag, TagUtil.TAG_MASK_FULL, useCallback ? receiveCallback : null);
+    public boolean receiveTaggedMessage(final long address, final long size, final long tag, final boolean useCallback, final boolean blocking) {
+        LOGGER.debug("Pending worker requests queue size: [{}]", pendingWorkerRequests.size());
+        final var messageType = TagUtil.getMessageType(tag);
+        final var firstRequest = pendingWorkerRequests.peek();
+        if (firstRequest != null && firstRequest.isCompleted()) {
+            pendingWorkerRequests.remove();
+        }
+        if (messageType == TagUtil.MessageType.DEFAULT && pendingWorkerRequests.size() >= maxCountOfWorkerRequests) {
+            return false;
+        }
+        final UcpRequest request =  worker.getWorker().recvTaggedNonBlocking(address, size, tag, TagUtil.TAG_MASK_FULL, useCallback ? receiveCallback : null);
+        if (messageType == TagUtil.MessageType.DEFAULT) {
+            pendingWorkerRequests.add(request);
+        }
         if (blocking) {
             handledProgressRequest(request);
         }
-        return new JucxRequest(request);
+        return request.isCompleted();
     }
 
     public void sendStream(final long address, final long size, final boolean useCallback, final boolean blocking) {
@@ -121,9 +140,8 @@ class JucxEndpoint implements UcxEndpoint {
         return endpoint.getRemoteAddress();
     }
 
-    @Override
-    public void cancelRequest(final UcxRequest request) {
-        worker.getWorker().cancelRequest(((JucxRequest) request).getRequest());
+    private void cancelRequest(final UcpRequest request) {
+        worker.getWorker().cancelRequest(request);
     }
 
     @Override
@@ -137,6 +155,12 @@ class JucxEndpoint implements UcxEndpoint {
         if (endpoint != null) {
             final var closeRequest = endpoint.closeNonBlockingForce();
             handledProgressRequest(closeRequest);
+            while (!pendingWorkerRequests.isEmpty()) {
+                final var request = pendingWorkerRequests.remove();
+                if (!request.isCompleted()) {
+                    cancelRequest(request);
+                }
+            }
         }
     }
 
