@@ -425,11 +425,10 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
             if (DebugConfig.DEBUG) LOGGER.debug("Claimed part of the receive buffer (Index: [{}], Length: [{}])", index, configuration.getBufferSliceLength());
 
             receiveBuffer.commitWrite(index);
-            final var completed = endpoint.receiveTaggedMessage(receiveBuffer.memoryAddress() + index,
+            final boolean completed = endpoint.receiveTaggedMessage(receiveBuffer.memoryAddress() + index,
                     configuration.getBufferSliceLength(), tag, true, false);
-            if (DebugConfig.DEBUG) {
-                LOGGER.debug("Receive request completed instantly: [{}]", completed);
-            }
+            if (DebugConfig.DEBUG) LOGGER.debug("Receive request completed instantly: [{}]", completed);
+
             index = receiveBuffer.tryClaim(configuration.getBufferSliceLength());
         }
     }

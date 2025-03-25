@@ -18,7 +18,7 @@ class JucxEndpoint implements UcxEndpoint {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(JucxEndpoint.class);
 
-    private static final int maxCountOfWorkerRequests = Configuration.getInstance().getReceiveBufferLength() / Configuration.getInstance().getBufferSliceLength();
+    private static final int MAX_COUNT_OF_WORKER_REQUESTS = Configuration.getInstance().getReceiveBufferLength() / Configuration.getInstance().getBufferSliceLength();
     private final JucxWorker worker;
     private UcpEndpoint endpoint;
     private InetSocketAddress remoteAddress;
@@ -26,7 +26,7 @@ class JucxEndpoint implements UcxEndpoint {
     private org.openucx.jucx.UcxCallback receiveCallback;
     private boolean errorState = false;
 
-    private final Queue<UcpRequest> pendingWorkerRequests = new OneToOneConcurrentArrayQueue<>(maxCountOfWorkerRequests);
+    private final Queue<UcpRequest> pendingWorkerRequests = new OneToOneConcurrentArrayQueue<>(MAX_COUNT_OF_WORKER_REQUESTS);
 
     JucxEndpoint(final UcpContext context) {
         worker = new JucxWorker(context, new UcpWorkerParams());
@@ -88,16 +88,17 @@ class JucxEndpoint implements UcxEndpoint {
         if (firstRequest != null && firstRequest.isCompleted()) {
             pendingWorkerRequests.remove();
         }
-        if (messageType == TagUtil.MessageType.DEFAULT && pendingWorkerRequests.size() >= maxCountOfWorkerRequests) {
+        if (messageType == TagUtil.MessageType.DEFAULT && pendingWorkerRequests.size() >= MAX_COUNT_OF_WORKER_REQUESTS) {
             return false;
         }
-        final UcpRequest request =  worker.getWorker().recvTaggedNonBlocking(address, size, tag, TagUtil.TAG_MASK_FULL, useCallback ? receiveCallback : null);
+        final var request =  worker.getWorker().recvTaggedNonBlocking(address, size, tag, TagUtil.TAG_MASK_FULL, useCallback ? receiveCallback : null);
         if (messageType == TagUtil.MessageType.DEFAULT) {
             pendingWorkerRequests.add(request);
         }
         if (blocking) {
             handledProgressRequest(request);
         }
+
         return request.isCompleted();
     }
 
