@@ -7,6 +7,7 @@ import de.hhu.bsinfo.hadronio.binding.UcxSendCallback;
 import de.hhu.bsinfo.hadronio.binding.UcxWorker;
 import de.hhu.bsinfo.hadronio.util.TagUtil;
 import org.agrona.concurrent.OneToOneConcurrentArrayQueue;
+import org.openucx.jucx.UcxCallback;
 import org.openucx.jucx.ucp.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,8 +23,8 @@ class JucxEndpoint implements UcxEndpoint {
     private final JucxWorker worker;
     private UcpEndpoint endpoint;
     private InetSocketAddress remoteAddress;
-    private org.openucx.jucx.UcxCallback sendCallback;
-    private org.openucx.jucx.UcxCallback receiveCallback;
+    private UcxSendCallback sendCallback;
+    private UcxReceiveCallback receiveCallback;
     private boolean errorState = false;
 
     private final Queue<UcpRequest> pendingWorkerRequests = new OneToOneConcurrentArrayQueue<>(MAX_COUNT_OF_WORKER_REQUESTS);
@@ -73,7 +74,8 @@ class JucxEndpoint implements UcxEndpoint {
 
     @Override
     public boolean sendTaggedMessage(final long address, final long size, final long tag, final boolean useCallback, final boolean blocking) {
-        final var request = endpoint.sendTaggedNonBlocking(address, size, tag, useCallback ? sendCallback : null);
+        final var callback = new SendCallback(this, sendCallback);
+        final var request = endpoint.sendTaggedNonBlocking(address, size, tag, useCallback ? callback : null);
         if (blocking) {
             handledProgressRequest(request);
         }
@@ -84,17 +86,24 @@ class JucxEndpoint implements UcxEndpoint {
     public boolean receiveTaggedMessage(final long address, final long size, final long tag, final boolean useCallback, final boolean blocking) {
         LOGGER.debug("Pending worker requests queue size: [{}]", pendingWorkerRequests.size());
         final var messageType = TagUtil.getMessageType(tag);
-        final var firstRequest = pendingWorkerRequests.peek();
-        if (firstRequest != null && firstRequest.isCompleted()) {
-            pendingWorkerRequests.remove();
-        }
-        if (messageType == TagUtil.MessageType.DEFAULT && pendingWorkerRequests.size() >= MAX_COUNT_OF_WORKER_REQUESTS) {
-            return false;
-        }
-        final var request =  worker.getWorker().recvTaggedNonBlocking(address, size, tag, TagUtil.TAG_MASK_FULL, useCallback ? receiveCallback : null);
+        final UcpRequest request;
         if (messageType == TagUtil.MessageType.DEFAULT) {
-            pendingWorkerRequests.add(request);
+            LOGGER.debug("Pending worker requests queue size: [{}]", pendingWorkerRequests.size());
+            final UcxCallback callback;
+            if (useCallback) {
+                callback = new WorkerReceiveCallback(this, receiveCallback);
+            } else {
+                callback = new WorkerReceiveCallback(this, null);
+            }
+            request =  worker.getWorker().recvTaggedNonBlocking(address, size, tag, TagUtil.TAG_MASK_FULL, callback);
+            if (!request.isCompleted()) {
+                pendingWorkerRequests.add(request);
+            }
+        } else {
+            final var callback = new ReceiveCallback(this, receiveCallback);
+            request =  worker.getWorker().recvTaggedNonBlocking(address, size, tag, TagUtil.TAG_MASK_FULL, useCallback ? callback : null);
         }
+
         if (blocking) {
             handledProgressRequest(request);
         }
@@ -103,14 +112,16 @@ class JucxEndpoint implements UcxEndpoint {
     }
 
     public void sendStream(final long address, final long size, final boolean useCallback, final boolean blocking) {
-        final var request = endpoint.sendStreamNonBlocking(address, size, useCallback ? sendCallback : null);
+        final var callback = new SendCallback(this, sendCallback);
+        final var request = endpoint.sendStreamNonBlocking(address, size, useCallback ? callback : null);
         if (blocking) {
             handledProgressRequest(request);
         }
     }
 
     public void receiveStream(final long address, final long size, final boolean useCallback, final boolean blocking) {
-        final var request = endpoint.recvStreamNonBlocking(address, size, UcpConstants.UCP_STREAM_RECV_FLAG_WAITALL, useCallback ? receiveCallback : null);
+        final var callback = new ReceiveCallback(this, receiveCallback);
+        final var request = endpoint.recvStreamNonBlocking(address, size, UcpConstants.UCP_STREAM_RECV_FLAG_WAITALL, useCallback ? callback : null);
         if (blocking) {
             handledProgressRequest(request);
         }
@@ -118,12 +129,12 @@ class JucxEndpoint implements UcxEndpoint {
 
     @Override
     public void setSendCallback(final UcxSendCallback sendCallback) {
-        this.sendCallback = new SendCallback(this, sendCallback);
+        this.sendCallback = sendCallback;
     }
 
     @Override
     public void setReceiveCallback(final UcxReceiveCallback receiveCallback) {
-        this.receiveCallback = new ReceiveCallback(this, receiveCallback);
+        this.receiveCallback = receiveCallback;
     }
 
     @Override
@@ -167,5 +178,32 @@ class JucxEndpoint implements UcxEndpoint {
 
     void handleError() {
         errorState = true;
+    }
+
+    private void removeCompleteWorkerRequest() {
+        if (!pendingWorkerRequests.isEmpty()) {
+            pendingWorkerRequests.remove();
+        }
+    }
+
+    private static class WorkerReceiveCallback extends ReceiveCallback {
+
+        public WorkerReceiveCallback(final JucxEndpoint endpoint, final UcxReceiveCallback callback) {
+            super(endpoint, callback);
+        }
+
+        @Override
+        public void onSuccess(final UcpRequest request) {
+            getEndpoint().removeCompleteWorkerRequest();
+            if (hasCallback()) {
+                super.onSuccess(request);
+            }
+        }
+
+        @Override
+        public void onError(final int ucsStatus, final String errorMessage) {
+            getEndpoint().removeCompleteWorkerRequest();
+            super.onError(ucsStatus, errorMessage);
+        }
     }
 }
