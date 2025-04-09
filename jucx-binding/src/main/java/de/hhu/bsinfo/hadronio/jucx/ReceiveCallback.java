@@ -31,10 +31,10 @@ class ReceiveCallback extends UcxCallback {
     @Override
     public void onError(final int ucsStatus, final String errorMessage) {
         final var formatString = "Failed to receive a message (Status: [{}], Error: [{}])!";
-        if (ucsStatus == UcsConstants.STATUS.UCS_ERR_CANCELED) {
-            LOGGER.debug(formatString, ucsStatus, errorMessage);
-        } else {
+        if (ucsStatus != UcsConstants.STATUS.UCS_ERR_CANCELED) {
             LOGGER.error(formatString, ucsStatus, errorMessage);
+        } else if (DebugConfig.DEBUG) {
+            LOGGER.debug(formatString, ucsStatus, errorMessage);
         }
         endpoint.handleError();
     }
