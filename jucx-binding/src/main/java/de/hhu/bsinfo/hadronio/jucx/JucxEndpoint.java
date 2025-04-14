@@ -86,8 +86,7 @@ class JucxEndpoint implements UcxEndpoint {
     public boolean receiveTaggedMessage(final long address, final long size, final long tag, final boolean useCallback, final boolean blocking) {
         if (DebugConfig.DEBUG) LOGGER.debug("Pending worker requests queue size: [{}]", pendingWorkerRequests.size());
         final var isDefault = TagUtil.getMessageType(tag) == TagUtil.MessageType.DEFAULT;
-        final var latestRequest = pendingWorkerRequests.peek();
-        if (latestRequest != null && latestRequest.isCompleted()) {
+        while (!pendingWorkerRequests.isEmpty() && pendingWorkerRequests.peek().isCompleted()) {
             pendingWorkerRequests.remove();
         }
         if (isDefault && pendingWorkerRequests.size() >= MAX_COUNT_OF_WORKER_REQUESTS) {
