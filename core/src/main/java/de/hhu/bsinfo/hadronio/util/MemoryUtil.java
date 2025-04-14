@@ -1,15 +1,11 @@
 package de.hhu.bsinfo.hadronio.util;
 
-import org.agrona.BitUtil;
 import org.agrona.BufferUtil;
 import org.agrona.MutableDirectBuffer;
 import org.agrona.concurrent.AtomicBuffer;
 import org.agrona.concurrent.UnsafeBuffer;
 
 import java.io.PrintStream;
-import java.nio.ByteBuffer;
-
-import static org.agrona.BufferUtil.address;
 
 public class MemoryUtil {
 
@@ -35,36 +31,8 @@ public class MemoryUtil {
         }
     }
 
-    public static class AlignedBuffer {
-        private final ByteBuffer rawBuffer;
-        private final AtomicBuffer buffer;
-        public AlignedBuffer(final int capacity, final Alignment alignment) {
-            final int alignmentValue = alignment.value();
-            if (!BitUtil.isPowerOfTwo(alignmentValue)) {
-                throw new IllegalArgumentException("Must be a power of 2: alignment=" + alignmentValue);
-            } else {
-                ByteBuffer buffer = ByteBuffer.allocateDirect(capacity + alignmentValue);
-                rawBuffer=buffer;
-                long address = address(buffer);
-                int remainder = (int)(address & (long)(alignmentValue - 1));
-                int offset = alignmentValue - remainder;
-                buffer.limit(capacity + offset);
-                buffer.position(offset);
-                this.buffer = new UnsafeBuffer(buffer.slice());
-            }
-        }
-
-        public AtomicBuffer buffer()  {
-            return buffer;
-        }
-
-        public ByteBuffer rawBuffer()  {
-            return rawBuffer;
-        }
-
-        public void free() {
-            BufferUtil.free(rawBuffer);
-        }
+    public static AtomicBuffer allocateAligned(final int size, final Alignment alignment) {
+        return new UnsafeBuffer(BufferUtil.allocateDirectAligned(size, alignment.value()));
     }
 
     public static void dumpBuffer(final MutableDirectBuffer buffer, final int index, final int length, final PrintStream stream) {

@@ -5,7 +5,7 @@ import org.agrona.BitUtil;
 
 import java.lang.management.ManagementFactory;
 
-class Configuration {
+public class Configuration {
 
     enum PollMethod {
         BUSY_POLLING,
@@ -56,7 +56,7 @@ class Configuration {
         return "de.hhu.bsinfo.hadronio.jucx.JucxProvider";
     }
 
-    static Configuration getInstance() throws IllegalArgumentException {
+    public static Configuration getInstance() throws IllegalArgumentException {
         if (instance != null) {
             return instance;
         }
@@ -135,11 +135,11 @@ class Configuration {
         return sendBufferLength;
     }
 
-    int getReceiveBufferLength() {
+    public int getReceiveBufferLength() {
         return receiveBufferLength;
     }
 
-    int getBufferSliceLength() {
+    public int getBufferSliceLength() {
         return bufferSliceLength;
     }
 

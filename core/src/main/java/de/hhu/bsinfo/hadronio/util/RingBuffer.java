@@ -42,7 +42,7 @@ public class RingBuffer {
     /**
      * The underlying buffer used for storing data.
      */
-    private final MemoryUtil.AlignedBuffer alignedBuffer;
+    private final AtomicBuffer buffer;
 
     /**
      * Bitmask used to keep indices within the buffer's bounds.
@@ -51,15 +51,14 @@ public class RingBuffer {
 
     public RingBuffer(final int size) {
         // Allocate a new page-aligned buffer
-
-        alignedBuffer = new MemoryUtil.AlignedBuffer(size + TRAILER_LENGTH, MemoryUtil.Alignment.PAGE);
+        buffer = MemoryUtil.allocateAligned(size + TRAILER_LENGTH, MemoryUtil.Alignment.PAGE);
 
         // Store the buffer's actual capacity
-        capacity = alignedBuffer.buffer().capacity() - TRAILER_LENGTH;
+        capacity = buffer.capacity() - TRAILER_LENGTH;
         indexMask = capacity - 1;
 
         // Verify the buffer is correctly aligned
-        alignedBuffer.buffer().verifyAlignment();
+        buffer.verifyAlignment();
 
         // Remember positions at which indices are stored
         headPositionIndex = capacity + HEAD_POSITION_OFFSET;
@@ -72,7 +71,7 @@ public class RingBuffer {
         int messagesRead = 0;
 
         // Retrieve our current position within the buffer
-        final var buffer = this.alignedBuffer.buffer();
+        final var buffer = this.buffer;
         final int headPositionIndex = this.headPositionIndex;
         final long head = buffer.getLong(headPositionIndex);
         final int capacity = this.capacity;
@@ -108,7 +107,7 @@ public class RingBuffer {
     }
 
     public void commitRead(final int bytes) {
-        final var buffer = this.alignedBuffer.buffer();
+        final var buffer = this.buffer;
         final int headPositionIndex = this.headPositionIndex;
         final long head = buffer.getLong(headPositionIndex);
 
@@ -116,7 +115,7 @@ public class RingBuffer {
     }
 
     public int tryClaim(final int length) {
-        final var buffer = this.alignedBuffer.buffer();
+        final var buffer = this.buffer;
 
         // Calculate the required size in bytes
         final int recordLength = length + HEADER_LENGTH;
@@ -139,7 +138,7 @@ public class RingBuffer {
     }
 
     public void commitWrite(final int index) {
-        final var buffer = this.alignedBuffer.buffer();
+        final var buffer = this.buffer;
 
         // Calculate the request index and length
         final int recordIndex = computeRecordIndex(index);
@@ -223,7 +222,7 @@ public class RingBuffer {
     }
 
     public int size() {
-        final var buffer = this.alignedBuffer.buffer();
+        final var buffer = this.buffer;
         final int headPositionIndex = this.headPositionIndex;
         final int tailPositionIndex = this.tailPositionIndex;
 
@@ -257,11 +256,11 @@ public class RingBuffer {
     }
 
     public long memoryAddress() {
-        return alignedBuffer.buffer().addressOffset();
+        return buffer.addressOffset();
     }
 
-    public MemoryUtil.AlignedBuffer alignedBuffer() {
-        return alignedBuffer;
+    public AtomicBuffer buffer() {
+        return buffer;
     }
 
     private int computeRecordIndex(final int index) {

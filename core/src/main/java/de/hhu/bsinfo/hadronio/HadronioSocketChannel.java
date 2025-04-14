@@ -8,7 +8,6 @@ import de.hhu.bsinfo.hadronio.util.MemoryUtil.Alignment;
 import de.hhu.bsinfo.hadronio.util.MessageUtil;
 import de.hhu.bsinfo.hadronio.util.RingBuffer;
 import de.hhu.bsinfo.hadronio.util.TagUtil;
-import org.agrona.BufferUtil;
 import org.agrona.MutableDirectBuffer;
 import org.agrona.concurrent.AtomicBuffer;
 import org.agrona.concurrent.MessageHandler;
@@ -328,9 +327,6 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
         outputClosed = true;
         connected = false;
         endpoint.close();
-        sendBuffer.alignedBuffer().free();
-        receiveBuffer.alignedBuffer().free();
-        BufferUtil.free(flushBuffer);
     }
 
     @Override
@@ -454,23 +450,21 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
     }
 
     void establishConnection() {
-        final var sendBuffer = new MemoryUtil.AlignedBuffer(2 * Long.BYTES, Alignment.PAGE);
-        final var receiveBuffer = new MemoryUtil.AlignedBuffer(2 * Long.BYTES, Alignment.PAGE);
+        final var sendBuffer = MemoryUtil.allocateAligned(2 * Long.BYTES, Alignment.PAGE);
+        final var receiveBuffer = MemoryUtil.allocateAligned(2 * Long.BYTES, Alignment.PAGE);
 
         final long localId = TagUtil.generateId();
         final long checksum = TagUtil.calculateChecksum(localId);
-        sendBuffer.buffer().putLong(0, localId);
-        sendBuffer.buffer().putLong(Long.BYTES, checksum);
+        sendBuffer.putLong(0, localId);
+        sendBuffer.putLong(Long.BYTES, checksum);
 
-        final var connectionCallback = new ConnectionCallback(this, receiveBuffer.buffer(), localId);
+        final var connectionCallback = new ConnectionCallback(this, receiveBuffer, localId);
         endpoint.setSendCallback(connectionCallback);
         endpoint.setReceiveCallback(connectionCallback);
 
         if (DebugConfig.DEBUG) LOGGER.debug("Exchanging tags to establish connection");
-        endpoint.sendStream(sendBuffer.buffer().addressOffset(), 2 * Long.BYTES, true, true);
-        endpoint.receiveStream(receiveBuffer.buffer().addressOffset(), 2 * Long.BYTES, true, false);
-        receiveBuffer.free();
-        sendBuffer.free();
+        endpoint.sendStream(sendBuffer.addressOffset(), 2 * Long.BYTES, true, true);
+        endpoint.receiveStream(receiveBuffer.addressOffset(), 2 * Long.BYTES, true, false);
     }
 
     private int readBlocking(final ByteBuffer target) throws IOException {
@@ -552,9 +546,9 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
         }
 
         // Write message header
-        MessageUtil.setMessageLength(sendBuffer.alignedBuffer().buffer(), index, messageLength - MessageUtil.HEADER_LENGTH);
-        MessageUtil.setReadBytes(sendBuffer.alignedBuffer().buffer(), index, 0);
-        if (DebugConfig.DEBUG) MessageUtil.setSequenceNumber(sendBuffer.alignedBuffer().buffer(), index, (short) sendCounter);
+        MessageUtil.setMessageLength(sendBuffer.buffer(), index, messageLength - MessageUtil.HEADER_LENGTH);
+        MessageUtil.setReadBytes(sendBuffer.buffer(), index, 0);
+        if (DebugConfig.DEBUG) MessageUtil.setSequenceNumber(sendBuffer.buffer(), index, (short) sendCounter);
 
         // Copy message data from source buffers into send buffer
         int remaining = messageLength - MessageUtil.HEADER_LENGTH;
@@ -571,7 +565,7 @@ public class HadronioSocketChannel extends SocketChannel implements HadronioSele
 
             if (DebugConfig.DEBUG) LOGGER.debug("Copying source buffer into send buffer (Buffer: [{}/{}], Position: [{}/{}], Length: [{}], Remaining: [{}], Sequence Number: [{}])",
                 offset + i + 1, length, sourceBuffer.position(), sourceBuffer.limit(), currentLength, remaining, (short) sendCounter);
-            sendBuffer.alignedBuffer().buffer().putBytes(targetIndex, sourceBuffer, sourceBuffer.position(), currentLength);
+            sendBuffer.buffer().putBytes(targetIndex, sourceBuffer, sourceBuffer.position(), currentLength);
 
             lastBufferIndex = i;
             lastBufferPosition = sourceBuffer.position() + currentLength;
