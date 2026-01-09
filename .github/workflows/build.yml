@@ -5,16 +5,13 @@ jobs:
   build:
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v3
-
-      - name: Install OpenJDK 20
-        run: wget https://download.java.net/java/GA/jdk20.0.1/b4887098932d415489976708ad6d1a4b/9/GPL/openjdk-20.0.1_linux-x64_bin.tar.gz && tar -xzf openjdk-20.0.1_linux-x64_bin.tar.gz && mv jdk-20.0.1 /usr/lib/jvm
+      - uses: actions/checkout@v4
 
       - name: Build JAR
-        run: ./gradlew jar -Dinfinileap=true -Drelease=true
+        run: ./gradlew jar -Drelease=true
 
       - name: Upload Artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v6
         with:
           name: hadroNIO JAR
           path: build/provider/libs/hadronio-*.jar
